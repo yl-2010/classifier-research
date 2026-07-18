@@ -62,15 +62,61 @@ FORMATTED_HTML = """
 SHARED_JS = r"""
 const MOCK_NOTE = `""" + MOCK_NOTE.replace("\\", "\\\\").replace("`", "\\`") + r"""`;
 const FORMATTED_HTML = `""" + FORMATTED_HTML.strip().replace("\\", "\\\\").replace("`", "\\`") + r"""`;
-const SUBJECTS = """ + repr(SUBJECTS) + r""";
+const SUBJECTS = """ + __import__("json").dumps(SUBJECTS) + r""";
 const SUBJECT_COLORS = Object.fromEntries(SUBJECTS);
 
-const STEPS = ['home','capture','extract','classify','judge','research','formatted','library','note'];
+const LIBRARY = {
+  Mathematics: [
+    { id: 'math-1', title: 'Derivatives cheat sheet', blurb: 'Power rule, product rule, chain rule.' },
+    { id: 'math-2', title: 'Integrals workshop', blurb: 'u-sub and definite integrals.' },
+    { id: 'math-3', title: 'Linear algebra intro', blurb: 'Matrices, determinants, eigenvalues.' },
+  ],
+  Physics: [
+    { id: 'phys-1', title: 'Thermodynamics — Lecture 12', blurb: 'First law, isothermal & adiabatic.' },
+    { id: 'phys-2', title: 'Newton’s laws review', blurb: 'Free-body diagrams and friction.' },
+  ],
+  Chemistry: [
+    { id: 'chem-1', title: 'Stoichiometry drills', blurb: 'Mole ratios and limiting reagents.' },
+    { id: 'chem-2', title: 'Acid–base equilibria', blurb: 'pH, Ka, and buffers.' },
+  ],
+  Biology: [
+    { id: 'bio-1', title: 'Cell organelles map', blurb: 'Mitochondria, ER, Golgi.' },
+    { id: 'bio-2', title: 'Mendelian genetics', blurb: 'Punnett squares and alleles.' },
+  ],
+  'Computer Science': [
+    { id: 'cs-1', title: 'Big-O notation', blurb: 'Common complexities and examples.' },
+    { id: 'cs-2', title: 'Recursion patterns', blurb: 'Base cases and call stacks.' },
+  ],
+  History: [
+    { id: 'hist-1', title: 'Industrial Revolution', blurb: 'Causes, tech, social impact.' },
+  ],
+  Literature: [
+    { id: 'lit-1', title: 'Sonnet structure', blurb: 'Shakespearean rhyme and volta.' },
+    { id: 'lit-2', title: 'Theme vs motif', blurb: 'Close-reading notes.' },
+  ],
+  Economics: [
+    { id: 'econ-1', title: 'Supply & demand', blurb: 'Shifts vs movements.' },
+    { id: 'econ-2', title: 'Elasticity basics', blurb: 'Price elasticity of demand.' },
+  ],
+  Other: [
+    { id: 'other-1', title: 'Study skills — spaced repetition', blurb: 'Custom subject example.' },
+  ],
+};
+
+const RESEARCH_SEED = [
+  { when: '2d ago', base: 'Biology', ft: 'Biology', gpt: 'Biology', judge: 'Biology' },
+  { when: '1d ago', base: 'History', ft: 'History', gpt: 'Literature', judge: 'History' },
+  { when: '5h ago', base: 'Mathematics', ft: 'Mathematics', gpt: 'Mathematics', judge: 'Mathematics' },
+];
+
 let step = 'home';
 let ocrOnline = true;
-let noteText = '';
+let noteText = MOCK_NOTE;
 let subject = 'Physics';
-let customOther = '';
+let customOther = 'Study Skills';
+let currentFolder = 'Physics';
+let currentNoteId = 'phys-1';
+let loggedToResearch = false;
 
 const mockVotes = {
   base: { label: 'Physics', conf: 0.81 },
@@ -81,22 +127,60 @@ const mockVotes = {
 function $(sel, root=document){ return root.querySelector(sel); }
 function $all(sel, root=document){ return [...root.querySelectorAll(sel)]; }
 
+function displaySubject(){
+  return subject === 'Other' && customOther ? `Other · ${customOther}` : subject;
+}
+
+function noteHtml(title, blurb){
+  return `<h1>${title}</h1>
+<section>
+  <h2>Summary</h2>
+  <p>${blurb}</p>
+</section>
+<section>
+  <h2>Key points</h2>
+  <ul>
+    <li>Mock formatted content for UI exploration</li>
+    <li>Subject styling applied application-wide</li>
+    <li>No backend — sample HTML only</li>
+  </ul>
+</section>
+<section>
+  <h2>Equations / quotes</h2>
+  <p class="eq">Sample block · ${displaySubject()}</p>
+</section>`;
+}
+
 function go(s){
   step = s;
   $all('[data-step]').forEach(el => {
     el.hidden = el.dataset.step !== s;
   });
+  const navGroup = {
+    home: 'home', capture: 'capture', extract: 'capture',
+    classify: 'classify', judge: 'classify',
+    research: 'research', formatted: 'library',
+    library: 'library', folder: 'library', note: 'library',
+  };
   $all('[data-nav]').forEach(el => {
-    el.classList.toggle('active', el.dataset.nav === s);
+    el.classList.toggle('active', el.dataset.nav === (navGroup[s] || s));
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (s === 'classify') animateClassify();
   if (s === 'formatted') renderFormatted();
   if (s === 'note') renderNote();
   if (s === 'library') renderLibrary();
+  if (s === 'folder') renderFolder();
   if (s === 'research') renderResearch();
   if (s === 'judge') renderJudge();
-  if (s === 'extract') $('#extracted').value = noteText || MOCK_NOTE;
+  if (s === 'extract') {
+    const ta = $('#extracted');
+    if (ta) ta.value = noteText || MOCK_NOTE;
+  }
+  if (s === 'capture') {
+    const ta = $('#raw-text');
+    if (ta && !ta.value.trim()) ta.placeholder = 'Paste raw notes here… (or continue to use sample)';
+  }
 }
 
 function setOcr(online){
@@ -109,77 +193,102 @@ function setOcr(online){
   zone.setAttribute('aria-disabled', String(!online));
   const hint = $('#ocr-hint');
   if (hint) hint.textContent = online
-    ? 'Image OCR available — drop a photo of handwritten notes.'
-    : 'OCR API offline — image upload disabled. Paste text only.';
+    ? 'Image OCR available — drop a photo of handwritten notes (mock).'
+    : 'OCR API offline — image upload grayed out. Paste text only.';
 }
 
 function useSample(){
   noteText = MOCK_NOTE;
+  const raw = $('#raw-text');
+  if (raw) raw.value = MOCK_NOTE;
   go('extract');
 }
 
 function continueFromCapture(){
-  const t = $('#raw-text').value.trim();
-  if (!t){
-    alert('Paste some notes, or use the sample.');
-    return;
-  }
-  noteText = t;
+  const t = ($('#raw-text')?.value || '').trim();
+  noteText = t || MOCK_NOTE;
   go('extract');
 }
 
 function continueFromExtract(){
-  noteText = $('#extracted').value.trim() || MOCK_NOTE;
+  noteText = ($('#extracted')?.value || '').trim() || MOCK_NOTE;
   go('classify');
 }
 
 function animateClassify(){
   $all('.model-card').forEach((card,i) => {
     card.classList.remove('ready');
-    card.querySelector('.status').textContent = 'Running…';
+    const status = card.querySelector('.status');
+    const label = card.querySelector('.label-out');
+    const conf = card.querySelector('.conf-out');
+    if (status) status.textContent = 'Running…';
+    if (label) label.textContent = '—';
+    if (conf) conf.textContent = '—';
     setTimeout(() => {
       card.classList.add('ready');
       const key = card.dataset.model;
       const v = mockVotes[key];
-      card.querySelector('.status').textContent = 'Done';
-      card.querySelector('.label-out').textContent = v.label;
-      card.querySelector('.conf-out').textContent = (v.conf*100).toFixed(0) + '%';
-    }, 600 + i*450);
+      if (status) status.textContent = 'Done (mock)';
+      if (label) label.textContent = v.label;
+      if (conf) conf.textContent = (v.conf*100).toFixed(0) + '%';
+    }, 400 + i*350);
   });
 }
 
 function renderJudge(){
-  $('#judge-text').textContent = noteText.slice(0, 280) + (noteText.length>280?'…':'');
-  $('#vote-base').textContent = mockVotes.base.label + ' · ' + Math.round(mockVotes.base.conf*100) + '%';
-  $('#vote-ft').textContent = mockVotes.ft.label + ' · ' + Math.round(mockVotes.ft.conf*100) + '%';
-  $('#vote-gpt').textContent = mockVotes.gpt.label + ' · ' + Math.round(mockVotes.gpt.conf*100) + '%';
-  $('#final-label').textContent = subject;
+  const jt = $('#judge-text');
+  if (jt) jt.textContent = (noteText || MOCK_NOTE).slice(0, 280) + ((noteText||MOCK_NOTE).length>280?'…':'');
+  const vb = $('#vote-base'); if (vb) vb.textContent = mockVotes.base.label + ' · ' + Math.round(mockVotes.base.conf*100) + '%';
+  const vf = $('#vote-ft'); if (vf) vf.textContent = mockVotes.ft.label + ' · ' + Math.round(mockVotes.ft.conf*100) + '%';
+  const vg = $('#vote-gpt'); if (vg) vg.textContent = mockVotes.gpt.label + ' · ' + Math.round(mockVotes.gpt.conf*100) + '%';
+  updateFinalLabel();
+  const otherWrap = $('#other-wrap');
+  if (otherWrap) otherWrap.hidden = subject !== 'Other';
+  const otherInput = $('#other-input');
+  if (otherInput) otherInput.value = customOther;
+}
+
+function updateFinalLabel(){
+  const fl = $('#final-label');
+  if (!fl) return;
+  fl.textContent = displaySubject();
+  fl.style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
 }
 
 function applyJudge(label){
   subject = label;
+  const otherWrap = $('#other-wrap');
+  if (otherWrap) otherWrap.hidden = label !== 'Other';
   if (label === 'Other'){
-    const c = prompt('Custom “Other” subject name:', customOther || 'Study Skills');
-    if (c) customOther = c;
+    const otherInput = $('#other-input');
+    if (otherInput){
+      if (!otherInput.value.trim()) otherInput.value = customOther || 'Study Skills';
+      customOther = otherInput.value.trim() || 'Study Skills';
+      otherInput.focus();
+    }
   }
-  $('#final-label').textContent = label === 'Other' && customOther ? `Other · ${customOther}` : label;
+  updateFinalLabel();
 }
 
 function renderResearch(){
-  const rows = [
-    ['Base BERT', mockVotes.base.label, mockVotes.base.conf],
-    ['Fine-tuned BERT', mockVotes.ft.label, mockVotes.ft.conf],
-    ['gpt-oss:20b', mockVotes.gpt.label, mockVotes.gpt.conf],
-    ['Judge LLM', subject === 'Other' && customOther ? `Other (${customOther})` : subject, 1],
-  ];
-  $('#research-body').innerHTML = rows.map(r =>
-    `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${Math.round(r[2]*100)}%</td><td>just now</td></tr>`
-  ).join('');
+  const judgeLabel = displaySubject();
+  const body = $('#research-body');
+  if (!body) return;
+  const current = loggedToResearch || true;
+  const rows = [];
+  if (current){
+    rows.push(`<tr class="highlight-row"><td>just now</td><td>${mockVotes.base.label}</td><td>${mockVotes.ft.label}</td><td>${mockVotes.gpt.label}</td><td><strong>${judgeLabel}</strong></td><td><button type="button" class="linkish" data-go="formatted">View format</button></td></tr>`);
+  }
+  RESEARCH_SEED.forEach(r => {
+    rows.push(`<tr><td>${r.when}</td><td>${r.base}</td><td>${r.ft}</td><td>${r.gpt}</td><td>${r.judge}</td><td><button type="button" class="linkish" data-open-subject="${r.judge}">Open folder</button></td></tr>`);
+  });
+  body.innerHTML = rows.join('');
   const chip = $('#research-subject-chip');
   if (chip){
-    chip.textContent = subject === 'Other' && customOther ? customOther : subject;
+    chip.textContent = judgeLabel;
     chip.style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
   }
+  bindDynamicClicks(body);
 }
 
 function renderFormatted(){
@@ -187,52 +296,101 @@ function renderFormatted(){
   if (!shell) return;
   const color = SUBJECT_COLORS[subject] || '#64748b';
   shell.style.setProperty('--subj', color);
-  shell.dataset.subject = subject;
-  $('#formatted-body').innerHTML = FORMATTED_HTML;
+  const title = subject === 'Physics' ? 'Thermodynamics — Lecture 12' : `${displaySubject()} · New note`;
+  const blurb = subject === 'Physics'
+    ? 'First law, isothermal and adiabatic processes from your capture.'
+    : 'Mock HTML formatting for the selected subject.';
+  $('#formatted-body').innerHTML = subject === 'Physics' ? FORMATTED_HTML : noteHtml(title, blurb);
   const meta = $('#formatted-meta');
-  if (meta) meta.textContent =
-    (subject === 'Other' && customOther ? customOther : subject) + ' · styled for consistency';
+  if (meta) meta.textContent = displaySubject() + ' · predetermined subject styling';
+}
+
+function openFolder(name){
+  currentFolder = name;
+  go('folder');
+}
+
+function openNote(subjectName, noteId){
+  currentFolder = subjectName;
+  currentNoteId = noteId;
+  subject = subjectName in SUBJECT_COLORS ? subjectName : subject;
+  go('note');
+}
+
+function renderFolder(){
+  const title = $('#folder-title');
+  const list = $('#folder-notes');
+  const color = SUBJECT_COLORS[currentFolder] || '#64748b';
+  if (title){
+    title.textContent = currentFolder;
+    title.style.setProperty('--subj', color);
+  }
+  const notes = LIBRARY[currentFolder] || [];
+  if (!list) return;
+  if (!notes.length){
+    list.innerHTML = `<p class="status">No notes yet — <button type="button" class="linkish" data-go="capture">capture one</button></p>`;
+    bindDynamicClicks(list);
+    return;
+  }
+  list.innerHTML = notes.map(n => `
+    <button type="button" class="note-row" style="--subj:${color}" data-note-id="${n.id}" data-note-subject="${currentFolder}">
+      <span class="note-row-title">${n.title}</span>
+      <span class="note-row-blurb">${n.blurb}</span>
+    </button>`).join('');
+  $all('[data-note-id]', list).forEach(btn => {
+    btn.addEventListener('click', () => openNote(btn.dataset.noteSubject, btn.dataset.noteId));
+  });
 }
 
 function renderNote(){
+  const notes = LIBRARY[currentFolder] || [];
+  const n = notes.find(x => x.id === currentNoteId) || notes[0] || {
+    title: displaySubject() + ' note',
+    blurb: 'Mock note content.',
+  };
+  const color = SUBJECT_COLORS[currentFolder] || SUBJECT_COLORS[subject] || '#64748b';
+  const heading = $('#note-heading');
+  if (heading) heading.textContent = `${currentFolder} · ${n.title}`;
   const shell = $('#note-shell');
   if (!shell) return;
-  const color = SUBJECT_COLORS[subject] || '#64748b';
   shell.style.setProperty('--subj', color);
-  $('#note-body').innerHTML = FORMATTED_HTML;
+  const body = $('#note-body');
+  if (!body) return;
+  if (n.id === 'phys-1') body.innerHTML = FORMATTED_HTML;
+  else body.innerHTML = noteHtml(n.title, n.blurb);
 }
 
 function renderLibrary(){
   const grid = $('#folder-grid');
   if (!grid) return;
   grid.innerHTML = SUBJECTS.map(([name, color]) => {
-    const count = name === subject ? 1 : (name === 'Mathematics' ? 3 : name === 'Biology' ? 2 : name === 'History' ? 1 : 0);
-    const active = name === subject ? ' active' : '';
-    return `<button type="button" class="folder${active}" style="--subj:${color}" data-open="${name}">
+    const count = (LIBRARY[name] || []).length;
+    const active = name === currentFolder ? ' active' : '';
+    return `<button type="button" class="folder${active}" style="--subj:${color}" data-open-subject="${name}">
       <span class="folder-mark"></span>
       <span class="folder-name">${name}</span>
       <span class="folder-count">${count} note${count===1?'':'s'}</span>
     </button>`;
   }).join('');
-  $all('[data-open]', grid).forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.open === subject || btn.dataset.open === 'Physics'){
-        go('note');
-      } else {
-        alert('UI mock — only the demo Physics note is populated.');
-      }
-    });
-  });
+  bindDynamicClicks(grid);
 }
 
 function onFile(files){
-  if (!ocrOnline){
-    alert('OCR API is offline in this mock. Paste text instead.');
-    return;
-  }
+  if (!ocrOnline) return;
   if (!files || !files.length) return;
   noteText = MOCK_NOTE + `\n\n[Mock OCR from: ${files[0].name}]`;
+  const raw = $('#raw-text');
+  if (raw) raw.value = noteText;
   go('extract');
+}
+
+function bindDynamicClicks(root){
+  $all('[data-go]', root).forEach(el => {
+    el.addEventListener('click', () => go(el.dataset.go));
+  });
+  $all('[data-open-subject]', root).forEach(el => {
+    el.addEventListener('click', () => openFolder(el.dataset.openSubject));
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -262,8 +420,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const otherInput = $('#other-input');
+  if (otherInput){
+    otherInput.addEventListener('input', () => {
+      customOther = otherInput.value.trim() || 'Study Skills';
+      if (subject === 'Other') updateFinalLabel();
+    });
+  }
+
+  const logBtn = $('#log-research-btn');
+  if (logBtn){
+    logBtn.addEventListener('click', () => {
+      loggedToResearch = true;
+      go('research');
+    });
+  }
+
   go('home');
 });
+"""
+
+
+SHARED_UI_CSS = """
+.note-row {
+  display: grid; gap: .25rem; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid currentColor; border-left: 4px solid var(--subj, #64748b);
+  background: #fff; padding: 1rem 1.1rem; font: inherit; margin-bottom: .65rem; opacity: .95;
+}
+.note-row-title { font-weight: 700; }
+.note-row-blurb { font-size: .9rem; opacity: .75; }
+button.linkish, .linkish {
+  background: none; border: 0; padding: 0; color: inherit; font: inherit;
+  cursor: pointer; text-decoration: underline; font-weight: 600;
+}
+#other-wrap { margin: .75rem 0 1rem; }
+#other-wrap input {
+  width: min(320px, 100%); padding: .55rem .7rem; border: 1px solid #ccc;
+  font: inherit; background: #fff; margin-top: .35rem;
+}
+tr.highlight-row td { font-weight: 500; }
+.notes-list { margin-top: 1rem; }
 """
 
 
@@ -279,6 +475,7 @@ def wrap(title, fonts, css, body, brand="NoteLMs"):
 <link href="{fonts}" rel="stylesheet" />
 <style>
 {css}
+{SHARED_UI_CSS}
 </style>
 </head>
 <body>
@@ -421,6 +618,25 @@ th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color:
 .folder-name { font-weight: 600; }
 .folder-count { font-size: .8rem; color: var(--ink-soft); }
 .foot-note { margin-top: 2rem; font-size: .8rem; color: var(--ink-soft); }
+.note-row {
+  display: grid; gap: .25rem; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); background: #fff; padding: 1rem 1.1rem; font: inherit;
+  border-left: 4px solid var(--subj); margin-bottom: .65rem;
+}
+.note-row:hover { background: #f8fafc; }
+.note-row-title { font-weight: 600; }
+.note-row-blurb { font-size: .9rem; color: var(--ink-soft); }
+button.linkish, .linkish {
+  background: none; border: 0; padding: 0; color: var(--accent); font: inherit;
+  cursor: pointer; text-decoration: underline;
+}
+#other-wrap { margin: .75rem 0 1rem; }
+#other-wrap input {
+  width: min(320px, 100%); padding: .55rem .7rem; border: 1px solid var(--line);
+  font: inherit; background: #fff;
+}
+tr.highlight-row { background: color-mix(in srgb, var(--accent, #1a6b8a) 8%, white); }
+.notes-list { margin-top: 1rem; }
 """
 
 BODY_ATELIER = """
@@ -550,24 +766,31 @@ BODY_ATELIER = """
           <button type="button" data-judge="Economics">Economics</button>
           <button type="button" data-judge="Other">Other…</button>
         </div>
+        <div id="other-wrap" hidden>
+          <label for="other-input">Custom Other subject</label><br />
+          <input id="other-input" type="text" value="Study Skills" />
+        </div>
         <p>Final: <span class="subj-chip" id="final-label" style="--subj:#4f46e5">Physics</span></p>
         <div class="cta-row">
-          <button class="btn" type="button" data-go="research">Log to research</button>
+          <button class="btn ghost" type="button" data-go="classify">Back</button>
+          <button class="btn" type="button" id="log-research-btn">Log to research</button>
         </div>
       </div>
     </div>
   </section>
 
   <section class="panel" data-step="research" hidden>
-    <p class="kicker">Step 5</p>
-    <h2>Research store updated</h2>
-    <p>Logged under <span class="subj-chip" id="research-subject-chip">Physics</span> — UI only, no persistence.</p>
+    <p class="kicker">Step 5 · Research</p>
+    <h2>Research data</h2>
+    <p>Latest run under <span class="subj-chip" id="research-subject-chip">Physics</span> — mock table only, nothing is saved.</p>
     <table>
-      <thead><tr><th>Model</th><th>Label</th><th>Conf.</th><th>When</th></tr></thead>
+      <thead><tr><th>When</th><th>Base BERT</th><th>Fine-tuned</th><th>gpt-oss</th><th>Judge</th><th></th></tr></thead>
       <tbody id="research-body"></tbody>
     </table>
     <div class="cta-row">
+      <button class="btn ghost" type="button" data-go="judge">Back to judge</button>
       <button class="btn" type="button" data-go="formatted">Format notes as HTML</button>
+      <button class="btn ghost" type="button" data-go="library">Go to library</button>
     </div>
   </section>
 
@@ -577,25 +800,43 @@ BODY_ATELIER = """
     <p id="formatted-meta" class="status"></p>
     <div id="formatted-shell"><div id="formatted-body"></div></div>
     <div class="cta-row">
+      <button class="btn ghost" type="button" data-go="research">Back to research</button>
       <button class="btn" type="button" data-go="library">Open library folders</button>
+      <button class="btn ghost" type="button" onclick="openFolder(subject)">Open this subject folder</button>
     </div>
   </section>
 
   <section class="panel" data-step="library" hidden>
     <p class="kicker">Library</p>
     <h2>Folders by subject</h2>
-    <p class="lede">Each subject uses a predetermined color and shared note structure.</p>
+    <p class="lede">Each subject uses a predetermined color and shared note structure. Every folder opens.</p>
     <div class="folders" id="folder-grid"></div>
+    <div class="cta-row">
+      <button class="btn" type="button" data-go="capture">Capture new notes</button>
+      <button class="btn ghost" type="button" data-go="research">View research</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="folder" hidden>
+    <p class="kicker">Folder</p>
+    <h2 id="folder-title" class="subj-chip" style="--subj:#4f46e5">Physics</h2>
+    <p class="lede">Mock notes in this subject. Click any row to read.</p>
+    <div class="notes-list" id="folder-notes"></div>
+    <div class="cta-row">
+      <button class="btn ghost" type="button" data-go="library">All folders</button>
+      <button class="btn" type="button" data-go="capture">Add notes</button>
+    </div>
   </section>
 
   <section class="panel" data-step="note" hidden>
     <p class="kicker">Note</p>
-    <h2>Physics · Thermodynamics Lecture 12</h2>
+    <h2 id="note-heading">Physics · Thermodynamics Lecture 12</h2>
     <div id="note-shell" class="note-view" style="--subj:#4f46e5">
       <div id="note-body"></div>
     </div>
     <div class="cta-row">
-      <button class="btn ghost" type="button" data-go="library">Back to folders</button>
+      <button class="btn ghost" type="button" data-go="folder">Back to folder</button>
+      <button class="btn ghost" type="button" data-go="library">All folders</button>
       <button class="btn" type="button" data-go="capture">Capture another</button>
     </div>
   </section>
