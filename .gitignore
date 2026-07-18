@@ -1,0 +1,31 @@
+# Raw downloads (HF cache dumps, OpenStax exports)
+data/raw/
+
+# Secrets
+.env
+.env.*
+api_key.txt
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.envrc
+
+# Hugging Face / caches
+.cache/
+huggingface/
+~/.cache/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
