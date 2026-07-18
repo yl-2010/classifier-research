@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shared Cloudflare Tunnel Plan — SocketHR + NoteLMS</title>
+  <title>Shared Cloudflare Tunnel Plan — SocketHR + NoteLMs</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -131,7 +131,7 @@
 <body>
 <main>
   <div class="badge">SocketHR agent handoff · copy this file into the sockethr repo</div>
-  <h1>Shared Cloudflare Tunnel — SocketHR + NoteLMS</h1>
+  <h1>Shared Cloudflare Tunnel — SocketHR + NoteLMs</h1>
   <p class="lead">
     Exact instructions for a SocketHR-repo agent: extend the existing Mac Studio Cloudflare Tunnel
     so <code>api.sockethr.com</code> and <code>api.notelms.com</code> share <strong>one</strong>
@@ -143,7 +143,7 @@
     <strong>Contents</strong>
     <ol>
       <li><a href="#goal">Goal &amp; non-goals</a></li>
-      <li><a href="#context">Context from classifier-research / NoteLMS</a></li>
+      <li><a href="#context">Context from classifier-research / NoteLMs</a></li>
       <li><a href="#ports">Port &amp; hostname contract</a></li>
       <li><a href="#do">What you must change (in sockethr + on the Mac)</a></li>
       <li><a href="#dns">DNS for api.notelms.com</a></li>
@@ -167,31 +167,31 @@
     </ul>
     <h3>Non-goals</h3>
     <ul class="compact">
-      <li><span class="dont">Do not</span> create a new Cloudflare Tunnel for NoteLMS.</li>
+      <li><span class="dont">Do not</span> create a new Cloudflare Tunnel for NoteLMs.</li>
       <li><span class="dont">Do not</span> expose LM Studio (<code>127.0.0.1:1234</code>) on the tunnel.</li>
-      <li><span class="dont">Do not</span> merge SocketHR and NoteLMS product APIs into one Express process.</li>
+      <li><span class="dont">Do not</span> merge SocketHR and NoteLMs product APIs into one Express process.</li>
       <li><span class="dont">Do not</span> attach <code>api.notelms.com</code> (or <code>api.sockethr.com</code>) as a Vercel project domain.</li>
-      <li><span class="dont">Do not</span> implement NoteLMS classify / BERT / orchestrator routes in sockethr.</li>
+      <li><span class="dont">Do not</span> implement NoteLMs classify / BERT / orchestrator routes in sockethr.</li>
     </ul>
   </div>
 
   <!-- ========== 2 ========== -->
-  <h2 id="context">2. Context from classifier-research / NoteLMS</h2>
+  <h2 id="context">2. Context from classifier-research / NoteLMs</h2>
   <p>
-    NoteLMS (repo: <strong>classifier-research</strong>, site: <code>notelms.com</code>) will mirror SocketHR’s
+    NoteLMs (repo: <strong>classifier-research</strong>, site: <code>notelms.com</code>) will mirror SocketHR’s
     split architecture: Vercel UI + Mac Express API + LM Studio GPT-OSS + Cloudflare Tunnel.
-    The NoteLMS Express server will live in that other repo (or a sibling folder on the Mac),
+    The NoteLMs Express server will live in that other repo (or a sibling folder on the Mac),
     <strong>not</strong> inside sockethr product routes.
   </p>
   <div class="flow">Browser
 ├─ https://sockethr.com          → Vercel (SocketHR UI)
-├─ https://notelms.com           → Vercel (NoteLMS UI)
+├─ https://notelms.com           → Vercel (NoteLMs UI)
 ├─ https://api.sockethr.com      → SAME cloudflared tunnel → 127.0.0.1:3000  (SocketHR Express)
-└─ https://api.notelms.com       → SAME cloudflared tunnel → 127.0.0.1:3002  (NoteLMS Express)
+└─ https://api.notelms.com       → SAME cloudflared tunnel → 127.0.0.1:3002  (NoteLMs Express)
                                       └─ either app may call LM Studio on 127.0.0.1:1234 locally</div>
   <div class="callout ok-border">
     <strong>Why sockethr owns this change:</strong> the live tunnel config, Path A docs, and
-    <code>deploy/cloudflared/</code> examples already live in sockethr. NoteLMS only needs a second
+    <code>deploy/cloudflared/</code> examples already live in sockethr. NoteLMs only needs a second
     ingress rule + DNS CNAME pointed at the <em>same</em> tunnel UUID.
   </div>
 
@@ -211,9 +211,9 @@
       </tr>
       <tr>
         <td><code>api.notelms.com</code></td>
-        <td>NoteLMS Express</td>
+        <td>NoteLMs Express</td>
         <td><code>127.0.0.1:3002</code></td>
-        <td>classifier-research / NoteLMS (separate process)</td>
+        <td>classifier-research / NoteLMs (separate process)</td>
       </tr>
       <tr>
         <td><span class="muted">(not public)</span></td>
@@ -225,8 +225,8 @@
   </table>
   <div class="callout warn-border">
     <strong>Port 3001:</strong> SocketHR docs sometimes use <code>:3001</code> for local/dev overrides.
-    Prefer <code>:3002</code> for NoteLMS to avoid colliding with that convention. If <code>3002</code>
-    is taken, pick another free port and use it consistently in tunnel config + NoteLMS server env.
+    Prefer <code>:3002</code> for NoteLMs to avoid colliding with that convention. If <code>3002</code>
+    is taken, pick another free port and use it consistently in tunnel config + NoteLMs server env.
   </div>
 
   <!-- ========== 4 ========== -->
@@ -270,7 +270,7 @@ ingress:
   - service: http_status:404</code></pre>
   <div class="callout danger-border">
     <strong>Critical:</strong> Do not change the tunnel UUID or credentials file. Do not run
-    <code>cloudflared tunnel create …</code> for NoteLMS. Only edit ingress + DNS.
+    <code>cloudflared tunnel create …</code> for NoteLMs. Only edit ingress + DNS.
   </div>
 
   <h3>4.3 Restart cloudflared once</h3>
@@ -291,7 +291,7 @@ ingress:
   </p>
   <ul class="compact">
     <li>SocketHR owns <code>:3000</code></li>
-    <li>NoteLMS / classifier-research owns <code>:3002</code></li>
+    <li>NoteLMs / classifier-research owns <code>:3002</code></li>
     <li>One tunnel process serves both</li>
     <li>LM Studio stays off the tunnel</li>
   </ul>
@@ -351,11 +351,11 @@ ingress:
       </tr>
       <tr>
         <td><code>deploy/cloudflared/README.md</code></td>
-        <td>State explicitly: one tunnel, multiple ingress hostnames; NoteLMS shares this tunnel</td>
+        <td>State explicitly: one tunnel, multiple ingress hostnames; NoteLMs shares this tunnel</td>
       </tr>
       <tr>
         <td><code>docs/STARTUP.md</code></td>
-        <td>Startup remains: SocketHR <code>npm run server</code>, optional NoteLMS server on :3002, <strong>one</strong> cloudflared command, LM Studio GUI</td>
+        <td>Startup remains: SocketHR <code>npm run server</code>, optional NoteLMs server on :3002, <strong>one</strong> cloudflared command, LM Studio GUI</td>
       </tr>
       <tr>
         <td><code>docs/PUBLIC_TUNNEL.md</code> / <code>PATH_A_SETUP.md</code></td>
@@ -376,8 +376,8 @@ ingress:
     <pre><code># Terminal A — SocketHR API
 npm run server                    # :3000
 
-# Terminal B — NoteLMS API (when working on NoteLMS)
-npm run server                    # from NoteLMS server; :3002
+# Terminal B — NoteLMs API (when working on NoteLMs)
+npm run server                    # from NoteLMs server; :3002
 
 # Terminal C — shared tunnel (once)
 cloudflared tunnel --config ~/.cloudflared/config.yml run
@@ -395,12 +395,12 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
     </li>
     <li>
       With nothing on :3002, <code>https://api.notelms.com/…</code> may 502 — that is OK and proves
-      DNS + ingress reach the Mac. Document that 502 means “tunnel up, NoteLMS server down”.
+      DNS + ingress reach the Mac. Document that 502 means “tunnel up, NoteLMs server down”.
     </li>
     <li>
-      When a NoteLMS server exists on :3002 with <code>GET /health</code>, verify:
+      When a NoteLMs server exists on :3002 with <code>GET /health</code>, verify:
       <pre><code>curl -sS https://api.notelms.com/health</code></pre>
-      Expect JSON like <code>{"ok":true,"service":"notelms-server",…}</code> (exact body owned by NoteLMS).
+      Expect JSON like <code>{"ok":true,"service":"notelms-server",…}</code> (exact body owned by NoteLMs).
     </li>
     <li>
       Confirm LM Studio is still not public:
@@ -431,7 +431,7 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
       </tr>
       <tr>
         <td>3</td>
-        <td>NoteLMS <code>npm run server</code> → :3002</td>
+        <td>NoteLMs <code>npm run server</code> → :3002</td>
         <td>Using notelms.com API</td>
       </tr>
       <tr>
@@ -443,16 +443,16 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
   </table>
   <p>
     Acceptable: three terminal commands when both products are in use.
-    <span class="dont">Not acceptable:</span> a second long Cloudflare tunnel start command for NoteLMS.
+    <span class="dont">Not acceptable:</span> a second long Cloudflare tunnel start command for NoteLMs.
   </p>
 
   <!-- ========== 9 ========== -->
   <h2 id="out-of-scope">9. Out of scope (do not do)</h2>
   <ul class="compact">
-    <li>Do not build NoteLMS BERT / classifier / orchestrator endpoints inside sockethr.</li>
-    <li>Do not change SocketHR JWT / Auth.js secrets for NoteLMS (separate apps, separate secrets later).</li>
+    <li>Do not build NoteLMs BERT / classifier / orchestrator endpoints inside sockethr.</li>
+    <li>Do not change SocketHR JWT / Auth.js secrets for NoteLMs (separate apps, separate secrets later).</li>
     <li>Do not point <code>public/runtime-config.json</code> for sockethr at <code>api.notelms.com</code>.</li>
-    <li>Do not proxy NoteLMS traffic through SocketHR Express “for convenience”.</li>
+    <li>Do not proxy NoteLMs traffic through SocketHR Express “for convenience”.</li>
     <li>Do not put LM Studio on a public hostname.</li>
     <li>Do not create <code>cloudflared tunnel create notelms-api</code> (or similar).</li>
   </ul>
@@ -472,7 +472,7 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
     <ol>
       <li>Copy this file into the sockethr repo (suggested path: <code>docs/SHARED_CLOUDFLARE_TUNNEL_NOTELMS.html</code> or repo root).</li>
       <li>Open a SocketHR agent on that repo and point it at this file as the task brief.</li>
-      <li>After the sockethr agent finishes, the NoteLMS / classifier-research agent can assume
+      <li>After the sockethr agent finishes, the NoteLMs / classifier-research agent can assume
         <code>api.notelms.com</code> will hit <code>127.0.0.1:3002</code> once its Express server exists.</li>
     </ol>
   </div>
