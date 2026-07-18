@@ -1,6 +1,9 @@
 import Head from "next/head";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+
   return (
     <>
       <Head>
@@ -19,9 +22,27 @@ export default function HomePage() {
           so revision stays clear.
         </p>
         <div className="cta">
-          <a className="primary" href="#waitlist">
-            Join the waitlist
-          </a>
+          {status === "authenticated" ? (
+            <>
+              <p className="signed-in">Signed in as {session.user?.email}</p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void signOut({ callbackUrl: "/" })}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void signIn("google", { callbackUrl: "/" })}
+              disabled={status === "loading"}
+            >
+              Sign in with Google
+            </button>
+          )}
         </div>
       </main>
       <style jsx>{`
@@ -85,10 +106,21 @@ export default function HomePage() {
         .cta {
           position: relative;
           margin-top: 2rem;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.85rem 1.1rem;
           animation: rise 1.05s ease-out 0.24s both;
         }
 
-        .primary {
+        .signed-in {
+          margin: 0;
+          color: var(--ink-muted);
+          font-size: 1rem;
+        }
+
+        .primary,
+        .secondary {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -96,15 +128,30 @@ export default function HomePage() {
           padding: 0.7rem 1.25rem;
           border: 1px solid var(--line);
           border-radius: 999px;
-          background: var(--accent);
-          color: var(--accent-ink);
           font-weight: 600;
+          cursor: pointer;
           transition: transform 160ms ease, box-shadow 160ms ease;
         }
 
-        .primary:hover {
+        .primary {
+          background: var(--accent);
+          color: var(--accent-ink);
+        }
+
+        .secondary {
+          background: transparent;
+          color: var(--ink);
+        }
+
+        .primary:hover:not(:disabled),
+        .secondary:hover {
           transform: translateY(-1px);
           box-shadow: 0 10px 28px rgba(216, 227, 106, 0.22);
+        }
+
+        .primary:disabled {
+          opacity: 0.7;
+          cursor: wait;
         }
 
         @keyframes rise {
