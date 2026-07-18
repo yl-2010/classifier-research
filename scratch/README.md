@@ -1,15 +1,16 @@
 # NoteLMs UI scratch variations
 
-Five frontend-only website mockups of the full NoteLMs user flow:
+Five frontend-only website mockups of the full NoteLMs user flow. Every control is clickable and every page is reachable; data is mocked in the browser (no backend, no real OCR/models).
 
-1. Capture notes (image OCR and/or paste text; OCR can be toggled offline to gray out upload)
-2. Review extracted text
-3. Classify with base BERT, fine-tuned BERT, and gpt-oss:20b
-4. Judge LLM selects final label (or Other)
-5. Research table updates
-6. Subject-styled HTML formatting
-7. Library folders by subject
+1. **Home** — start capture or browse library
+2. **Capture** — image upload and/or paste text (toggle OCR offline to gray out upload)
+3. **Extract** — review/edit text
+4. **Classify** — base BERT, fine-tuned BERT, gpt-oss:20b (mock results)
+5. **Judge** — pick final label or custom Other
+6. **Research** — mock research table with prior runs
+7. **Formatted** — subject-styled HTML preview
+8. **Library** — all subject folders
+9. **Folder** — notes list for a subject
+10. **Note** — readable formatted note
 
-Open [`index.html`](index.html) in a browser, or open any `v0N-*/index.html` directly.
-
-These are static UI look-and-feel prototypes — no backend, no processing.
+Open [`index.html`](index.html) in a browser, or any `v0N-*/index.html` directly.
