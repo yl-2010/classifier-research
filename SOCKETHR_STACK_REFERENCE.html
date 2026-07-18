@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SocketHR Stack Reference — Model This Architecture</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --border: #2a3648;
+      --code: #121820;
+      --danger: #f07178;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 2rem 1.25rem 4rem;
+    }
+    main { max-width: 980px; margin: 0 auto; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    h2 {
+      margin-top: 2.25rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.25rem;
+    }
+    h3 { margin-top: 1.4rem; font-size: 1.05rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 1.05rem; color: var(--muted); margin-top: 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #243044;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #152030; color: var(--muted); font-weight: 600; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+    }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    pre code {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin: 0.25rem 0; }
+    .flow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      padding-left: 0.9rem;
+      margin: 1rem 0;
+      color: var(--muted);
+    }
+    .callout.warn-border { border-left-color: var(--warn); }
+    .callout.ok-border { border-left-color: var(--ok); }
+    ul.compact li { margin: 0.2rem 0; }
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 6px;
+      background: #243044;
+      color: var(--muted);
+      margin-right: 0.25rem;
+    }
+    .tag.mac { color: var(--ok); }
+    .tag.cloud { color: var(--accent); }
+    .tag.local { color: var(--warn); }
+  </style>
+</head>
+<body>
+<main>
+  <div class="badge">Agent infrastructure reference</div>
+  <h1>SocketHR full stack — copy this pattern</h1>
+  <p class="lead">
+    Authoritative map of how <strong>sockethr.com</strong> is organized: Vercel frontend,
+    Google sign-in (Auth.js / next-auth), Mac Studio Express API, LM Studio (<code>openai/gpt-oss-20b</code>),
+    local filesystem data, and Cloudflare Tunnel to <code>api.sockethr.com</code>.
+    Use this document when scaffolding a new website in <strong>classifier-research</strong>
+    (or similar) so agents mirror the same split of cloud UI + home-lab AI/backend.
+  </p>
+  <p class="muted">
+    Source repo (read-only reference): <code>~/github/sockethr</code>
+    (<code>https://github.com/</code> SocketHR). This HTML lives in
+    <code>classifier-research</code> so agents here can model after it without editing sockethr.
+  </p>
+
+  <div class="card toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#big-picture">Big picture</a></li>
+      <li><a href="#where-things-run">Where each piece runs</a></li>
+      <li><a href="#repo-layout">Repo layout</a></li>
+      <li><a href="#startup">Everyday startup (Mac Studio)</a></li>
+      <li><a href="#auth">Google sign-in + Mac API JWT bridge</a></li>
+      <li><a href="#api">Express API surface</a></li>
+      <li><a href="#llm">LM Studio / GPT-OSS</a></li>
+      <li><a href="#storage">Data storage on Mac Studio</a></li>
+      <li><a href="#vercel">Vercel frontend</a></li>
+      <li><a href="#cloudflare">Cloudflare Tunnel + DNS (Path A)</a></li>
+      <li><a href="#runtime-config">How the UI finds the API</a></li>
+      <li><a href="#env">Environment variables checklist</a></li>
+      <li><a href="#extension">Chrome extension pattern</a></li>
+      <li><a href="#local-dev">Local vs production</a></li>
+      <li><a href="#gotchas">Gotchas agents must respect</a></li>
+      <li><a href="#blueprint">Blueprint for a new site in this repo</a></li>
+    </ol>
+  </div>
+
+  <!-- ========== 1 ========== -->
+  <h2 id="big-picture">1. Big picture</h2>
+  <p>
+    SocketHR is <strong>not</strong> a single monolith on Vercel. It is a
+    <strong>split architecture</strong>:
+  </p>
+  <ul>
+    <li><span class="tag cloud">Cloud</span> Marketing site + dashboard UI + Auth.js Google OAuth on <strong>Vercel</strong> at <code>https://sockethr.com</code>.</li>
+    <li><span class="tag mac">Mac Studio</span> Express API (<code>npm run server</code>) on port <strong>3000</strong>, talking to LM Studio on <strong>1234</strong>, writing jobs/resumes under a local data directory (optionally USB via <code>SOCKETHR_DATA_DIR</code>).</li>
+    <li><span class="tag cloud">Edge</span> Cloudflare Tunnel exposes only the Node API as <code>https://api.sockethr.com</code>. LM Studio stays on localhost and is never public.</li>
+  </ul>
+
+  <div class="flow">Browser (anywhere / LTE)
+  │
+  ├─ HTTPS https://sockethr.com          → Vercel (Next.js Pages Router)
+  │     ├─ Auth.js Google OAuth          → /api/auth/[...nextauth]
+  │     ├─ Issues short-lived JWT        → GET /api/mac-token
+  │     └─ Fetches /runtime-config.json  → apiBase = https://api.sockethr.com
+  │
+  └─ HTTPS https://api.sockethr.com      → Cloudflare Tunnel
+        └─ http://127.0.0.1:3000         → Express (Mac Studio)
+              ├─ verifies JWT (AUTH_SECRET == NEXTAUTH_SECRET)
+              ├─ filesystem storage      → SOCKETHR_DATA_DIR / data/jobs
+              └─ OpenAI-compatible HTTP  → http://127.0.0.1:1234/v1
+                    └─ LM Studio model   → openai/gpt-oss-20b</div>
+
+  <div class="callout ok-border">
+    <strong>Design intent:</strong> Keep heavy AI + private candidate data on hardware you control.
+    Keep the pretty/public website on Vercel. Bridge them with HTTPS tunnel + shared HMAC secret + short-lived JWTs.
+  </div>
+
+  <!-- ========== 2 ========== -->
+  <h2 id="where-things-run">2. Where each piece runs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Host</th>
+        <th>Port / URL</th>
+        <th>Start command</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Next.js site</td>
+        <td>Vercel (prod) / laptop (dev)</td>
+        <td><code>https://sockethr.com</code> / <code>:3000</code></td>
+        <td><code>npm run dev</code> / git push → Vercel</td>
+      </tr>
+      <tr>
+        <td>Express API</td>
+        <td>Mac Studio</td>
+        <td><code>0.0.0.0:3000</code> (local), public via tunnel</td>
+        <td><code>npm run server</code> from repo root</td>
+      </tr>
+      <tr>
+        <td>LM Studio local server</td>
+        <td>Mac Studio</td>
+        <td><code>127.0.0.1:1234</code> (not public)</td>
+        <td>GUI: Developer → Start server; model <code>openai/gpt-oss-20b</code></td>
+      </tr>
+      <tr>
+        <td>cloudflared</td>
+        <td>Mac Studio</td>
+        <td>maps <code>api.sockethr.com</code> → <code>127.0.0.1:3000</code></td>
+        <td><code>cloudflared tunnel --config ~/.cloudflared/config.yml run</code></td>
+      </tr>
+      <tr>
+        <td>Job / resume data</td>
+        <td>Mac Studio disk (or USB)</td>
+        <td><code>data/jobs/</code> or <code>SOCKETHR_DATA_DIR</code></td>
+        <td>written by Express <code>storage.js</code></td>
+      </tr>
+      <tr>
+        <td>DNS for apex / www</td>
+        <td>Vercel DNS (Path A)</td>
+        <td><code>sockethr.com</code></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td>DNS for API</td>
+        <td>Vercel CNAME → Cloudflare Tunnel</td>
+        <td><code>api</code> → <code>&lt;uuid&gt;.cfargotunnel.com</code></td>
+        <td>one-time setup</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn-border">
+    <strong>Port note for agents:</strong> Production Mac API defaults to port <strong>3000</strong>.
+    In Cursor Cloud / dual-local-dev docs (<code>AGENTS.md</code>), the Express server is often put on
+    <strong>3001</strong> so Next.js can own 3000. When modeling a new stack, pick one convention and document it:
+    either “API=3000, Next elsewhere” (SocketHR production) or “Next=3000, API=3001” (local dual-process).
+  </div>
+
+  <!-- ========== 3 ========== -->
+  <h2 id="repo-layout">3. Repo layout (sockethr)</h2>
+  <pre><code>sockethr/
+├── AGENTS.md                 # Cursor Cloud agent runbook
+├── README.md                 # high-level + links to docs
+├── package.json              # Next scripts + npm run server → server/
+├── vercel.json               # framework: nextjs
+├── next.config.ts            # security headers, CSP, redirects
+├── public/
+│   └── runtime-config.json   # { "apiBase": "https://api.sockethr.com" }
+├── src/
+│   ├── pages/                # Next.js Pages Router
+│   │   ├── index.tsx         # marketing home
+│   │   ├── dashboard/        # product UI routes
+│   │   ├── api/
+│   │   │   ├── auth/[...nextauth].ts
+│   │   │   ├── mac-token.ts  # JWT for Mac API
+│   │   │   └── extension/[[...path]].ts  # proxy to Mac API
+│   │   └── …
+│   ├── components/           # marketing + product UI
+│   ├── lib/
+│   │   ├── auth-options.ts   # Google provider + JWT session
+│   │   └── useSockethrRuntimeConfig.ts
+│   └── data/                 # blog / privacy content (committed)
+├── ai_hiring_app.tsx         # large client hiring UI (root-level)
+├── server/                   # Express API (separate package)
+│   ├── package.json          # express, jose, pdf-parse, nodemailer, cors
+│   ├── .env.example
+│   ├── index.js              # all HTTP routes (~2.8k lines)
+│   ├── lmstudio.js           # OpenAI-compatible chat client
+│   ├── storage.js            # filesystem persistence
+│   ├── tiers.js              # plan quotas
+│   ├── simulation*.js        # grading / invites / timing
+│   ├── waitlistMail.js       # SMTP waitlist
+│   └── importers/            # linkedin, indeed, idealist, extension
+├── extension/                # Chrome MV3 LinkedIn Recruiter import
+├── deploy/cloudflared/       # tunnel config example + Path A script
+├── docs/
+│   ├── STARTUP.md            # everyday 3-terminal runbook
+│   ├── LOCAL_BACKEND.md
+│   ├── PUBLIC_TUNNEL.md
+│   ├── PATH_A_SETUP.md       # Vercel DNS + tunnel (recommended Free path)
+│   ├── CLOUDFLARE_ZONE_AND_VERCEL.md
+│   └── TROUBLESHOOTING_MOBILE.md
+├── lib/                      # shared mjs helpers + tests (email, slugs)
+└── scripts/                  # grading harness, screenshots, repo stats</code></pre>
+
+  <h3>Key npm scripts (repo root)</h3>
+  <table>
+    <thead><tr><th>Script</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run dev</code></td><td>Next.js dev server</td></tr>
+      <tr><td><code>npm run build</code> / <code>start</code></td><td>Next production build/serve</td></tr>
+      <tr><td><code>npm run server</code></td><td><code>npm run start --prefix server</code> → <code>node --env-file=.env index.js</code></td></tr>
+      <tr><td><code>npm run server:dev</code></td><td>watch mode for Express</td></tr>
+      <tr><td><code>npm run verify:public-api</code></td><td><code>curl -f https://api.sockethr.com/health</code></td></tr>
+      <tr><td><code>npm run test:server</code> / <code>test:extension</code></td><td>unit tests</td></tr>
+      <tr><td><code>npm run grading:consistency</code></td><td>live LM Studio grading drift check</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ========== 4 ========== -->
+  <h2 id="startup">4. Everyday startup (Mac Studio)</h2>
+  <p>Exact production order from <code>docs/STARTUP.md</code>:</p>
+  <ol>
+    <li>
+      <strong>LM Studio (GUI)</strong> — load <code>openai/gpt-oss-20b</code>, Developer tab → local server <strong>ON</strong> (port 1234).
+      Confirm: <code>curl -s http://127.0.0.1:1234/v1/models</code>
+    </li>
+    <li>
+      <strong>Express API</strong>
+      <pre><code>cd /Users/yanlevin/github/sockethr
+npm run server
+# or: cd server && node --env-file=.env index.js</code></pre>
+      Confirm: <code>curl -s http://127.0.0.1:3000/health</code>
+      → <code>{"ok":true,"service":"sockethr-server",...}</code>
+    </li>
+    <li>
+      <strong>Cloudflare Tunnel</strong>
+      <pre><code>cloudflared tunnel --config ~/.cloudflared/config.yml run
+# or (dashboard-configured tunnel): cloudflared tunnel run sockethr-api</code></pre>
+      Confirm from anywhere: <code>curl -sS https://api.sockethr.com/health</code>
+    </li>
+  </ol>
+  <p class="muted">
+    Optional always-on: PM2 or launchd for the Node process; Mac must stay awake.
+    LM Studio must also be running for AI routes.
+  </p>
+
+  <!-- ========== 5 ========== -->
+  <h2 id="auth">5. Google sign-in + Mac API JWT bridge</h2>
+  <h3>Why two layers?</h3>
+  <p>
+    Vercel owns the browser session (Auth.js / next-auth with Google).
+    The Mac API is a separate origin and cannot see NextAuth cookies.
+    So Next issues a short-lived HS256 JWT that the browser sends as
+    <code>Authorization: Bearer …</code> to the Mac API.
+  </p>
+
+  <h3>Vercel / NextAuth</h3>
+  <ul class="compact">
+    <li>Provider: Google — <code>src/lib/auth-options.ts</code></li>
+    <li>Session strategy: <strong>JWT</strong> (not database sessions)</li>
+    <li>Route: <code>src/pages/api/auth/[...nextauth].ts</code></li>
+    <li>PKCE note: Google provider uses <code>checks: ["state"]</code> (state-only) because PKCE verifier cookies can fail behind some CDN/proxy setups</li>
+    <li>Secret: <code>NEXTAUTH_SECRET</code> (or <code>AUTH_SECRET</code>)</li>
+    <li>URL: <code>NEXTAUTH_URL=https://sockethr.com</code></li>
+    <li>Google Cloud Console: OAuth client with redirect
+      <code>https://sockethr.com/api/auth/callback/google</code>
+      (plus localhost callback for local testing)</li>
+  </ul>
+
+  <h3>Mac token minting — <code>GET /api/mac-token</code></h3>
+  <div class="card">
+    <ul class="compact">
+      <li>File: <code>src/pages/api/mac-token.ts</code></li>
+      <li>Uses <code>jose</code> <code>SignJWT</code>, alg <strong>HS256</strong></li>
+      <li><strong>issuer</strong>: <code>sockethr-next</code></li>
+      <li><strong>audience</strong>: <code>sockethr-mac-api</code></li>
+      <li><strong>TTL</strong>: 10 minutes</li>
+      <li>Signed-in: subject = user email; payload includes <code>email</code>, <code>name</code></li>
+      <li>Guest: cookie <code>sockethr_guest_id</code> (HttpOnly UUID) → subject <code>guest_&lt;uuid&gt;</code></li>
+      <li>Signing secret: same string as Mac <code>AUTH_SECRET</code></li>
+    </ul>
+  </div>
+
+  <h3>Mac API verification</h3>
+  <ul class="compact">
+    <li><code>server/index.js</code> → <code>getAuthFromRequest</code> uses <code>jwtVerify</code> from <code>jose</code></li>
+    <li>Requires matching issuer/audience and <code>AUTH_SECRET</code> == Vercel <code>NEXTAUTH_SECRET</code></li>
+    <li>Uploader id = email (or guest subject), lowercased</li>
+    <li>CORS allowlist default: <code>https://sockethr.com</code>, localhost:3000 variants (<code>ALLOWED_ORIGINS</code>)</li>
+  </ul>
+
+  <div class="flow">User clicks Sign in with Google
+  → Auth.js redirects to Google
+  → callback /api/auth/callback/google on Vercel
+  → browser session cookie (NextAuth JWT session)
+  → UI calls GET /api/mac-token (same origin)
+  → UI calls https://api.sockethr.com/api/... with Bearer token
+  → Express jwtVerify → authorize uploader → storage / LM Studio</div>
+
+  <!-- ========== 6 ========== -->
+  <h2 id="api">6. Express API surface</h2>
+  <p>
+    Single file entry: <code>server/index.js</code>. Health is public; most product routes need Bearer auth.
+    JSON body limit is large (<code>200mb</code>) for resume batches.
+  </p>
+  <table>
+    <thead><tr><th>Method</th><th>Path</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/health</code></td><td>Public; <code>ok</code> + <code>authConfigured</code></td></tr>
+      <tr><td>GET</td><td><code>/api/plans</code></td><td>Selectable paid plans</td></tr>
+      <tr><td>GET</td><td><code>/api/me</code></td><td>User profile / tier</td></tr>
+      <tr><td>POST</td><td><code>/api/me/select-plan</code></td><td>Plan selection / trial</td></tr>
+      <tr><td>POST</td><td><code>/api/me/accept-terms</code></td><td>Terms acceptance</td></tr>
+      <tr><td>PATCH</td><td><code>/api/me</code></td><td>Profile updates</td></tr>
+      <tr><td>POST</td><td><code>/api/waitlist</code></td><td>Advertising waitlist → SMTP email</td></tr>
+      <tr><td>GET</td><td><code>/api/jobs</code>, <code>/api/jobs/:jobId</code></td><td>Job list / detail</td></tr>
+      <tr><td>DELETE</td><td><code>/api/jobs/:jobId</code></td><td>Soft-delete</td></tr>
+      <tr><td>GET</td><td><code>/api/search</code></td><td>Candidate search across jobs</td></tr>
+      <tr><td>GET</td><td><code>/api/jobs/:jobId/candidates/:candidateId/resume</code></td><td>Stored resume bytes</td></tr>
+      <tr><td>POST</td><td><code>/api/analyze</code></td><td>Rank resumes via LLM</td></tr>
+      <tr><td>POST</td><td><code>/api/chat</code></td><td>Recruiter chat over candidate context</td></tr>
+      <tr><td>POST</td><td><code>/api/email</code></td><td>Draft interview/accept/reject emails</td></tr>
+      <tr><td>POST</td><td><code>/api/interview/score</code></td><td>Interview scoring</td></tr>
+      <tr><td>POST</td><td><code>/api/candidates/update</code></td><td>Mutate candidate fields</td></tr>
+      <tr><td>POST/GET</td><td><code>/api/simulations/*</code></td><td>Generate, invite, submit, regrade, follow-ups</td></tr>
+      <tr><td>POST/GET/DELETE</td><td><code>/api/extension/*</code></td><td>LinkedIn Recruiter import runs</td></tr>
+      <tr><td>GET</td><td><code>/api/admin/user-stats</code></td><td>Admin-only stats email gate</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">
+    Supporting modules: <code>lmstudio.js</code>, <code>storage.js</code>, <code>tiers.js</code>,
+    <code>simulationGrading.js</code>, <code>candidateBlinding.js</code>, <code>waitlistMail.js</code>,
+    <code>resumeText.js</code> (PDF text extract — no vision), importers under <code>server/importers/</code>.
+  </p>
+
+  <!-- ========== 7 ========== -->
+  <h2 id="llm">7. LM Studio / GPT-OSS</h2>
+  <div class="grid">
+    <div class="card">
+      <h3 style="margin-top:0">Defaults</h3>
+      <ul class="compact">
+        <li>Base URL: <code>http://127.0.0.1:1234/v1</code></li>
+        <li>Model id: <code>openai/gpt-oss-20b</code></li>
+        <li>Client: <code>server/lmstudio.js</code> → <code>POST …/chat/completions</code></li>
+        <li>Env: <code>LM_STUDIO_BASE_URL</code>, <code>LM_STUDIO_MODEL</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Security model</h3>
+      <ul class="compact">
+        <li>LM Studio binds to localhost only</li>
+        <li>Only Express is tunnel-exposed</li>
+        <li>Cloud agents / CI without LM Studio: AI routes fail; <code>/health</code> and many unit tests still work</li>
+      </ul>
+    </div>
+  </div>
+  <p>
+    Pattern to copy: one thin OpenAI-compatible wrapper, all product prompts call that wrapper,
+    never call a cloud LLM from the browser for private data. Swap model id via env without code changes.
+    Confirm exact model id with <code>GET /v1/models</code> after loading in LM Studio.
+  </p>
+
+  <!-- ========== 8 ========== -->
+  <h2 id="storage">8. Data storage on Mac Studio</h2>
+  <ul>
+    <li>Default root: <code>&lt;repo&gt;/data/jobs</code> (gitignored)</li>
+    <li>Override: <code>SOCKETHR_DATA_DIR</code> — README mentions USB persistence for resumes/jobs</li>
+    <li>Implementation: <code>server/storage.js</code> (filesystem JSON + resume files, not Postgres)</li>
+  </ul>
+  <h3>Layout under data root</h3>
+  <pre><code>SOCKETHR_DATA_DIR/
+├── _users/&lt;uploader&gt;.json          # profile, plan, usage, terms
+├── _invites/&lt;token&gt;.json           # simulation invite tokens
+├── _extension_runs/ …              # LinkedIn import runs
+├── _extension_audits/ …
+└── &lt;uploaderEmail&gt;/
+    ├── title-index.json            # normalized title → jobId
+    └── &lt;jobUuid&gt;/
+        ├── job.json
+        ├── results.json
+        └── resumes/&lt;applicant-email&gt;/ …</code></pre>
+  <p class="muted">
+    Resumes without detected applicant email can still be ranked but are not stored under email folders.
+    Path traversal is blocked (UUID job ids, sanitized segments).
+  </p>
+  <h3>Tiers / quotas</h3>
+  <p>
+    <code>server/tiers.js</code> defines Free / Starter / Growth / Scale / Developer.
+    Usage counters live on the user profile JSON. Pre-Stripe trial length is 60 days for paid plans.
+    Developer emails hardcoded for unlimited internal accounts.
+  </p>
+
+  <!-- ========== 9 ========== -->
+  <h2 id="vercel">9. Vercel frontend</h2>
+  <ul class="compact">
+    <li>Framework: Next.js 15 (Pages Router under <code>src/pages</code>)</li>
+    <li><code>vercel.json</code>: <code>"framework": "nextjs"</code>, <code>buildCommand: npm run build</code></li>
+    <li>Deploy: push to Git → Vercel auto-build</li>
+    <li>Domain: <code>sockethr.com</code> (and www as configured)</li>
+    <li>Security headers + CSP in <code>next.config.ts</code> (allows <code>connect-src</code> to <code>api.sockethr.com</code>, Google frames for OAuth, Cloudflare insights)</li>
+    <li>Optional GitHub Pages workflow exists but production site is Vercel</li>
+  </ul>
+  <h3>Required Vercel env vars</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>Google OAuth</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td>Google OAuth</td></tr>
+      <tr><td><code>NEXTAUTH_URL</code></td><td><code>https://sockethr.com</code></td></tr>
+      <tr><td><code>NEXTAUTH_SECRET</code></td><td>Session + mac-token signing secret (must match Mac)</td></tr>
+      <tr><td><code>NEXT_PUBLIC_SOCKETHR_API_BASE</code></td><td>Optional override; else <code>runtime-config.json</code></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ========== 10 ========== -->
+  <h2 id="cloudflare">10. Cloudflare Tunnel + DNS (Path A — recommended)</h2>
+  <p>
+    SocketHR’s practical Free-plan setup keeps <strong>authoritative DNS on Vercel</strong>
+    and only uses Cloudflare for the tunnel connector. Full zone / partial CNAME setup notes
+    live in <code>docs/CLOUDFLARE_ZONE_AND_VERCEL.md</code> (partial/CNAME setup needs Business+).
+  </p>
+  <h3>One-time setup</h3>
+  <ol>
+    <li><code>brew install cloudflare/cloudflare/cloudflared</code></li>
+    <li><code>cloudflared tunnel login</code></li>
+    <li><code>cloudflared tunnel create sockethr-api</code> (or <code>bash deploy/cloudflared/setup-path-a.sh</code>)</li>
+    <li>Write <code>~/.cloudflared/config.yml</code> from <code>deploy/cloudflared/config.example.yml</code></li>
+    <li>At Vercel DNS: CNAME <code>api</code> → <code>&lt;TUNNEL_UUID&gt;.cfargotunnel.com</code></li>
+    <li><strong>Do not</strong> attach <code>api.sockethr.com</code> as a Vercel project domain (that yields <code>DEPLOYMENT_NOT_FOUND</code>)</li>
+  </ol>
+  <h3>Example tunnel config</h3>
+  <pre><code>tunnel: TUNNEL_UUID
+credentials-file: /Users/YOUR_USER/.cloudflared/TUNNEL_UUID.json
+
+ingress:
+  - hostname: api.sockethr.com
+    service: http://127.0.0.1:3000
+  - service: http_status:404</code></pre>
+  <h3>Alternatives documented</h3>
+  <ul class="compact">
+    <li>Cloudflare dashboard public hostname (when domain is a Cloudflare zone)</li>
+    <li>ngrok for quick tests</li>
+    <li>Tailscale Funnel</li>
+  </ul>
+  <div class="callout warn-border">
+    <strong>Common failures:</strong> 502 = tunnel up but nothing on :3000;
+    525/SSL = wrong or propagating CNAME;
+    phones calling <code>127.0.0.1</code> = runtime-config / env still pointing at loopback (mixed content / wrong host).
+  </div>
+
+  <!-- ========== 11 ========== -->
+  <h2 id="runtime-config">11. How the UI finds the API</h2>
+  <ol>
+    <li>If <code>NEXT_PUBLIC_SOCKETHR_API_BASE</code> is set at build/runtime → that wins.</li>
+    <li>Else fetch <code>/runtime-config.json</code> from the website origin (no-store) and read <code>apiBase</code>.</li>
+    <li>Committed default: <code>{ "apiBase": "https://api.sockethr.com" }</code></li>
+    <li>Hook: <code>src/lib/useSockethrRuntimeConfig.ts</code></li>
+  </ol>
+  <p>
+    This lets you change the public API host for phones without rebuilding JS bundles
+    (edit the JSON on the static host / redeploy the public file). Amber banner warns when
+    a non-localhost page resolves an API URL containing localhost.
+  </p>
+  <h3>Extension proxy</h3>
+  <p>
+    Chrome extension prefers same-origin <code>https://sockethr.com/api/extension/*</code>.
+    Next route <code>src/pages/api/extension/[[...path]].ts</code> proxies to the Mac API origin,
+    forwarding Authorization. Direct <code>https://api.sockethr.com</code> also works when tunnel is up.
+  </p>
+
+  <!-- ========== 12 ========== -->
+  <h2 id="env">12. Environment variables checklist</h2>
+  <h3>Mac <code>server/.env</code> (from <code>server/.env.example</code>)</h3>
+  <table>
+    <thead><tr><th>Variable</th><th>Default / example</th><th>Required?</th></tr></thead>
+    <tbody>
+      <tr><td><code>LM_STUDIO_BASE_URL</code></td><td><code>http://127.0.0.1:1234/v1</code></td><td>No (default ok)</td></tr>
+      <tr><td><code>LM_STUDIO_MODEL</code></td><td><code>openai/gpt-oss-20b</code></td><td>Must match /v1/models</td></tr>
+      <tr><td><code>PORT</code></td><td><code>3000</code></td><td>No</td></tr>
+      <tr><td><code>HOST</code></td><td><code>0.0.0.0</code></td><td>No</td></tr>
+      <tr><td><code>AUTH_SECRET</code></td><td>same as Vercel NEXTAUTH_SECRET</td><td><strong>Yes</strong> for protected routes</td></tr>
+      <tr><td><code>SOCKETHR_DATA_DIR</code></td><td><code>../data/jobs</code></td><td>Optional (USB path)</td></tr>
+      <tr><td><code>ALLOWED_ORIGINS</code></td><td>sockethr.com + localhost</td><td>Optional</td></tr>
+      <tr><td><code>WAITLIST_SMTP_*</code></td><td>Gmail app password flow</td><td>For /api/waitlist</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    Express loads env with Node 20+ <code>node --env-file=.env</code>.
+    Do <strong>not</strong> introduce dotenv for the SocketHR pattern.
+  </div>
+
+  <!-- ========== 13 ========== -->
+  <h2 id="extension">13. Chrome extension pattern</h2>
+  <ul class="compact">
+    <li>Folder: <code>extension/</code> (MV3, side panel)</li>
+    <li>Target: LinkedIn Recruiter applicant pages</li>
+    <li>Flow: collect PDFs → upload via extension API → finalize ranking → open dashboard link</li>
+    <li>Source tag: <code>linkedin_recruiter</code></li>
+    <li>User should be signed in on sockethr.com so jobs attach to their account</li>
+    <li>Tests: <code>npm run test:extension</code> (no LM Studio required)</li>
+  </ul>
+
+  <!-- ========== 14 ========== -->
+  <h2 id="local-dev">14. Local vs production</h2>
+  <table>
+    <thead><tr><th></th><th>Production (phones / sockethr.com)</th><th>Local dual-process</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>UI</td>
+        <td>Vercel</td>
+        <td><code>npm run dev</code> on :3000</td>
+      </tr>
+      <tr>
+        <td>API</td>
+        <td>Mac :3000 via tunnel</td>
+        <td>Express on :3000 or :3001</td>
+      </tr>
+      <tr>
+        <td>API base for UI</td>
+        <td><code>https://api.sockethr.com</code></td>
+        <td><code>NEXT_PUBLIC_SOCKETHR_API_BASE=http://127.0.0.1:3001</code> (Cloud docs) or :3000</td>
+      </tr>
+      <tr>
+        <td>Auth</td>
+        <td>Real Google OAuth + synced secrets</td>
+        <td>Needs Google env vars for login; rest of app serves without it</td>
+      </tr>
+      <tr>
+        <td>LLM</td>
+        <td>LM Studio on Mac</td>
+        <td>Same; AI routes fail if LM Studio down</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ========== 15 ========== -->
+  <h2 id="gotchas">15. Gotchas agents must respect</h2>
+  <ul>
+    <li>Do not run <code>npm run build</code> while <code>npm run dev</code> is running — wipe <code>.next</code> if webpack module-not-found appears.</li>
+    <li>HTTPS site cannot call HTTP API (mixed content). Public API must be HTTPS.</li>
+    <li>Never ship <code>apiBase: http://127.0.0.1</code> for production — phones hit themselves, not the Mac.</li>
+    <li><code>AUTH_SECRET</code> (Mac) and <code>NEXTAUTH_SECRET</code> (Vercel) must be identical.</li>
+    <li>LM Studio is private; only tunnel the Express port.</li>
+    <li><code>data/</code> and <code>server/.env</code> are gitignored — never commit secrets or candidate data.</li>
+    <li>Tunnel credentials live in <code>~/.cloudflared/&lt;uuid&gt;.json</code>; if lost, delete/recreate tunnel (cannot re-download secret).</li>
+    <li>Waitlist Gmail dedupe: if Cloudflare Email Routing loops mail back to the same Gmail, use a plus-address destination (documented in LOCAL_BACKEND).</li>
+    <li>PDF text is extracted server-side; no vision model required for resumes.</li>
+  </ul>
+
+  <!-- ========== 16 ========== -->
+  <h2 id="blueprint">16. Blueprint for a new site in classifier-research</h2>
+  <p>
+    When agents build a new website in this repository, mirror SocketHR’s organization even if product logic differs:
+  </p>
+  <div class="card">
+    <ol>
+      <li>
+        <strong>Split packages</strong>
+        — <code>web/</code> (Next.js on Vercel) + <code>server/</code> (Express on Mac Studio).
+        Root scripts: <code>dev</code>, <code>server</code>, <code>verify:public-api</code>.
+      </li>
+      <li>
+        <strong>Auth</strong>
+        — Auth.js Google on Vercel; <code>/api/mac-token</code> (or rename) mints HS256 JWT;
+        Mac verifies with shared secret, issuer, audience.
+      </li>
+      <li>
+        <strong>LLM</strong>
+        — LM Studio OpenAI-compatible local server; thin <code>lmstudio.js</code> wrapper;
+        default model pattern like <code>openai/gpt-oss-20b</code> (or whatever you load);
+        never expose port 1234 publicly.
+      </li>
+      <li>
+        <strong>Storage</strong>
+        — filesystem under a gitignored data dir; optional external disk via env
+        (<code>*_DATA_DIR</code>). Prefer JSON/files unless you truly need a hosted DB.
+      </li>
+      <li>
+        <strong>Public API hostname</strong>
+        — Cloudflare Tunnel + Vercel DNS CNAME <code>api</code> → <code>&lt;uuid&gt;.cfargotunnel.com</code>
+        (Path A). Document a 3-terminal STARTUP.md.
+      </li>
+      <li>
+        <strong>Runtime config</strong>
+        — <code>public/runtime-config.json</code> with <code>apiBase</code>, plus optional
+        <code>NEXT_PUBLIC_*_API_BASE</code> override.
+      </li>
+      <li>
+        <strong>Docs agents need</strong>
+        — <code>AGENTS.md</code>, <code>docs/STARTUP.md</code>, <code>docs/LOCAL_BACKEND.md</code>,
+        <code>docs/PUBLIC_TUNNEL.md</code>, <code>deploy/cloudflared/</code> example + setup script,
+        <code>server/.env.example</code>.
+      </li>
+      <li>
+        <strong>Health check contract</strong>
+        — <code>GET /health</code> → JSON <code>{ ok: true, service: "…" }</code> used by tunnel verify scripts.
+      </li>
+      <li>
+        <strong>CSP / CORS</strong>
+        — allow connect to your API host; allowlist browser origins on Express.
+      </li>
+      <li>
+        <strong>Ops</strong>
+        — Mac awake, LM Studio + Node + cloudflared after reboot (pm2/launchd),
+        verify from LTE with curl to the public API host.
+      </li>
+    </ol>
+  </div>
+
+  <h3>Suggested folder names for a new project (illustrative)</h3>
+  <pre><code>classifier-research/   # or a new sibling repo
+├── AGENT_PLAN.html
+├── SOCKETHR_STACK_REFERENCE.html   # this file
+├── web/                 # Next.js → Vercel
+│   ├── public/runtime-config.json
+│   └── src/pages/api/auth/…
+├── server/              # Express → Mac Studio
+│   ├── .env.example
+│   ├── index.js
+│   ├── lmstudio.js
+│   └── storage.js
+├── deploy/cloudflared/
+└── docs/STARTUP.md</code></pre>
+
+  <h3>Verification checklist (copy into new project)</h3>
+  <pre><code># On Mac
+curl -s http://127.0.0.1:1234/v1/models
+curl -s http://127.0.0.1:3000/health
+curl -sS https://api.YOURDOMAIN.com/health
+
+# Secrets sync
+# Vercel NEXTAUTH_SECRET  ==  server/.env AUTH_SECRET
+
+# UI
+# https://YOURDOMAIN.com/runtime-config.json → { "apiBase": "https://api.YOURDOMAIN.com" }</code></pre>
+
+  <h2>Source documents in sockethr (do not edit from this repo)</h2>
+  <ul class="compact muted">
+    <li><code>README.md</code>, <code>AGENTS.md</code></li>
+    <li><code>docs/STARTUP.md</code>, <code>LOCAL_BACKEND.md</code>, <code>PUBLIC_TUNNEL.md</code>, <code>PATH_A_SETUP.md</code>, <code>CLOUDFLARE_ZONE_AND_VERCEL.md</code>, <code>TROUBLESHOOTING_MOBILE.md</code></li>
+    <li><code>deploy/cloudflared/README.md</code>, <code>config.example.yml</code>, <code>setup-path-a.sh</code></li>
+    <li><code>server/.env.example</code>, <code>server/lmstudio.js</code>, <code>server/storage.js</code>, <code>server/index.js</code></li>
+    <li><code>src/lib/auth-options.ts</code>, <code>src/pages/api/mac-token.ts</code>, <code>src/lib/useSockethrRuntimeConfig.ts</code>, <code>next.config.ts</code></li>
+  </ul>
+
+  <p class="muted" style="margin-top:2.5rem">
+    Generated for classifier-research agents from the live sockethr repository structure and docs.
+    Intent: replicate the organizational pattern (Vercel + Google auth + Mac Express + LM Studio GPT-OSS + Cloudflare Tunnel + local data), not copy product features.
+  </p>
+</main>
+</body>
+</html>

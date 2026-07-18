@@ -4,6 +4,8 @@ Student notes subject classifier research: prompted LLM vs base BERT vs fine-tun
 
 See [`AGENT_PLAN.html`](AGENT_PLAN.html) for the full research and product brief.
 
+When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tunnel), model after SocketHR using [`SOCKETHR_STACK_REFERENCE.html`](SOCKETHR_STACK_REFERENCE.html).
+
 ## Setup
 
 ```bash
