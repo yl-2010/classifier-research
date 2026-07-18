@@ -2,6 +2,8 @@
 
 Student notes subject classifier research: prompted LLM vs base BERT vs fine-tuned BERT, with an orchestrator that can assign `Other` / custom subjects.
 
+**Product name:** NoteLMs (not NoteLMS). Domain: [notelms.com](https://notelms.com).
+
 See [`AGENT_PLAN.html`](AGENT_PLAN.html) for the full research and product brief.
 
 When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tunnel), model after SocketHR using [`SOCKETHR_STACK_REFERENCE.html`](SOCKETHR_STACK_REFERENCE.html).

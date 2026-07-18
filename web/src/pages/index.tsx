@@ -4,15 +4,15 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>NoteLMS</title>
+        <title>NoteLMs</title>
         <meta
           name="description"
-          content="NoteLMS turns student notes into clear subject understanding."
+          content="NoteLMs turns student notes into clear subject understanding."
         />
       </Head>
       <main className="hero">
         <div className="atmosphere" aria-hidden="true" />
-        <p className="brand">NoteLMS</p>
+        <p className="brand">NoteLMs</p>
         <h1>Know what your notes are really about.</h1>
         <p className="lede">
           A focused study companion that classifies and organizes student notes
