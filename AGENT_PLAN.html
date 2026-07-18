@@ -151,6 +151,7 @@
     </p>
 
     <nav class="toc" aria-label="Table of contents">
+      <a href="#human-written-user-flow">Human-written user flow</a>
       <a href="#lineage">Lineage</a>
       <a href="#product">Product</a>
       <a href="#research">Research</a>
@@ -171,6 +172,50 @@
       Do <span class="dont">not</span> commit secrets (<code>api_key.txt</code>, <code>.env</code>, provider keys).
       Do <span class="dont">not</span> put this work inside <code>uk_headlines_practical</code>.
     </div>
+
+    <h2 id="human-written-user-flow">Human-written user flow</h2>
+    <p class="muted">
+      Canonical end-to-end product path (image or text in → classify → research log → formatted notes → subject folders).
+    </p>
+    <ol class="pipeline">
+      <li>
+        A user inputs a <strong>picture of notes</strong> or <strong>raw text of notes</strong> through a UI
+        (website, hosted on Vercel).
+      </li>
+      <li>
+        The backend takes the image (if applicable) and uses an <strong>API LLM</strong> to turn it into plain text.
+        If the API is not working, <strong>gray out the image upload option</strong> — only the paste-text option will exist.
+      </li>
+      <li>
+        Once we have raw text of notes, it is given to <strong>3 models</strong> to classify:
+        <strong>base BERT</strong>, <strong>fine-tuned BERT</strong>, and
+        <strong>gpt-oss:20b</strong> through LM Studio.
+      </li>
+      <li>
+        An <strong>API LLM</strong> is given these 3 classifications, along with the original text, and judges
+        which of the 3 classifications is correct (many can also be correct if they share the same label).
+        Or, it can decide to label it as not one of the 8 labels, but as an <code>Other</code> subject that
+        the user previously inputted.
+      </li>
+      <li>
+        This data is stored into the <strong>research portion</strong> of the project, and the research data
+        of the site is updated with this new data.
+      </li>
+      <li>
+        Now that we have the label / classifier result, the notes are given to an LLM
+        (either <strong>gpt-oss locally</strong>, or an <strong>API LLM</strong> — still deciding which),
+        and the LLM turns it into fully well-formatted HTML that is easy to read.
+      </li>
+      <li>
+        Based on the subject, the HTML will have subtly different styling, but the styling format will be
+        predetermined application-wide for all users per subject, for consistency.
+        Each subject can have its own different color, but in general keep the structures of the notes similar.
+      </li>
+      <li>
+        Users can navigate through <strong>folders of each subject</strong>, with their notes well formatted
+        and easy to read.
+      </li>
+    </ol>
 
     <h2 id="lineage">0. Lineage — what this builds on</h2>
     <p>
