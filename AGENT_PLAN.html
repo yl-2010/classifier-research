@@ -166,7 +166,7 @@
     <div class="card">
       <strong>Repo.</strong>
       This is the standalone GitHub repo <code>yl-2010/classifier-research</code>
-      (local folder on the Mac: <code>~/github/classifier-research</code>).
+      (local folder: <code>~/github/classifier-research</code>).
       Implement the app, training code, data prep, and research artifacts here.
       Do <span class="dont">not</span> commit secrets (<code>api_key.txt</code>, <code>.env</code>, provider keys).
       Do <span class="dont">not</span> put this work inside <code>uk_headlines_practical</code>.
@@ -378,7 +378,7 @@
       <li><strong>Classifier LLM:</strong> prompted over the 8 subjects (zero-shot + few-shot from train exemplars).</li>
       <li><strong>Orchestrator LLM:</strong> different prompt/role; inputs = note + three votes (+ optional user custom subject list).</li>
       <li>Prefer a capable API model for research quality; optionally also benchmark a local open model later
-        (repo description mentions GPT-oss as a comparison target).</li>
+        (repo description mentions GPT-oss as a candidate).</li>
     </ul>
 
     <h2 id="data">6. Data for fine-tuning &amp; offline testing</h2>
@@ -597,7 +597,7 @@
     <h2>11. Open choices (decide during implementation, then lock)</h2>
     <ul>
       <li>Exact web framework and auth model (local-only vs multi-user).</li>
-      <li>Which LLM provider / model IDs for classifier vs orchestrator (incl. GPT-oss options).</li>
+      <li>Which LLM provider / model IDs for classifier vs orchestrator (incl. GPT-oss option).</li>
       <li>Precise definition of “base BERT” baseline protocol.</li>
       <li>Whether v1 shows the 3 model votes in the main UI or only in a details panel.</li>
       <li>Privacy policy for stored note text in research logs (hash vs full text vs user opt-in).</li>
