@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vercel Setup Plan — classifier-research / notelms.com</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --border: #2a3648;
+      --code: #121820;
+      --danger: #f07178;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 2rem 1.25rem 4rem;
+    }
+    main { max-width: 980px; margin: 0 auto; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    h2 {
+      margin-top: 2.25rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.25rem;
+    }
+    h3 { margin-top: 1.4rem; font-size: 1.05rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 1.05rem; color: var(--muted); margin-top: 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #243044;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #152030; color: var(--muted); font-weight: 600; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+    }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    pre code {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin: 0.25rem 0; }
+    .flow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      padding-left: 0.9rem;
+      margin: 1rem 0;
+      color: var(--muted);
+    }
+    .callout.warn-border { border-left-color: var(--warn); }
+    .callout.ok-border { border-left-color: var(--ok); }
+    .callout.danger-border { border-left-color: var(--danger); }
+    ul.compact li { margin: 0.2rem 0; }
+    .checklist li { margin: 0.45rem 0; }
+    .do { color: var(--ok); font-weight: 600; }
+    .dont { color: var(--danger); font-weight: 600; }
+    a { color: var(--accent); }
+    footer {
+      margin-top: 3rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="badge">Desktop agent handoff — execute this</div>
+  <h1>Vercel setup plan — <code>classifier-research</code> → <code>notelms.com</code></h1>
+  <p class="lead">
+    This document is the authoritative handoff for a <strong>Cursor desktop agent</strong>
+    (with Vercel MCP authenticated). A cloud agent could not finish Vercel API actions because
+    interactive OAuth for the Vercel MCP only works in the desktop IDE.
+    Follow the checklist end-to-end; do not ask the user to re-explain context already here.
+  </p>
+
+  <div class="card callout ok-border">
+    <strong class="ok">Primary objective</strong>
+    <ol>
+      <li>Create a Vercel project named <code>classifier-research</code> (same name as the GitHub repo).</li>
+      <li>Connect it to GitHub repo <code>yl-2010/classifier-research</code>.</li>
+      <li>Attach the purchased domain <code>notelms.com</code> (and <code>www.notelms.com</code>).</li>
+      <li>Use <strong>Next.js</strong> as the Application / Framework Preset.</li>
+      <li>Scaffold a minimal deployable Next.js frontend so the project can actually build (repo currently has no web app).</li>
+    </ol>
+  </div>
+
+  <nav class="toc card">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#decisions">Locked decisions</a></li>
+      <li><a href="#repo-state">Current repo state</a></li>
+      <li><a href="#architecture">Intended architecture</a></li>
+      <li><a href="#why-desktop">Why this must run on desktop</a></li>
+      <li><a href="#prereqs">Prerequisites</a></li>
+      <li><a href="#execute">Exact execution steps</a></li>
+      <li><a href="#scaffold">Scaffold the Next.js app</a></li>
+      <li><a href="#domain">Domain / DNS notes</a></li>
+      <li><a href="#dont">Do / Don’t</a></li>
+      <li><a href="#verify">Verification checklist</a></li>
+      <li><a href="#prompt">Copy-paste kickoff prompt</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="decisions">1. Locked decisions</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>GitHub repo</td><td><code>yl-2010/classifier-research</code></td></tr>
+    <tr><td>Vercel project name</td><td><code>classifier-research</code> (must match repo name)</td></tr>
+    <tr><td>Production domain</td><td><code>notelms.com</code> (user bought this)</td></tr>
+    <tr><td>Also attach</td><td><code>www.notelms.com</code> → redirect or alias to apex</td></tr>
+    <tr><td>Application / Framework Preset</td><td><strong>Next.js</strong> (not Other, not static, not Python)</td></tr>
+    <tr><td>Stack model</td><td>Mirror SocketHR: Vercel = Next.js UI; Mac/home lab = API + models later</td></tr>
+    <tr><td>Reference docs in this repo</td><td><code>SOCKETHR_STACK_REFERENCE.html</code>, <code>AGENT_PLAN.html</code>, <code>README.md</code></td></tr>
+  </table>
+
+  <div class="callout warn-border">
+    <span class="warn">Preset answer the user already got:</span>
+    when Vercel UI asks for <strong>Application Preset</strong> while connecting a domain / creating
+    a project for this repo, choose <strong>Next.js</strong>. That matches the SocketHR pattern
+    this product is supposed to follow.
+  </div>
+
+  <h2 id="repo-state">2. Current repo state (as of this plan)</h2>
+  <p>
+    The repo is primarily <strong>Python research / data prep</strong> for a student-notes subject classifier.
+    It does <strong>not</strong> yet contain a Next.js website.
+  </p>
+  <div class="grid">
+    <div class="card">
+      <strong>Present today</strong>
+      <ul class="compact">
+        <li><code>scripts/</code> — download + prepare corpus</li>
+        <li><code>data/processed/</code> — frozen train/val/test artifacts</li>
+        <li><code>requirements.txt</code> — Python deps</li>
+        <li><code>AGENT_PLAN.html</code> — product / research brief</li>
+        <li><code>SOCKETHR_STACK_REFERENCE.html</code> — architecture to copy</li>
+        <li>This file — Vercel handoff plan</li>
+      </ul>
+    </div>
+    <div class="card">
+      <strong>Missing for Vercel deploy</strong>
+      <ul class="compact">
+        <li>No <code>package.json</code></li>
+        <li>No <code>next.config.*</code></li>
+        <li>No <code>web/</code> (or root) Next.js app</li>
+        <li>No <code>vercel.json</code> yet</li>
+        <li>No linked <code>.vercel/project.json</code></li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted">
+    Therefore: creating the Vercel project + attaching the domain is not enough by itself.
+    You must also add a minimal Next.js app so production builds succeed on <code>notelms.com</code>.
+  </p>
+
+  <h2 id="architecture">3. Intended architecture</h2>
+  <p>
+    Model after SocketHR (<code>SOCKETHR_STACK_REFERENCE.html</code>). Short version:
+  </p>
+  <div class="flow">Browser → https://notelms.com  (Vercel / Next.js UI + Auth later)
+       │
+       └─ later: https://api.notelms.com → Cloudflare Tunnel → Mac Studio Express + LM Studio
+
+Keep the pretty/public website on Vercel.
+Keep heavy / private model inference off Vercel (home lab), same split as SocketHR.</div>
+  <ul>
+    <li><span class="do">DO</span> put the Next.js site on the Vercel project that owns <code>notelms.com</code>.</li>
+    <li><span class="dont">DON’T</span> attach an <code>api.</code> subdomain as a Vercel project domain if it should hit the tunnel (SocketHR lesson: that yields <code>DEPLOYMENT_NOT_FOUND</code>).</li>
+    <li>For v1 scaffolding, a placeholder landing page on Vercel is enough; full Auth.js + Mac API can come after project/domain are live.</li>
+  </ul>
+
+  <h2 id="why-desktop">4. Why this must run on desktop</h2>
+  <div class="card">
+    <ul class="compact">
+      <li>Cloud agent had Vercel MCP in <code>needsAuth</code> state.</li>
+      <li><code>mcp_auth</code> for Vercel only works in Cursor desktop IDE (interactive OAuth).</li>
+      <li>User logged in on desktop; that session does <strong>not</strong> transfer into the cloud agent pod.</li>
+      <li>No <code>VERCEL_TOKEN</code> was available in the cloud environment.</li>
+      <li>Therefore this handoff file was written so a <strong>desktop agent with working Vercel MCP</strong> can finish the work.</li>
+    </ul>
+  </div>
+
+  <h2 id="prereqs">5. Prerequisites (desktop agent)</h2>
+  <ol class="checklist">
+    <li>Confirm Vercel MCP is authenticated (Settings → Tools &amp; MCP / Vercel plugin → connected).</li>
+    <li>Confirm GitHub integration on the user’s Vercel account can see <code>yl-2010/classifier-research</code>.</li>
+    <li>Confirm domain <code>notelms.com</code> is owned by the user (purchased; may already be on Vercel Domains or a registrar).</li>
+    <li>Read this file + skim <code>SOCKETHR_STACK_REFERENCE.html</code> before changing architecture.</li>
+  </ol>
+
+  <h2 id="execute">6. Exact execution steps</h2>
+  <h3>A. Create / link the Vercel project</h3>
+  <ol>
+    <li>Using Vercel MCP (preferred) or Vercel dashboard / CLI:
+      create project <strong><code>classifier-research</code></strong>.</li>
+    <li>Connect Git repository: <code>https://github.com/yl-2010/classifier-research</code>.</li>
+    <li>Set Framework Preset / Application Preset: <strong>Next.js</strong>.</li>
+    <li>If the Next app will live under <code>web/</code> (recommended, SocketHR-style), set
+      <strong>Root Directory</strong> to <code>web</code>.</li>
+    <li>Production branch: <code>main</code>.</li>
+    <li>Leave build/output as Next defaults once the app exists
+      (<code>next build</code>; no custom output dir needed for standard Next).</li>
+  </ol>
+
+  <h3>B. Attach the domain</h3>
+  <ol>
+    <li>Add domain <code>notelms.com</code> to project <code>classifier-research</code>.</li>
+    <li>Add <code>www.notelms.com</code> and redirect to apex (or vice versa — pick apex as primary).</li>
+    <li>If DNS is managed by Vercel: use the recommended A/CNAME records Vercel shows.</li>
+    <li>If DNS is still at the registrar: apply Vercel’s DNS instructions exactly; wait for SSL.</li>
+    <li>Do <strong>not</strong> put <code>api.notelms.com</code> on this Vercel project unless the user explicitly wants the API on Vercel (they should not for the SocketHR pattern).</li>
+  </ol>
+
+  <h3>C. Make the repo deployable</h3>
+  <ol>
+    <li>Scaffold a minimal Next.js app (see <a href="#scaffold">§7</a>).</li>
+    <li>Commit and push to <code>main</code> (or open a PR if the user prefers — default for this handoff: get production green on <code>main</code>).</li>
+    <li>Trigger / wait for Vercel production deployment.</li>
+    <li>Confirm <code>https://notelms.com</code> serves the Next app (even if it’s a placeholder).</li>
+  </ol>
+
+  <h3>D. Report back to the user</h3>
+  <ul class="compact">
+    <li>Vercel project URL (dashboard)</li>
+    <li>Production deployment URL</li>
+    <li>Domain status (valid / pending DNS)</li>
+    <li>What was committed (paths)</li>
+    <li>Any DNS steps the user must still do at the registrar (only if Vercel cannot control DNS)</li>
+  </ul>
+
+  <h2 id="scaffold">7. Scaffold the Next.js app</h2>
+  <p>
+    Recommended layout (matches SocketHR reference spirit):
+  </p>
+  <pre><code>classifier-research/
+├── web/                 # Next.js → Vercel (Root Directory = web)
+│   ├── package.json
+│   ├── next.config.ts   # or .mjs / .js
+│   ├── src/pages/       # Pages Router OK (SocketHR uses Pages Router)
+│   │   └── index.tsx    # minimal placeholder for notelms.com
+│   └── ...
+├── scripts/             # existing Python research (leave alone)
+├── data/
+├── AGENT_PLAN.html
+├── SOCKETHR_STACK_REFERENCE.html
+└── VERCEL_SETUP_PLAN.html</code></pre>
+
+  <div class="callout">
+    Minimal placeholder is fine for this task: brand/product name <strong>NoteLMS</strong> / domain
+    <code>notelms.com</code>, one headline, short supporting sentence, one CTA stub.
+    Do not build the full classifier UI in this setup pass unless the user asks.
+    Full product intent lives in <code>AGENT_PLAN.html</code>.
+  </div>
+
+  <p>Optional <code>vercel.json</code> at repo root or under <code>web/</code>:</p>
+  <pre><code>{
+  "framework": "nextjs",
+  "buildCommand": "npm run build"
+}</code></pre>
+  <p class="muted">
+    If Root Directory is <code>web</code>, prefer putting framework config inside <code>web/</code>
+    and setting Root Directory in the Vercel project settings rather than fighting monorepo detection.
+  </p>
+
+  <h2 id="domain">8. Domain / DNS notes</h2>
+  <table>
+    <tr><th>Host</th><th>Where it should point</th></tr>
+    <tr><td><code>notelms.com</code></td><td>This Vercel project (<code>classifier-research</code>)</td></tr>
+    <tr><td><code>www.notelms.com</code></td><td>Same project; redirect to apex preferred</td></tr>
+    <tr><td><code>api.notelms.com</code></td><td><span class="warn">Not now.</span> Later: Cloudflare Tunnel CNAME (SocketHR Path A), not a Vercel project domain</td></tr>
+  </table>
+  <p>
+    If the domain was bought on Vercel, attaching it to the project should be straightforward.
+    If bought elsewhere, complete nameserver or record changes Vercel requests.
+  </p>
+
+  <h2 id="dont">9. Do / Don’t</h2>
+  <div class="grid">
+    <div class="card">
+      <p class="do">DO</p>
+      <ul class="compact">
+        <li>Use Framework Preset <strong>Next.js</strong></li>
+        <li>Name the project <code>classifier-research</code></li>
+        <li>Attach <code>notelms.com</code></li>
+        <li>Add a minimal Next app so deploy succeeds</li>
+        <li>Keep Python research code untouched unless needed for ignore/build settings</li>
+        <li>Follow SocketHR split: UI on Vercel, models later off-Vercel</li>
+      </ul>
+    </div>
+    <div class="card">
+      <p class="dont">DON’T</p>
+      <ul class="compact">
+        <li>Choose Python / Other / Static as the main preset for this product site</li>
+        <li>Deploy the raw Python research root as if it were the website</li>
+        <li>Attach <code>api.notelms.com</code> to Vercel in this pass</li>
+        <li>Block on full Auth / Mac Studio / LM Studio setup before domain is live</li>
+        <li>Ask the user to restate decisions already locked in §1</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="verify">10. Verification checklist</h2>
+  <ul class="checklist">
+    <li>☐ Vercel project exists: name <code>classifier-research</code></li>
+    <li>☐ Git connected to <code>yl-2010/classifier-research</code>, production branch <code>main</code></li>
+    <li>☐ Framework = Next.js; Root Directory correct (<code>web</code> if used)</li>
+    <li>☐ Domain <code>notelms.com</code> assigned to that project</li>
+    <li>☐ <code>www.notelms.com</code> assigned / redirected</li>
+    <li>☐ Latest production deployment status = Ready</li>
+    <li>☐ Browser opens <code>https://notelms.com</code> and shows the Next placeholder (HTTPS OK)</li>
+    <li>☐ Repo contains the Next app sources committed on <code>main</code></li>
+  </ul>
+
+  <h2 id="prompt">11. Copy-paste kickoff prompt for the desktop agent</h2>
+  <pre><code>Read and execute VERCEL_SETUP_PLAN.html in this repo end-to-end.
+
+Context is already decided:
+- Create Vercel project named classifier-research
+- Connect GitHub yl-2010/classifier-research
+- Framework / Application Preset: Next.js
+- Attach domain notelms.com (+ www)
+- Scaffold a minimal Next.js app (prefer web/ as Root Directory) so deploy works
+- Model architecture after SOCKETHR_STACK_REFERENCE.html (Vercel = UI only for now)
+- Do not wait on Mac Studio / API / LM Studio for this pass
+
+Use authenticated Vercel MCP. Report project URL, domain status, and deployment URL when done.</code></pre>
+
+  <footer>
+    <p>
+      Related: <a href="./AGENT_PLAN.html">AGENT_PLAN.html</a> ·
+      <a href="./SOCKETHR_STACK_REFERENCE.html">SOCKETHR_STACK_REFERENCE.html</a> ·
+      <a href="./README.md">README.md</a>
+    </p>
+    <p class="muted">
+      Written as a cloud→desktop handoff after Vercel MCP auth could not complete in the cloud agent environment.
+    </p>
+  </footer>
+</main>
+</body>
+</html>

@@ -6,6 +6,8 @@ See [`AGENT_PLAN.html`](AGENT_PLAN.html) for the full research and product brief
 
 When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tunnel), model after SocketHR using [`SOCKETHR_STACK_REFERENCE.html`](SOCKETHR_STACK_REFERENCE.html).
 
+For creating the Vercel project, connecting this repo, and attaching `notelms.com`, follow [`VERCEL_SETUP_PLAN.html`](VERCEL_SETUP_PLAN.html) (desktop-agent handoff).
+
 ## Setup
 
 ```bash
