@@ -4,8 +4,14 @@ data/raw/
 # Secrets
 .env
 .env.*
+!.env.example
+!server/.env.example
 api_key.txt
 *.pem
+
+# NoteLMs Mac / local user data (never commit)
+server/data/
+/Volumes/
 
 # Python
 __pycache__/
@@ -30,12 +36,12 @@ huggingface/
 # Jupyter
 .ipynb_checkpoints/
 
-# Next.js / Vercel
+# Next.js / Vercel / Node
 node_modules/
-.next/
-.vercel/
+server/node_modules/
 web/node_modules/
+.next/
 web/.next/
+.vercel/
 web/.vercel/
 .vercel
-.env*

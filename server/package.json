@@ -1,0 +1,21 @@
+{
+  "name": "notelms-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "NoteLMs Express API for Mac Studio (filesystem + LM Studio)",
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "dev": "node --watch --env-file=.env index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jose": "^5.10.0",
+    "uuid": "^11.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

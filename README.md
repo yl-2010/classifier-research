@@ -14,11 +14,32 @@ To share SocketHR’s existing Cloudflare Tunnel with `api.notelms.com` (one `cl
 
 The production UI lives in [`web/`](web/) (Next.js on Vercel at [notelms.com](https://notelms.com)). Root Directory on Vercel is `web`.
 
+The Mac Studio API lives in [`server/`](server/) (`npm run server` → port **3002** → `https://api.notelms.com` via the shared SocketHR Cloudflare Tunnel). User notes are stored on disk at `/Volumes/Samsung USB/notelms/<email>/` (not in the cloud). See [`docs/STARTUP.md`](docs/STARTUP.md) and [`AGENTS.md`](AGENTS.md).
+
 ## Setup
+
+### Python research corpus
 
 ```bash
 python3 -m pip install -r requirements.txt
 ```
+
+### Mac Studio API (Express + LM Studio)
+
+```bash
+npm install --prefix server
+cp server/.env.example server/.env   # set AUTH_SECRET = Vercel NEXTAUTH_SECRET
+npm run server                       # http://127.0.0.1:3002
+```
+
+### Vercel / Next.js UI
+
+```bash
+npm install --prefix web
+npm run dev                          # from repo root, or: npm run dev --prefix web
+```
+
+Required Vercel env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET` (must match Mac `AUTH_SECRET`).
 
 ## Data for fine-tuning & frozen testing
 
