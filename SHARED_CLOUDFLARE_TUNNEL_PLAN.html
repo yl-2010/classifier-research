@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shared Cloudflare Tunnel Plan — SocketHR + NoteLMS</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --border: #2a3648;
+      --code: #121820;
+      --danger: #f07178;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 2rem 1.25rem 4rem;
+    }
+    main { max-width: 980px; margin: 0 auto; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    h2 {
+      margin-top: 2.25rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.25rem;
+    }
+    h3 { margin-top: 1.4rem; font-size: 1.05rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 1.05rem; color: var(--muted); margin-top: 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #243044;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #152030; color: var(--muted); font-weight: 600; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+    }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    pre code {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin: 0.25rem 0; }
+    .flow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      background: var(--panel);
+      border-radius: 0 8px 8px 0;
+    }
+    .callout.warn-border { border-left-color: var(--warn); }
+    .callout.ok-border { border-left-color: var(--ok); }
+    .callout.danger-border { border-left-color: var(--danger); }
+    .do { color: var(--ok); font-weight: 700; }
+    .dont { color: var(--danger); font-weight: 700; }
+    ul.compact { padding-left: 1.2rem; }
+    ul.compact li { margin: 0.35rem 0; }
+    .checklist li { margin: 0.45rem 0; }
+    ol.steps > li { margin: 0.85rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="badge">SocketHR agent handoff · copy this file into the sockethr repo</div>
+  <h1>Shared Cloudflare Tunnel — SocketHR + NoteLMS</h1>
+  <p class="lead">
+    Exact instructions for a SocketHR-repo agent: extend the existing Mac Studio Cloudflare Tunnel
+    so <code>api.sockethr.com</code> and <code>api.notelms.com</code> share <strong>one</strong>
+    <code>cloudflared</code> process. Goal: everyday Mac startup stays at
+    <strong>two Express servers + one tunnel command</strong> (plus LM Studio GUI), not four commands.
+  </p>
+
+  <div class="card toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#goal">Goal &amp; non-goals</a></li>
+      <li><a href="#context">Context from classifier-research / NoteLMS</a></li>
+      <li><a href="#ports">Port &amp; hostname contract</a></li>
+      <li><a href="#do">What you must change (in sockethr + on the Mac)</a></li>
+      <li><a href="#dns">DNS for api.notelms.com</a></li>
+      <li><a href="#docs">Docs / examples to update in sockethr</a></li>
+      <li><a href="#verify">Verification</a></li>
+      <li><a href="#startup">Target everyday startup</a></li>
+      <li><a href="#out-of-scope">Out of scope (do not do)</a></li>
+      <li><a href="#done">Done when</a></li>
+    </ol>
+  </div>
+
+  <!-- ========== 1 ========== -->
+  <h2 id="goal">1. Goal &amp; non-goals</h2>
+  <div class="card">
+    <h3 style="margin-top:0">Goal</h3>
+    <ul class="compact">
+      <li>Reuse the <strong>existing</strong> SocketHR Cloudflare Tunnel (same tunnel UUID / credentials).</li>
+      <li>Add a second public hostname: <code>api.notelms.com</code> → a second local Express port.</li>
+      <li>Keep starting <code>cloudflared</code> as <strong>one</strong> command (same as today).</li>
+      <li>Document the shared-tunnel pattern in sockethr so future agents do not create a second tunnel.</li>
+    </ul>
+    <h3>Non-goals</h3>
+    <ul class="compact">
+      <li><span class="dont">Do not</span> create a new Cloudflare Tunnel for NoteLMS.</li>
+      <li><span class="dont">Do not</span> expose LM Studio (<code>127.0.0.1:1234</code>) on the tunnel.</li>
+      <li><span class="dont">Do not</span> merge SocketHR and NoteLMS product APIs into one Express process.</li>
+      <li><span class="dont">Do not</span> attach <code>api.notelms.com</code> (or <code>api.sockethr.com</code>) as a Vercel project domain.</li>
+      <li><span class="dont">Do not</span> implement NoteLMS classify / BERT / orchestrator routes in sockethr.</li>
+    </ul>
+  </div>
+
+  <!-- ========== 2 ========== -->
+  <h2 id="context">2. Context from classifier-research / NoteLMS</h2>
+  <p>
+    NoteLMS (repo: <strong>classifier-research</strong>, site: <code>notelms.com</code>) will mirror SocketHR’s
+    split architecture: Vercel UI + Mac Express API + LM Studio GPT-OSS + Cloudflare Tunnel.
+    The NoteLMS Express server will live in that other repo (or a sibling folder on the Mac),
+    <strong>not</strong> inside sockethr product routes.
+  </p>
+  <div class="flow">Browser
+├─ https://sockethr.com          → Vercel (SocketHR UI)
+├─ https://notelms.com           → Vercel (NoteLMS UI)
+├─ https://api.sockethr.com      → SAME cloudflared tunnel → 127.0.0.1:3000  (SocketHR Express)
+└─ https://api.notelms.com       → SAME cloudflared tunnel → 127.0.0.1:3002  (NoteLMS Express)
+                                      └─ either app may call LM Studio on 127.0.0.1:1234 locally</div>
+  <div class="callout ok-border">
+    <strong>Why sockethr owns this change:</strong> the live tunnel config, Path A docs, and
+    <code>deploy/cloudflared/</code> examples already live in sockethr. NoteLMS only needs a second
+    ingress rule + DNS CNAME pointed at the <em>same</em> tunnel UUID.
+  </div>
+
+  <!-- ========== 3 ========== -->
+  <h2 id="ports">3. Port &amp; hostname contract</h2>
+  <p>Lock these unless something already conflicts on the Mac (if so, document the actual ports):</p>
+  <table>
+    <thead>
+      <tr><th>Public hostname</th><th>Local service</th><th>Port</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>api.sockethr.com</code></td>
+        <td>SocketHR Express</td>
+        <td><code>127.0.0.1:3000</code></td>
+        <td>sockethr (<code>npm run server</code>)</td>
+      </tr>
+      <tr>
+        <td><code>api.notelms.com</code></td>
+        <td>NoteLMS Express</td>
+        <td><code>127.0.0.1:3002</code></td>
+        <td>classifier-research / NoteLMS (separate process)</td>
+      </tr>
+      <tr>
+        <td><span class="muted">(not public)</span></td>
+        <td>LM Studio OpenAI-compatible API</td>
+        <td><code>127.0.0.1:1234</code></td>
+        <td>LM Studio GUI — localhost only</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout warn-border">
+    <strong>Port 3001:</strong> SocketHR docs sometimes use <code>:3001</code> for local/dev overrides.
+    Prefer <code>:3002</code> for NoteLMS to avoid colliding with that convention. If <code>3002</code>
+    is taken, pick another free port and use it consistently in tunnel config + NoteLMS server env.
+  </div>
+
+  <!-- ========== 4 ========== -->
+  <h2 id="do">4. What you must change (in sockethr + on the Mac)</h2>
+
+  <h3>4.1 Read current state first</h3>
+  <ol class="steps">
+    <li>
+      Open the live Mac config (not only the repo example):
+      <pre><code>cat ~/.cloudflared/config.yml</code></pre>
+      Confirm it already maps <code>api.sockethr.com</code> → <code>http://127.0.0.1:3000</code>
+      (or whatever SocketHR actually uses today). Capture the existing <code>tunnel:</code> UUID
+      and <code>credentials-file:</code> path — <strong>do not recreate the tunnel</strong>.
+    </li>
+    <li>
+      Confirm the tunnel name / UUID still matches docs, e.g.:
+      <pre><code>cloudflared tunnel list
+ls ~/.cloudflared/</code></pre>
+    </li>
+    <li>
+      Read sockethr docs you will update:
+      <code>docs/STARTUP.md</code>, <code>docs/PUBLIC_TUNNEL.md</code>, <code>docs/PATH_A_SETUP.md</code>,
+      <code>deploy/cloudflared/config.example.yml</code>, <code>deploy/cloudflared/README.md</code>
+      (and any setup script that writes a single-hostname ingress).
+    </li>
+  </ol>
+
+  <h3>4.2 Update live Mac tunnel config</h3>
+  <p>
+    Edit <code>~/.cloudflared/config.yml</code> so ingress has <strong>both</strong> hostnames.
+    Keep SocketHR first; keep the catch-all 404 last.
+  </p>
+  <pre><code>tunnel: &lt;EXISTING_TUNNEL_UUID&gt;
+credentials-file: /Users/&lt;YOUR_USER&gt;/.cloudflared/&lt;EXISTING_TUNNEL_UUID&gt;.json
+
+ingress:
+  - hostname: api.sockethr.com
+    service: http://127.0.0.1:3000
+  - hostname: api.notelms.com
+    service: http://127.0.0.1:3002
+  - service: http_status:404</code></pre>
+  <div class="callout danger-border">
+    <strong>Critical:</strong> Do not change the tunnel UUID or credentials file. Do not run
+    <code>cloudflared tunnel create …</code> for NoteLMS. Only edit ingress + DNS.
+  </div>
+
+  <h3>4.3 Restart cloudflared once</h3>
+  <p>Stop the old tunnel process, then start the same way as today, for example:</p>
+  <pre><code>cloudflared tunnel --config ~/.cloudflared/config.yml run
+# or, if you use a named tunnel:
+# cloudflared tunnel run sockethr-api</code></pre>
+  <p class="muted">
+    If the dashboard also manages public hostnames for this tunnel, add
+    <code>api.notelms.com</code> → <code>http://127.0.0.1:3002</code> there as well so dashboard
+    and local config do not fight. Prefer one source of truth (local config.yml for Path A).
+  </p>
+
+  <h3>4.4 Mirror the example in the sockethr repo</h3>
+  <p>
+    Update <code>deploy/cloudflared/config.example.yml</code> (and any generator script) to show
+    the two-hostname ingress above, with comments explaining:
+  </p>
+  <ul class="compact">
+    <li>SocketHR owns <code>:3000</code></li>
+    <li>NoteLMS / classifier-research owns <code>:3002</code></li>
+    <li>One tunnel process serves both</li>
+    <li>LM Studio stays off the tunnel</li>
+  </ul>
+
+  <!-- ========== 5 ========== -->
+  <h2 id="dns">5. DNS for api.notelms.com</h2>
+  <p>
+    Same Path A pattern as SocketHR: authoritative DNS for <code>notelms.com</code> is on
+    <strong>Vercel</strong>; Cloudflare is only the tunnel connector.
+  </p>
+  <ol class="steps">
+    <li>
+      Find the existing tunnel UUID from <code>~/.cloudflared/config.yml</code>
+      (the same one already used by <code>api.sockethr.com</code>).
+    </li>
+    <li>
+      In the <strong>Vercel DNS</strong> for the <code>notelms.com</code> project/domain, add:
+      <table>
+        <thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>CNAME</td>
+            <td><code>api</code></td>
+            <td><code>&lt;SAME_TUNNEL_UUID&gt;.cfargotunnel.com</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </li>
+    <li>
+      <span class="dont">Do not</span> add <code>api.notelms.com</code> as a domain on the Vercel
+      <em>project</em> (that makes Vercel try to serve it → <code>DEPLOYMENT_NOT_FOUND</code>).
+      DNS record only.
+    </li>
+    <li>
+      Wait for DNS/SSL. Confirm the CNAME target matches SocketHR’s tunnel UUID exactly
+      (compare to the <code>api.sockethr.com</code> CNAME on <code>sockethr.com</code>).
+    </li>
+  </ol>
+  <div class="callout warn-border">
+    <strong>If you cannot access the notelms.com Vercel DNS from the sockethr agent environment:</strong>
+    still complete the tunnel config + sockethr docs, and leave a short
+    <code>docs/NOTELMS_TUNNEL_DNS.md</code> (or section in <code>PUBLIC_TUNNEL.md</code>) with the
+    exact CNAME the human/desktop agent must add. Do not invent a second tunnel as a workaround.
+  </div>
+
+  <!-- ========== 6 ========== -->
+  <h2 id="docs">6. Docs / examples to update in sockethr</h2>
+  <p>Make the shared-tunnel story obvious so the next agent does not add a second <code>cloudflared</code> command.</p>
+  <table>
+    <thead>
+      <tr><th>File</th><th>Change</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>deploy/cloudflared/config.example.yml</code></td>
+        <td>Two hostnames; comments for ports 3000 / 3002</td>
+      </tr>
+      <tr>
+        <td><code>deploy/cloudflared/README.md</code></td>
+        <td>State explicitly: one tunnel, multiple ingress hostnames; NoteLMS shares this tunnel</td>
+      </tr>
+      <tr>
+        <td><code>docs/STARTUP.md</code></td>
+        <td>Startup remains: SocketHR <code>npm run server</code>, optional NoteLMS server on :3002, <strong>one</strong> cloudflared command, LM Studio GUI</td>
+      </tr>
+      <tr>
+        <td><code>docs/PUBLIC_TUNNEL.md</code> / <code>PATH_A_SETUP.md</code></td>
+        <td>Document adding additional hostnames to the existing tunnel; warn against <code>tunnel create</code> per app</td>
+      </tr>
+      <tr>
+        <td>Optional: <code>docs/SHARED_TUNNEL_NOTELMS.md</code></td>
+        <td>Short pointer doc if you want a dedicated page; otherwise a section in PUBLIC_TUNNEL is enough</td>
+      </tr>
+      <tr>
+        <td>Setup scripts under <code>deploy/cloudflared/</code></td>
+        <td>If a script rewrites config.yml to a single hostname, update it so it preserves/adds both entries</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout ok-border">
+    <strong>Suggested STARTUP wording:</strong>
+    <pre><code># Terminal A — SocketHR API
+npm run server                    # :3000
+
+# Terminal B — NoteLMS API (when working on NoteLMS)
+npm run server                    # from NoteLMS server; :3002
+
+# Terminal C — shared tunnel (once)
+cloudflared tunnel --config ~/.cloudflared/config.yml run
+
+# LM Studio GUI — load model, local server ON :1234</code></pre>
+  </div>
+
+  <!-- ========== 7 ========== -->
+  <h2 id="verify">7. Verification</h2>
+  <ol class="checklist">
+    <li>
+      With SocketHR server up and tunnel running:
+      <pre><code>curl -sS https://api.sockethr.com/health</code></pre>
+      Expect the existing SocketHR health JSON (must not regress).
+    </li>
+    <li>
+      With nothing on :3002, <code>https://api.notelms.com/…</code> may 502 — that is OK and proves
+      DNS + ingress reach the Mac. Document that 502 means “tunnel up, NoteLMS server down”.
+    </li>
+    <li>
+      When a NoteLMS server exists on :3002 with <code>GET /health</code>, verify:
+      <pre><code>curl -sS https://api.notelms.com/health</code></pre>
+      Expect JSON like <code>{"ok":true,"service":"notelms-server",…}</code> (exact body owned by NoteLMS).
+    </li>
+    <li>
+      Confirm LM Studio is still not public:
+      <pre><code># should NOT be a public hostname in ingress
+# curl to any public URL must never hit :1234 directly</code></pre>
+    </li>
+    <li>
+      Confirm only one cloudflared process is required (no second tunnel UUID in docs or launch scripts).
+    </li>
+  </ol>
+
+  <!-- ========== 8 ========== -->
+  <h2 id="startup">8. Target everyday startup</h2>
+  <table>
+    <thead>
+      <tr><th>Step</th><th>Command / action</th><th>Required when</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>LM Studio: load GPT-OSS, start local server :1234</td>
+        <td>Any AI route</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>SocketHR <code>npm run server</code> → :3000</td>
+        <td>Using sockethr.com API</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>NoteLMS <code>npm run server</code> → :3002</td>
+        <td>Using notelms.com API</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>One</strong> <code>cloudflared … run</code></td>
+        <td>Either public API hostname</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Acceptable: three terminal commands when both products are in use.
+    <span class="dont">Not acceptable:</span> a second long Cloudflare tunnel start command for NoteLMS.
+  </p>
+
+  <!-- ========== 9 ========== -->
+  <h2 id="out-of-scope">9. Out of scope (do not do)</h2>
+  <ul class="compact">
+    <li>Do not build NoteLMS BERT / classifier / orchestrator endpoints inside sockethr.</li>
+    <li>Do not change SocketHR JWT / Auth.js secrets for NoteLMS (separate apps, separate secrets later).</li>
+    <li>Do not point <code>public/runtime-config.json</code> for sockethr at <code>api.notelms.com</code>.</li>
+    <li>Do not proxy NoteLMS traffic through SocketHR Express “for convenience”.</li>
+    <li>Do not put LM Studio on a public hostname.</li>
+    <li>Do not create <code>cloudflared tunnel create notelms-api</code> (or similar).</li>
+  </ul>
+
+  <!-- ========== 10 ========== -->
+  <h2 id="done">10. Done when</h2>
+  <ul class="checklist">
+    <li><code>~/.cloudflared/config.yml</code> (or documented equivalent) includes both hostnames on the <em>existing</em> tunnel.</li>
+    <li>sockethr repo examples/docs describe the shared tunnel and ports <code>3000</code> / <code>3002</code>.</li>
+    <li><code>https://api.sockethr.com/health</code> still works with the usual startup.</li>
+    <li>DNS instructions for <code>api.notelms.com</code> → same <code>&lt;uuid&gt;.cfargotunnel.com</code> are written and applied if DNS access is available.</li>
+    <li>STARTUP docs clearly show <strong>one</strong> cloudflared command for both products.</li>
+  </ul>
+
+  <div class="card" style="margin-top:2rem">
+    <strong>Copy instructions for the human</strong>
+    <ol>
+      <li>Copy this file into the sockethr repo (suggested path: <code>docs/SHARED_CLOUDFLARE_TUNNEL_NOTELMS.html</code> or repo root).</li>
+      <li>Open a SocketHR agent on that repo and point it at this file as the task brief.</li>
+      <li>After the sockethr agent finishes, the NoteLMS / classifier-research agent can assume
+        <code>api.notelms.com</code> will hit <code>127.0.0.1:3002</code> once its Express server exists.</li>
+    </ol>
+  </div>
+
+  <p class="muted" style="margin-top:2.5rem">
+    Written in classifier-research for handoff into sockethr. Intent: share one Cloudflare Tunnel
+    across both Mac APIs; keep product servers separate; never expose LM Studio publicly.
+  </p>
+</main>
+</body>
+</html>
