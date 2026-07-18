@@ -8,6 +8,8 @@ When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tun
 
 For creating the Vercel project, connecting this repo, and attaching `notelms.com`, follow [`VERCEL_SETUP_PLAN.html`](VERCEL_SETUP_PLAN.html) (desktop-agent handoff).
 
+The production UI lives in [`web/`](web/) (Next.js on Vercel at [notelms.com](https://notelms.com)). Root Directory on Vercel is `web`.
+
 ## Setup
 
 ```bash

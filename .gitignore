@@ -29,3 +29,13 @@ huggingface/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Next.js / Vercel
+node_modules/
+.next/
+.vercel/
+web/node_modules/
+web/.next/
+web/.vercel/
+.vercel
+.env*
