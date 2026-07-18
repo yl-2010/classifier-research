@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NoteLMs — UI variations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root { --ink:#142033; --mute:#5a6b7d; --line:#d5dde6; --bg:#f6f8fb; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "DM Sans", system-ui, sans-serif; color: var(--ink);
+    background: radial-gradient(900px 400px at 20% 0%, #e4eef7, transparent), var(--bg);
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 { font-family: "Fraunces", Georgia, serif; font-weight: 500; font-size: clamp(2rem,4vw,2.8rem); margin: 0 0 .5rem; }
+  .lede { color: var(--mute); max-width: 52ch; line-height: 1.55; }
+  .grid { display: grid; gap: 1rem; margin-top: 2rem; }
+  a.card {
+    display: grid; grid-template-columns: 88px 1fr auto; gap: 1rem; align-items: center;
+    text-decoration: none; color: inherit; background: #fff; border: 1px solid var(--line);
+    padding: 1rem 1.15rem; border-radius: 10px; transition: transform .15s, box-shadow .15s;
+  }
+  a.card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(20,32,51,.08); }
+  .swatch { width: 88px; height: 64px; border-radius: 8px; }
+  .name { font-weight: 700; font-size: 1.05rem; }
+  .desc { color: var(--mute); font-size: .9rem; margin-top: .2rem; }
+  .go { font-size: .85rem; font-weight: 600; color: #1a6b8a; }
+  .note { margin-top: 2rem; font-size: .85rem; color: var(--mute); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>NoteLMs UI variations</h1>
+    <p class="lede">
+      Five static, frontend-only explorations of the full capture → classify → judge → research → format → library flow.
+      No backend, OCR, or model calls — toggle “OCR API online” to see image upload grayed out.
+    </p>
+    <div class="grid">
+      <a class="card" href="v01-atelier/index.html">
+        <div class="swatch" style="background:linear-gradient(135deg,#0b1f33,#1a6b8a,#f3f6f9)"></div>
+        <div><div class="name">01 · Atelier</div><div class="desc">Cool ink academic studio — Fraunces + IBM Plex</div></div>
+        <div class="go">Open →</div>
+      </a>
+      <a class="card" href="v02-signal/index.html">
+        <div class="swatch" style="background:linear-gradient(135deg,#121212,#e85d04,#2a9d8f)"></div>
+        <div><div class="name">02 · Signal</div><div class="desc">Bold modernist grid — Syne + Manrope, hard shadows</div></div>
+        <div class="go">Open →</div>
+      </a>
+      <a class="card" href="v03-harbor/index.html">
+        <div class="swatch" style="background:linear-gradient(135deg,#0c2d48,#145da0,#e07a5f)"></div>
+        <div><div class="name">03 · Harbor</div><div class="desc">Coastal calm product UI — Literata + DM Sans</div></div>
+        <div class="go">Open →</div>
+      </a>
+      <a class="card" href="v04-blueprint/index.html">
+        <div class="swatch" style="background:linear-gradient(135deg,#0a2540,#1b4f8a,#b8892d)"></div>
+        <div><div class="name">04 · Blueprint</div><div class="desc">Technical research instrument — Source Serif + mono</div></div>
+        <div class="go">Open →</div>
+      </a>
+      <a class="card" href="v05-orchard/index.html">
+        <div class="swatch" style="background:linear-gradient(135deg,#1f3d2c,#3d6b4f,#d4849a)"></div>
+        <div><div class="name">05 · Orchard</div><div class="desc">Botanical study soft UI — Instrument Serif + Figtree</div></div>
+        <div class="go">Open →</div>
+      </a>
+    </div>
+    <p class="note">Stored under <code>scratch/</code> for design exploration. Not wired to Vercel production.</p>
+  </div>
+</body>
+</html>

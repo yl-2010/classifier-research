@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NoteLMs · Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+
+:root {
+  --navy: #0a2540;
+  --blue: #1b4f8a;
+  --paper: #f4f7fb;
+  --line: #9bb4cc;
+  --brass: #b8892d;
+  --ink: #0a2540;
+  --font-d: "Source Serif 4", Georgia, serif;
+  --font-b: "Work Sans", system-ui, sans-serif;
+  --font-m: "IBM Plex Mono", monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--font-b); color: var(--ink); background: var(--paper);
+  background-image:
+    linear-gradient(rgba(27,79,138,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27,79,138,.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.app { max-width: 1060px; margin: 0 auto; padding: 1.25rem 1.25rem 3rem; }
+.top {
+  display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center;
+  border: 1px solid var(--line); background: rgba(255,255,255,.9); padding: .65rem 1rem;
+  margin-bottom: 1.5rem;
+}
+.brand { font-family: var(--font-m); font-size: .95rem; margin: 0; letter-spacing: .08em; text-transform: uppercase; }
+.brand span { color: var(--brass); }
+.rail { display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; }
+.rail button {
+  font-family: var(--font-m); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+  border: 1px solid var(--line); background: #fff; color: var(--blue); padding: .35rem .55rem; cursor: pointer;
+}
+.rail button.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.panel[hidden] { display: none !important; }
+.hero-grid {
+  display: grid; grid-template-columns: 1fr 280px; gap: 1.25rem;
+  border: 1px solid var(--line); background: #fff; padding: 1.5rem;
+}
+@media (max-width: 800px){ .hero-grid { grid-template-columns: 1fr; } }
+.kicker { font-family: var(--font-m); font-size: .68rem; color: var(--brass); letter-spacing: .1em; text-transform: uppercase; }
+.hero h1 { font-family: var(--font-d); font-size: clamp(2rem, 4vw, 2.8rem); margin: .4rem 0 1rem; font-weight: 600; }
+.lede { color: #3d5a73; max-width: 42ch; }
+.cta-row { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.25rem; }
+.btn {
+  font-family: var(--font-m); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em;
+  border: 1px solid var(--navy); background: var(--navy); color: #fff; padding: .7rem 1rem; cursor: pointer;
+}
+.btn.ghost { background: #fff; color: var(--navy); }
+.side-card { border: 1px dashed var(--line); padding: 1rem; background: #f8fbfe; }
+.side-card h3 { font-family: var(--font-m); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 .5rem; color: var(--blue); }
+.side-card ol { margin: 0; padding-left: 1.1rem; font-size: .88rem; color: #3d5a73; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 800px){ .split { grid-template-columns: 1fr; } }
+.dropzone {
+  border: 1px solid var(--line); min-height: 210px; background:
+    repeating-linear-gradient(-45deg, #fff, #fff 8px, #f0f5fa 8px, #f0f5fa 16px);
+  display: grid; place-content: center; text-align: center; cursor: pointer;
+}
+.dropzone.disabled { opacity: .4; filter: grayscale(.6); cursor: not-allowed; }
+.dropzone.drag { outline: 2px solid var(--brass); }
+textarea {
+  width: 100%; min-height: 210px; border: 1px solid var(--line); padding: 1rem;
+  font-family: var(--font-m); font-size: .85rem; background: #fff; resize: vertical;
+}
+.row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+.toggle { font-family: var(--font-m); font-size: .75rem; display: flex; gap: .5rem; align-items: center; }
+.models { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
+@media (max-width: 800px){ .models { grid-template-columns: 1fr; } }
+.model-card {
+  border: 1px solid var(--line); background: #fff; padding: 1rem; opacity: .5;
+  position: relative;
+}
+.model-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--line);
+}
+.model-card.ready { opacity: 1; }
+.model-card.ready::before { background: var(--brass); }
+.model-card .name { font-family: var(--font-m); font-size: .68rem; color: var(--blue); text-transform: uppercase; }
+.model-card .label-out { font-family: var(--font-d); font-size: 1.4rem; margin: .35rem 0; }
+.status { font-family: var(--font-m); font-size: .68rem; color: #5a738a; }
+.judge-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 1rem; }
+@media (max-width: 800px){ .judge-grid { grid-template-columns: 1fr; } }
+.votes { display: flex; flex-direction: column; gap: .45rem; }
+.vote { border-left: 3px solid var(--brass); padding: .5rem .7rem; background: #fff; border: 1px solid var(--line); border-left-width: 3px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0; }
+.chip-row button {
+  font-family: var(--font-m); font-size: .68rem; text-transform: uppercase;
+  border: 1px solid var(--line); background: #fff; padding: .4rem .6rem; cursor: pointer;
+}
+.chip-row button.picked { background: var(--brass); color: #fff; border-color: var(--brass); }
+table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); font-size: .88rem; }
+th, td { padding: .55rem .65rem; border-bottom: 1px solid var(--line); text-align: left; }
+th { font-family: var(--font-m); font-size: .65rem; text-transform: uppercase; letter-spacing: .06em; color: var(--blue); }
+.subj-chip { font-family: var(--font-m); font-size: .75rem; color: var(--subj); font-weight: 700; text-transform: uppercase; }
+#formatted-shell, .note-view {
+  background: #fff; border: 1px solid var(--line); padding: 1.5rem;
+  border-top: 3px solid var(--subj);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--subj) 15%, transparent);
+}
+#formatted-body h1 { font-family: var(--font-d); color: var(--subj); margin-top: 0; font-size: 1.6rem; }
+#formatted-body h2 {
+  font-family: var(--font-m); font-size: .8rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--blue); border-bottom: 1px solid var(--line); padding-bottom: .25rem;
+}
+#formatted-body .eq { font-family: var(--font-m); background: #eef3f8; padding: .5rem .7rem; border-left: 2px solid var(--subj); }
+.folders { display: grid; grid-template-columns: repeat(auto-fill,minmax(155px,1fr)); gap: .65rem; }
+.folder {
+  border: 1px solid var(--line); background: #fff; padding: .85rem; text-align: left;
+  cursor: pointer; font: inherit; display: grid; gap: .3rem;
+}
+.folder.active { border-color: var(--subj); box-shadow: inset 3px 0 0 var(--subj); }
+.folder-mark { width: 100%; height: 4px; background: var(--subj); }
+.folder-name { font-family: var(--font-m); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.folder-count { font-size: .78rem; color: #5a738a; }
+.foot-note { font-family: var(--font-m); font-size: .65rem; color: #5a738a; margin-top: 1.5rem; }
+h2 { font-family: var(--font-d); font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <p class="brand">Note<span>LMs</span></p>
+    <nav class="rail" aria-label="Flow">
+      <button type="button" data-nav="home" data-go="home">Home</button>
+      <button type="button" data-nav="capture" data-go="capture">Capture</button>
+      <button type="button" data-nav="classify" data-go="classify">Classify</button>
+      <button type="button" data-nav="research" data-go="research">Research</button>
+      <button type="button" data-nav="library" data-go="library">Library</button>
+    </nav>
+  </header>
+
+  <section class="panel" data-step="home">
+    <div class="hero-grid">
+      <div class="hero">
+        <p class="kicker">UI mock · variation 04 · Blueprint</p>
+        <h1>Research instrument for student notes.</h1>
+        <p class="lede">Instrument-grade flow: ingest → triple classify → adjudicate → log → render HTML by subject specification.</p>
+        <div class="cta-row">
+          <button class="btn" type="button" data-go="capture">Start capture</button>
+          <button class="btn ghost" type="button" data-go="library">Browse library</button>
+        </div>
+      </div>
+      <aside class="side-card">
+        <h3>Pipeline</h3>
+        <ol>
+          <li>Image OCR or raw text</li>
+          <li>Base BERT · Fine-tuned BERT · gpt-oss:20b</li>
+          <li>Judge LLM (or Other)</li>
+          <li>Research log update</li>
+          <li>HTML formatting by subject</li>
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <section class="panel" data-step="capture" hidden>
+    <p class="kicker">Step 1</p>
+    <h2>Capture notes</h2>
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="ocr-toggle" checked /> OCR API online</label>
+      <p id="ocr-hint" class="status"></p>
+    </div>
+    <div class="split">
+      <div>
+        <div class="dropzone" id="dropzone" role="button" tabindex="0">
+          <strong>Drop image of notes</strong>
+          <span>JPG, PNG, HEIC — mock OCR only</span>
+        </div>
+        <input type="file" id="file-input" accept="image/*" hidden />
+      </div>
+      <div>
+        <textarea id="raw-text" placeholder="Or paste raw notes here…"></textarea>
+      </div>
+    </div>
+    <div class="cta-row">
+      <button class="btn" type="button" onclick="continueFromCapture()">Continue with text</button>
+      <button class="btn ghost" type="button" onclick="useSample()">Use sample Physics notes</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="extract" hidden>
+    <p class="kicker">Step 2</p>
+    <h2>Review extracted text</h2>
+    <p class="lede">If this came from an image, OCR output lands here. Edit freely before classification.</p>
+    <textarea id="extracted"></textarea>
+    <div class="cta-row">
+      <button class="btn ghost" type="button" data-go="capture">Back</button>
+      <button class="btn" type="button" onclick="continueFromExtract()">Send to classifiers</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="classify" hidden>
+    <p class="kicker">Step 3</p>
+    <h2>Three-model classification</h2>
+    <div class="models">
+      <article class="model-card" data-model="base">
+        <div class="name">base BERT</div>
+        <div class="label-out">—</div>
+        <div class="conf-out">—</div>
+        <div class="status">Idle</div>
+      </article>
+      <article class="model-card" data-model="ft">
+        <div class="name">fine-tuned BERT</div>
+        <div class="label-out">—</div>
+        <div class="conf-out">—</div>
+        <div class="status">Idle</div>
+      </article>
+      <article class="model-card" data-model="gpt">
+        <div class="name">gpt-oss:20b · LM Studio</div>
+        <div class="label-out">—</div>
+        <div class="conf-out">—</div>
+        <div class="status">Idle</div>
+      </article>
+    </div>
+    <div class="cta-row">
+      <button class="btn" type="button" data-go="judge">Open judge</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="judge" hidden>
+    <p class="kicker">Step 4</p>
+    <h2>Judge LLM</h2>
+    <div class="judge-grid">
+      <div>
+        <p class="status">Original text (excerpt)</p>
+        <div class="side-card" id="judge-text"></div>
+        <div class="votes" style="margin-top:1rem">
+          <div class="vote"><strong>Base BERT</strong> · <span id="vote-base"></span></div>
+          <div class="vote"><strong>Fine-tuned BERT</strong> · <span id="vote-ft"></span></div>
+          <div class="vote"><strong>gpt-oss:20b</strong> · <span id="vote-gpt"></span></div>
+        </div>
+      </div>
+      <div>
+        <p>Select final label (multiple may be correct if identical):</p>
+        <div class="chip-row">
+          <button type="button" data-judge="Physics" class="picked">Physics</button>
+          <button type="button" data-judge="Mathematics">Mathematics</button>
+          <button type="button" data-judge="Chemistry">Chemistry</button>
+          <button type="button" data-judge="Biology">Biology</button>
+          <button type="button" data-judge="Computer Science">Computer Science</button>
+          <button type="button" data-judge="History">History</button>
+          <button type="button" data-judge="Literature">Literature</button>
+          <button type="button" data-judge="Economics">Economics</button>
+          <button type="button" data-judge="Other">Other…</button>
+        </div>
+        <p>Final: <span class="subj-chip" id="final-label" style="--subj:#4f46e5">Physics</span></p>
+        <div class="cta-row">
+          <button class="btn" type="button" data-go="research">Log to research</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-step="research" hidden>
+    <p class="kicker">Step 5</p>
+    <h2>Research store updated</h2>
+    <p>Logged under <span class="subj-chip" id="research-subject-chip">Physics</span> — UI only, no persistence.</p>
+    <table>
+      <thead><tr><th>Model</th><th>Label</th><th>Conf.</th><th>When</th></tr></thead>
+      <tbody id="research-body"></tbody>
+    </table>
+    <div class="cta-row">
+      <button class="btn" type="button" data-go="formatted">Format notes as HTML</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="formatted" hidden>
+    <p class="kicker">Step 6</p>
+    <h2>Subject-styled HTML</h2>
+    <p id="formatted-meta" class="status"></p>
+    <div id="formatted-shell"><div id="formatted-body"></div></div>
+    <div class="cta-row">
+      <button class="btn" type="button" data-go="library">Open library folders</button>
+    </div>
+  </section>
+
+  <section class="panel" data-step="library" hidden>
+    <p class="kicker">Library</p>
+    <h2>Folders by subject</h2>
+    <p class="lede">Each subject uses a predetermined color and shared note structure.</p>
+    <div class="folders" id="folder-grid"></div>
+  </section>
+
+  <section class="panel" data-step="note" hidden>
+    <p class="kicker">Note</p>
+    <h2>Physics · Thermodynamics Lecture 12</h2>
+    <div id="note-shell" class="note-view" style="--subj:#4f46e5">
+      <div id="note-body"></div>
+    </div>
+    <div class="cta-row">
+      <button class="btn ghost" type="button" data-go="library">Back to folders</button>
+      <button class="btn" type="button" data-go="capture">Capture another</button>
+    </div>
+  </section>
+
+  <p class="foot-note">Static UI mock — no backend, OCR, or model calls.</p>
+</div>
+
+<script>
+
+const MOCK_NOTE = `Thermodynamics — Lecture 12
+
+First law: ΔU = Q − W
+• Internal energy change equals heat added minus work done by the system
+• For an ideal gas, U depends only on temperature
+
+Isothermal process (ΔT = 0):
+  ΔU = 0 ⇒ Q = W
+  Work: W = nRT ln(V₂/V₁)
+
+Adiabatic process (Q = 0):
+  ΔU = −W
+  TV^{γ−1} = constant
+
+Entropy reminder: dS ≥ đQ/T (equality for reversible).`;
+const FORMATTED_HTML = `<h1>Thermodynamics — Lecture 12</h1>
+<section>
+  <h2>First Law</h2>
+  <p><strong>ΔU = Q − W</strong></p>
+  <ul>
+    <li>Internal energy change equals heat added minus work done by the system</li>
+    <li>For an ideal gas, <em>U</em> depends only on temperature</li>
+  </ul>
+</section>
+<section>
+  <h2>Isothermal process <span>(ΔT = 0)</span></h2>
+  <p>ΔU = 0 ⇒ Q = W</p>
+  <p class="eq">W = nRT ln(V₂/V₁)</p>
+</section>
+<section>
+  <h2>Adiabatic process <span>(Q = 0)</span></h2>
+  <p>ΔU = −W</p>
+  <p class="eq">TV<sup>γ−1</sup> = constant</p>
+</section>
+<section>
+  <h2>Entropy</h2>
+  <p>dS ≥ đQ/T <em>(equality for reversible processes)</em></p>
+</section>`;
+const SUBJECTS = [('Mathematics', '#2563eb'), ('Physics', '#4f46e5'), ('Chemistry', '#d97706'), ('Biology', '#059669'), ('Computer Science', '#0891b2'), ('History', '#a16207'), ('Literature', '#be123c'), ('Economics', '#0d9488'), ('Other', '#64748b')];
+const SUBJECT_COLORS = Object.fromEntries(SUBJECTS);
+
+const STEPS = ['home','capture','extract','classify','judge','research','formatted','library','note'];
+let step = 'home';
+let ocrOnline = true;
+let noteText = '';
+let subject = 'Physics';
+let customOther = '';
+
+const mockVotes = {
+  base: { label: 'Physics', conf: 0.81 },
+  ft: { label: 'Physics', conf: 0.94 },
+  gpt: { label: 'Physics', conf: 0.88 },
+};
+
+function $(sel, root=document){ return root.querySelector(sel); }
+function $all(sel, root=document){ return [...root.querySelectorAll(sel)]; }
+
+function go(s){
+  step = s;
+  $all('[data-step]').forEach(el => {
+    el.hidden = el.dataset.step !== s;
+  });
+  $all('[data-nav]').forEach(el => {
+    el.classList.toggle('active', el.dataset.nav === s);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (s === 'classify') animateClassify();
+  if (s === 'formatted') renderFormatted();
+  if (s === 'note') renderNote();
+  if (s === 'library') renderLibrary();
+  if (s === 'research') renderResearch();
+  if (s === 'judge') renderJudge();
+  if (s === 'extract') $('#extracted').value = noteText || MOCK_NOTE;
+}
+
+function setOcr(online){
+  ocrOnline = online;
+  const zone = $('#dropzone');
+  const toggle = $('#ocr-toggle');
+  if (toggle) toggle.checked = online;
+  if (!zone) return;
+  zone.classList.toggle('disabled', !online);
+  zone.setAttribute('aria-disabled', String(!online));
+  const hint = $('#ocr-hint');
+  if (hint) hint.textContent = online
+    ? 'Image OCR available — drop a photo of handwritten notes.'
+    : 'OCR API offline — image upload disabled. Paste text only.';
+}
+
+function useSample(){
+  noteText = MOCK_NOTE;
+  go('extract');
+}
+
+function continueFromCapture(){
+  const t = $('#raw-text').value.trim();
+  if (!t){
+    alert('Paste some notes, or use the sample.');
+    return;
+  }
+  noteText = t;
+  go('extract');
+}
+
+function continueFromExtract(){
+  noteText = $('#extracted').value.trim() || MOCK_NOTE;
+  go('classify');
+}
+
+function animateClassify(){
+  $all('.model-card').forEach((card,i) => {
+    card.classList.remove('ready');
+    card.querySelector('.status').textContent = 'Running…';
+    setTimeout(() => {
+      card.classList.add('ready');
+      const key = card.dataset.model;
+      const v = mockVotes[key];
+      card.querySelector('.status').textContent = 'Done';
+      card.querySelector('.label-out').textContent = v.label;
+      card.querySelector('.conf-out').textContent = (v.conf*100).toFixed(0) + '%';
+    }, 600 + i*450);
+  });
+}
+
+function renderJudge(){
+  $('#judge-text').textContent = noteText.slice(0, 280) + (noteText.length>280?'…':'');
+  $('#vote-base').textContent = mockVotes.base.label + ' · ' + Math.round(mockVotes.base.conf*100) + '%';
+  $('#vote-ft').textContent = mockVotes.ft.label + ' · ' + Math.round(mockVotes.ft.conf*100) + '%';
+  $('#vote-gpt').textContent = mockVotes.gpt.label + ' · ' + Math.round(mockVotes.gpt.conf*100) + '%';
+  $('#final-label').textContent = subject;
+}
+
+function applyJudge(label){
+  subject = label;
+  if (label === 'Other'){
+    const c = prompt('Custom “Other” subject name:', customOther || 'Study Skills');
+    if (c) customOther = c;
+  }
+  $('#final-label').textContent = label === 'Other' && customOther ? `Other · ${customOther}` : label;
+}
+
+function renderResearch(){
+  const rows = [
+    ['Base BERT', mockVotes.base.label, mockVotes.base.conf],
+    ['Fine-tuned BERT', mockVotes.ft.label, mockVotes.ft.conf],
+    ['gpt-oss:20b', mockVotes.gpt.label, mockVotes.gpt.conf],
+    ['Judge LLM', subject === 'Other' && customOther ? `Other (${customOther})` : subject, 1],
+  ];
+  $('#research-body').innerHTML = rows.map(r =>
+    `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${Math.round(r[2]*100)}%</td><td>just now</td></tr>`
+  ).join('');
+  const chip = $('#research-subject-chip');
+  if (chip){
+    chip.textContent = subject === 'Other' && customOther ? customOther : subject;
+    chip.style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
+  }
+}
+
+function renderFormatted(){
+  const shell = $('#formatted-shell');
+  if (!shell) return;
+  const color = SUBJECT_COLORS[subject] || '#64748b';
+  shell.style.setProperty('--subj', color);
+  shell.dataset.subject = subject;
+  $('#formatted-body').innerHTML = FORMATTED_HTML;
+  const meta = $('#formatted-meta');
+  if (meta) meta.textContent =
+    (subject === 'Other' && customOther ? customOther : subject) + ' · styled for consistency';
+}
+
+function renderNote(){
+  const shell = $('#note-shell');
+  if (!shell) return;
+  const color = SUBJECT_COLORS[subject] || '#64748b';
+  shell.style.setProperty('--subj', color);
+  $('#note-body').innerHTML = FORMATTED_HTML;
+}
+
+function renderLibrary(){
+  const grid = $('#folder-grid');
+  if (!grid) return;
+  grid.innerHTML = SUBJECTS.map(([name, color]) => {
+    const count = name === subject ? 1 : (name === 'Mathematics' ? 3 : name === 'Biology' ? 2 : name === 'History' ? 1 : 0);
+    const active = name === subject ? ' active' : '';
+    return `<button type="button" class="folder${active}" style="--subj:${color}" data-open="${name}">
+      <span class="folder-mark"></span>
+      <span class="folder-name">${name}</span>
+      <span class="folder-count">${count} note${count===1?'':'s'}</span>
+    </button>`;
+  }).join('');
+  $all('[data-open]', grid).forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.open === subject || btn.dataset.open === 'Physics'){
+        go('note');
+      } else {
+        alert('UI mock — only the demo Physics note is populated.');
+      }
+    });
+  });
+}
+
+function onFile(files){
+  if (!ocrOnline){
+    alert('OCR API is offline in this mock. Paste text instead.');
+    return;
+  }
+  if (!files || !files.length) return;
+  noteText = MOCK_NOTE + `\n\n[Mock OCR from: ${files[0].name}]`;
+  go('extract');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  $all('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
+  const ocr = $('#ocr-toggle');
+  if (ocr) ocr.addEventListener('change', e => setOcr(e.target.checked));
+  setOcr(true);
+
+  const drop = $('#dropzone');
+  const file = $('#file-input');
+  if (drop && file){
+    drop.addEventListener('click', () => { if (ocrOnline) file.click(); });
+    drop.addEventListener('dragover', e => { e.preventDefault(); if (ocrOnline) drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('drag');
+      onFile(e.dataTransfer.files);
+    });
+    file.addEventListener('change', () => onFile(file.files));
+  }
+
+  $all('[data-judge]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyJudge(btn.dataset.judge);
+      $all('[data-judge]').forEach(b => b.classList.toggle('picked', b === btn));
+    });
+  });
+
+  go('home');
+});
+
+</script>
+</body>
+</html>
