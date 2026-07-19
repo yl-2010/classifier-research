@@ -26,7 +26,6 @@ body {
     radial-gradient(900px 420px at 15% -10%, #dce8f1 0%, transparent 55%),
     var(--bg);
 }
-.brand span { color: var(--accent); }
 
 
 * { box-sizing: border-box; }
@@ -40,48 +39,23 @@ body {
 .app { max-width: 720px; margin: 0 auto; padding: 1.25rem 1.25rem 3rem; }
 .top {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
 }
 .brand {
   border: 0; background: none; padding: 0; cursor: pointer;
   font: inherit; font-family: var(--display); font-size: 1.35rem;
   color: var(--ink); letter-spacing: -0.02em;
 }
-.nav { display: flex; gap: .85rem; }
+.nav { display: flex; gap: 1rem; }
 .nav button {
   border: 0; background: none; padding: 0; cursor: pointer;
   font: inherit; color: var(--mute); font-size: .9rem;
 }
-.nav button:hover { color: var(--ink); }
-
-.flow {
-  list-style: none; margin: 0 0 1.75rem; padding: 0;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem;
-}
-.flow button {
-  width: 100%; border: 0; background: transparent; cursor: pointer;
-  font: inherit; color: var(--mute); padding: .55rem .35rem;
-  display: flex; flex-direction: column; align-items: center; gap: .25rem;
-  font-size: .75rem; border-bottom: 2px solid var(--line);
-}
-.flow button span {
-  width: 1.5rem; height: 1.5rem; border-radius: 999px;
-  display: grid; place-items: center; font-size: .75rem; font-weight: 600;
-  border: 1px solid var(--line); color: var(--mute);
-}
-.flow button.active { color: var(--ink); border-bottom-color: var(--accent); }
-.flow button.active span {
-  background: var(--accent); border-color: var(--accent); color: #fff;
-}
-.flow button.done { color: var(--ink); border-bottom-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-.flow button.done span {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-color: var(--accent); color: var(--accent);
-}
+.nav button:hover, .nav button.active { color: var(--ink); }
 
 section[hidden] { display: none !important; }
 textarea {
-  width: 100%; min-height: 280px; resize: vertical;
+  width: 100%; min-height: 300px; resize: vertical;
   border: 1px solid var(--line); background: var(--surface);
   color: var(--ink); padding: 1rem 1.1rem; font: inherit;
   border-radius: var(--radius);
@@ -107,64 +81,24 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
   display: inline-flex; gap: .45rem; align-items: center;
   margin-top: 1rem; color: var(--mute); font-size: .85rem; cursor: pointer;
 }
+.muted { color: var(--mute); font-size: .95rem; }
 
-.models { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
-@media (max-width: 640px) { .models { grid-template-columns: 1fr; } }
-.model {
+.sent-card {
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 1rem; opacity: .55;
-  transition: opacity .25s;
+  border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center;
 }
-.model.ready { opacity: 1; }
-.mname { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
-.mout { font-family: var(--display); font-size: 1.35rem; margin-top: .4rem; }
-.mconf { font-size: .85rem; color: var(--mute); margin-top: .15rem; }
+.sent-ok {
+  margin: 0 0 .35rem; font-family: var(--display); font-size: 1.75rem;
+  color: var(--accent); font-weight: 500;
+}
+.sent-name { margin: 0 0 .75rem; font-weight: 600; }
 
-.votes {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem;
-  margin-bottom: 1.25rem;
+.processing { margin-bottom: 1rem; display: grid; gap: .5rem; }
+.pending {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+  padding: .85rem 1rem; border-radius: var(--radius);
+  background: var(--surface); border: 1px dashed var(--line);
 }
-@media (max-width: 640px) { .votes { grid-template-columns: 1fr; } }
-.votes > div {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: .85rem 1rem;
-  display: flex; flex-direction: column; gap: .25rem;
-}
-.votes span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mute); }
-.votes strong { font-size: 1.05rem; font-weight: 600; }
-
-.picks { display: flex; flex-wrap: wrap; gap: .45rem; }
-.picks button {
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-  padding: .45rem .7rem; border-radius: var(--radius); font: inherit; cursor: pointer;
-}
-.picks button.on {
-  background: var(--ink); color: var(--bg); border-color: var(--ink);
-}
-#other-field { margin-top: .75rem; }
-#other-field input {
-  width: min(280px, 100%); padding: .6rem .75rem; font: inherit;
-  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
-}
-.final-line { margin: 1.1rem 0 0; font-size: 1.15rem; }
-#final, #result-subject, #folder-name {
-  color: var(--subj, var(--accent)); font-family: var(--display); font-weight: 500;
-}
-
-.result-head { margin-bottom: .75rem; font-size: 1.1rem; }
-.note-shell {
-  background: var(--surface); border: 1px solid var(--line);
-  border-top: 3px solid var(--subj, var(--accent));
-  border-radius: var(--radius); padding: 1.25rem 1.35rem;
-}
-.note-shell h1 { font-family: var(--display); font-size: 1.45rem; margin: 0 0 .75rem; color: var(--subj, var(--ink)); }
-.note-shell h2 { font-size: 1rem; margin: 1.1rem 0 .4rem; }
-.note-shell .eq {
-  font-family: ui-monospace, monospace; padding: .5rem .7rem;
-  background: color-mix(in srgb, var(--subj, var(--accent)) 10%, var(--surface));
-  border-radius: calc(var(--radius) - 2px);
-}
-.page-title { font-family: var(--display); font-size: 1.5rem; font-weight: 500; margin: 0 0 1rem; }
 
 .folders {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .65rem;
@@ -183,11 +117,54 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
   padding: .85rem 1rem; border-radius: var(--radius); font: inherit; cursor: pointer;
 }
 .note-item:hover { border-color: var(--accent); }
+
+.page-title {
+  font-family: var(--display); font-size: 1.5rem; font-weight: 500;
+  margin: 0; color: var(--subj, var(--ink));
+}
+.note-meta {
+  display: flex; flex-wrap: wrap; justify-content: space-between;
+  align-items: end; gap: 1rem; margin-bottom: 1rem;
+}
+.subject-edit {
+  display: flex; align-items: center; gap: .5rem; color: var(--mute); font-size: .9rem;
+}
+.subject-edit select {
+  font: inherit; color: var(--ink); border: 1px solid var(--line);
+  background: var(--surface); border-radius: var(--radius); padding: .4rem .55rem;
+}
+.saved { color: var(--accent); font-size: .85rem; font-weight: 600; }
+#other-field { margin: 0 0 1rem; }
+#other-field input {
+  width: min(280px, 100%); padding: .55rem .7rem; font: inherit;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+}
+
+.note-shell {
+  background: var(--surface); border: 1px solid var(--line);
+  border-top: 3px solid var(--subj, var(--accent));
+  border-radius: var(--radius); padding: 1.25rem 1.35rem;
+}
+.note-shell h1 { font-family: var(--display); font-size: 1.45rem; margin: 0 0 .75rem; color: var(--subj, var(--ink)); }
+.note-shell h2 { font-size: 1rem; margin: 1.1rem 0 .4rem; }
+.note-shell .eq {
+  font-family: ui-monospace, monospace; padding: .5rem .7rem;
+  background: color-mix(in srgb, var(--subj, var(--accent)) 10%, var(--surface));
+  border-radius: calc(var(--radius) - 2px);
+}
+
 .research { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .research th, .research td {
   text-align: left; padding: .55rem .4rem; border-bottom: 1px solid var(--line);
 }
-.research th { color: var(--mute); font-weight: 500; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+.research th {
+  color: var(--mute); font-weight: 500; font-size: .75rem;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+button.linkish {
+  background: none; border: 0; padding: 0; color: var(--accent);
+  font: inherit; cursor: pointer; text-decoration: underline; font-weight: 600;
+}
 
 </style>
 </head>
@@ -197,17 +174,11 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
   <header class="top">
     <button type="button" class="brand" data-go="input">Note<span style="color:var(--accent)">LMs</span></button>
     <nav class="nav">
+      <button type="button" data-go="input">New</button>
       <button type="button" data-go="library">Library</button>
       <button type="button" data-go="research">Research</button>
     </nav>
   </header>
-
-  <ol class="flow" id="flowbar">
-    <li><button type="button" data-flow="input"><span>1</span>Input</button></li>
-    <li><button type="button" data-flow="classify"><span>2</span>Classify</button></li>
-    <li><button type="button" data-flow="confirm"><span>3</span>Confirm</button></li>
-    <li><button type="button" data-flow="result"><span>4</span>Result</button></li>
-  </ol>
 
   <main>
     <section data-step="input">
@@ -215,77 +186,25 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
       <div class="actions">
         <button type="button" class="btn ghost" id="upload-btn">Upload image</button>
         <input type="file" id="file-input" accept="image/*" hidden />
-        <button type="button" class="btn" id="continue-btn">Continue</button>
+        <button type="button" class="btn" id="send-btn">Send</button>
       </div>
       <label class="ocr"><input type="checkbox" id="ocr-toggle" checked /> Image upload available</label>
     </section>
 
-    <section data-step="classify" hidden>
-      <div class="models">
-        <article class="model" data-model="base">
-          <div class="mname">Base BERT</div>
-          <div class="mout" data-out>—</div>
-          <div class="mconf" data-conf></div>
-        </article>
-        <article class="model" data-model="ft">
-          <div class="mname">Fine-tuned BERT</div>
-          <div class="mout" data-out>—</div>
-          <div class="mconf" data-conf></div>
-        </article>
-        <article class="model" data-model="gpt">
-          <div class="mname">gpt-oss:20b</div>
-          <div class="mout" data-out>—</div>
-          <div class="mconf" data-conf></div>
-        </article>
+    <section data-step="sent" hidden>
+      <div class="sent-card">
+        <p class="sent-ok">Received</p>
+        <p id="sent-title" class="sent-name"></p>
+        <p class="muted">You’ll find it in your library when it’s ready.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn ghost" data-go="input">Back</button>
-        <button type="button" class="btn" id="to-confirm">Continue</button>
-      </div>
-    </section>
-
-    <section data-step="confirm" hidden>
-      <div class="votes">
-        <div><span>Base BERT</span><strong id="c-base">—</strong></div>
-        <div><span>Fine-tuned</span><strong id="c-ft">—</strong></div>
-        <div><span>gpt-oss</span><strong id="c-gpt">—</strong></div>
-      </div>
-      <div class="picks">
-        <button type="button" data-pick="Physics" class="on">Physics</button>
-        <button type="button" data-pick="Mathematics">Mathematics</button>
-        <button type="button" data-pick="Chemistry">Chemistry</button>
-        <button type="button" data-pick="Biology">Biology</button>
-        <button type="button" data-pick="Computer Science">Computer Science</button>
-        <button type="button" data-pick="History">History</button>
-        <button type="button" data-pick="Literature">Literature</button>
-        <button type="button" data-pick="Economics">Economics</button>
-        <button type="button" data-pick="Other">Other</button>
-      </div>
-      <div id="other-field" hidden>
-        <input id="other-input" type="text" value="Study Skills" placeholder="Subject name" />
-      </div>
-      <p class="final-line"><span id="final" style="--subj:#4f46e5">Physics</span></p>
-      <div class="actions">
-        <button type="button" class="btn ghost" data-go="classify">Back</button>
-        <button type="button" class="btn" id="to-result">Continue</button>
-      </div>
-    </section>
-
-    <section data-step="result" hidden>
-      <div class="result-head">
-        <span id="result-subject">Physics</span>
-      </div>
-      <div id="result-shell" class="note-shell">
-        <div id="result-body"></div>
-      </div>
-      <div class="actions">
-        <button type="button" class="btn ghost" data-go="confirm">Back</button>
         <button type="button" class="btn" data-go="library">Library</button>
         <button type="button" class="btn ghost" data-go="input">New note</button>
       </div>
     </section>
 
     <section data-step="library" hidden>
+      <div id="processing-list" class="processing" hidden></div>
       <div class="folders" id="folders"></div>
       <div class="actions">
         <button type="button" class="btn" data-go="input">New note</button>
@@ -301,7 +220,17 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
     </section>
 
     <section data-step="note" hidden>
-      <h1 id="note-title" class="page-title">Note</h1>
+      <div class="note-meta">
+        <h1 id="note-title" class="page-title">Note</h1>
+        <div class="subject-edit">
+          <label for="subject-select">Subject</label>
+          <select id="subject-select"></select>
+          <span id="subject-saved" class="saved" hidden>Updated</span>
+        </div>
+      </div>
+      <div id="other-field" hidden>
+        <input id="other-input" type="text" value="Study Skills" placeholder="Custom subject" />
+      </div>
       <div id="note-shell" class="note-shell">
         <div id="note-body"></div>
       </div>
@@ -313,12 +242,19 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
 
     <section data-step="research" hidden>
       <table class="research">
-        <thead><tr><th>When</th><th>Base</th><th>FT</th><th>gpt-oss</th><th>Judge</th></tr></thead>
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Orchestrator</th>
+            <th>Final</th>
+            <th>Source</th>
+            <th></th>
+          </tr>
+        </thead>
         <tbody id="research-rows"></tbody>
       </table>
       <div class="actions">
-        <button type="button" class="btn ghost" data-go="input">Back</button>
-        <button type="button" class="btn" data-go="library">Library</button>
+        <button type="button" class="btn ghost" data-go="library">Library</button>
       </div>
     </section>
   </main>
@@ -330,78 +266,45 @@ const MOCK_NOTE = "Thermodynamics \u2014 Lecture 12\n\nFirst law: \u0394U = Q \u
 const FORMATTED_HTML = "<h1>Thermodynamics \u2014 Lecture 12</h1>\n<section>\n  <h2>First Law</h2>\n  <p><strong>\u0394U = Q \u2212 W</strong></p>\n  <ul>\n    <li>Internal energy change equals heat added minus work done by the system</li>\n    <li>For an ideal gas, <em>U</em> depends only on temperature</li>\n  </ul>\n</section>\n<section>\n  <h2>Isothermal process</h2>\n  <p>\u0394U = 0 \u21d2 Q = W</p>\n  <p class=\"eq\">W = nRT ln(V\u2082/V\u2081)</p>\n</section>\n<section>\n  <h2>Adiabatic process</h2>\n  <p>\u0394U = \u2212W</p>\n  <p class=\"eq\">TV<sup>\u03b3\u22121</sup> = constant</p>\n</section>\n<section>\n  <h2>Entropy</h2>\n  <p>dS \u2265 \u0111Q/T</p>\n</section>";
 const SUBJECTS = [["Mathematics", "#2563eb"], ["Physics", "#4f46e5"], ["Chemistry", "#d97706"], ["Biology", "#059669"], ["Computer Science", "#0891b2"], ["History", "#a16207"], ["Literature", "#be123c"], ["Economics", "#0d9488"], ["Other", "#64748b"]];
 const SUBJECT_COLORS = Object.fromEntries(SUBJECTS);
-const LIBRARY = {
-  Mathematics: [
-    { id: 'math-1', title: 'Derivatives cheat sheet' },
-    { id: 'math-2', title: 'Integrals workshop' },
-    { id: 'math-3', title: 'Linear algebra intro' },
-  ],
-  Physics: [
-    { id: 'phys-1', title: 'Thermodynamics — Lecture 12' },
-    { id: 'phys-2', title: 'Newton’s laws review' },
-  ],
-  Chemistry: [
-    { id: 'chem-1', title: 'Stoichiometry drills' },
-    { id: 'chem-2', title: 'Acid–base equilibria' },
-  ],
-  Biology: [
-    { id: 'bio-1', title: 'Cell organelles map' },
-    { id: 'bio-2', title: 'Mendelian genetics' },
-  ],
-  'Computer Science': [
-    { id: 'cs-1', title: 'Big-O notation' },
-    { id: 'cs-2', title: 'Recursion patterns' },
-  ],
-  History: [{ id: 'hist-1', title: 'Industrial Revolution' }],
-  Literature: [
-    { id: 'lit-1', title: 'Sonnet structure' },
-    { id: 'lit-2', title: 'Theme vs motif' },
-  ],
-  Economics: [
-    { id: 'econ-1', title: 'Supply & demand' },
-    { id: 'econ-2', title: 'Elasticity basics' },
-  ],
-  Other: [{ id: 'other-1', title: 'Study skills' }],
-};
 
-const FLOW = ['input','classify','confirm','result'];
-let step = 'input';
+/** @type {{id:string,title:string,subject:string,status:'processing'|'ready',html:string,orchestrator:string,corrected:boolean}[]} */
+let notes = [
+  { id: 'math-1', title: 'Derivatives cheat sheet', subject: 'Mathematics', status: 'ready', html: '', orchestrator: 'Mathematics', corrected: false },
+  { id: 'math-2', title: 'Integrals workshop', subject: 'Mathematics', status: 'ready', html: '', orchestrator: 'Mathematics', corrected: false },
+  { id: 'phys-1', title: 'Thermodynamics — Lecture 12', subject: 'Physics', status: 'ready', html: FORMATTED_HTML, orchestrator: 'Physics', corrected: false },
+  { id: 'phys-2', title: 'Newton’s laws review', subject: 'Physics', status: 'ready', html: '', orchestrator: 'Physics', corrected: false },
+  { id: 'chem-1', title: 'Stoichiometry drills', subject: 'Chemistry', status: 'ready', html: '', orchestrator: 'Chemistry', corrected: false },
+  { id: 'bio-1', title: 'Cell organelles map', subject: 'Biology', status: 'ready', html: '', orchestrator: 'Biology', corrected: false },
+  { id: 'bio-2', title: 'Mendelian genetics', subject: 'Biology', status: 'ready', html: '', orchestrator: 'Biology', corrected: false },
+  { id: 'cs-1', title: 'Big-O notation', subject: 'Computer Science', status: 'ready', html: '', orchestrator: 'Computer Science', corrected: false },
+  { id: 'hist-1', title: 'Industrial Revolution', subject: 'History', status: 'ready', html: '', orchestrator: 'History', corrected: false },
+  { id: 'lit-1', title: 'Sonnet structure', subject: 'Literature', status: 'ready', html: '', orchestrator: 'Literature', corrected: false },
+  { id: 'econ-1', title: 'Supply & demand', subject: 'Economics', status: 'ready', html: '', orchestrator: 'Economics', corrected: false },
+  { id: 'other-1', title: 'Study skills', subject: 'Other', status: 'ready', html: '', orchestrator: 'Other', corrected: false },
+];
+
+/** Research log rows (mock). Manual subject changes update `final`. */
+let research = [
+  { id: 'phys-1', when: '3d', orchestrator: 'Physics', final: 'Physics', corrected: false },
+  { id: 'bio-1', when: '2d', orchestrator: 'Biology', final: 'Biology', corrected: false },
+  { id: 'hist-1', when: '1d', orchestrator: 'History', final: 'History', corrected: false },
+];
+
 let ocrOnline = true;
-let noteText = '';
-let subject = 'Physics';
-let customOther = 'Study Skills';
 let currentFolder = 'Physics';
 let currentNoteId = 'phys-1';
-
-const votes = {
-  base: { label: 'Physics', conf: 0.81 },
-  ft: { label: 'Physics', conf: 0.94 },
-  gpt: { label: 'Physics', conf: 0.88 },
-};
+let pendingTimer = null;
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 
-function label() {
-  return subject === 'Other' ? customOther : subject;
-}
-
 function go(s) {
-  step = s;
   $$('[data-step]').forEach(el => { el.hidden = el.dataset.step !== s; });
-  $$('[data-flow]').forEach(el => {
-    const i = FLOW.indexOf(el.dataset.flow);
-    const cur = FLOW.indexOf(s);
-    el.classList.toggle('active', el.dataset.flow === s);
-    el.classList.toggle('done', cur > i && i >= 0);
-    el.classList.toggle('in-flow', FLOW.includes(s));
+  $$('.nav [data-go]').forEach(el => {
+    const onLib = (s === 'folder' || s === 'note') && el.dataset.go === 'library';
+    el.classList.toggle('active', el.dataset.go === s || onLib);
   });
-  const bar = $('#flowbar');
-  if (bar) bar.hidden = !FLOW.includes(s);
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (s === 'classify') runClassify();
-  if (s === 'confirm') renderConfirm();
-  if (s === 'result') renderResult();
   if (s === 'library') renderLibrary();
   if (s === 'folder') renderFolder();
   if (s === 'note') renderNote();
@@ -419,73 +322,78 @@ function setOcr(on) {
   }
 }
 
-function startClassify() {
-  noteText = ($('#note-input')?.value || '').trim() || MOCK_NOTE;
-  const ta = $('#note-input');
-  if (ta && !ta.value.trim()) ta.value = noteText;
-  go('classify');
-}
-
-function runClassify() {
-  $$('.model').forEach((card, i) => {
-    card.classList.remove('ready');
-    card.querySelector('[data-out]').textContent = '…';
-    card.querySelector('[data-conf]').textContent = '';
-    setTimeout(() => {
-      const v = votes[card.dataset.model];
-      card.classList.add('ready');
-      card.querySelector('[data-out]').textContent = v.label;
-      card.querySelector('[data-conf]').textContent = Math.round(v.conf * 100) + '%';
-    }, 350 + i * 300);
-  });
-}
-
-function renderConfirm() {
-  $('#c-base').textContent = votes.base.label;
-  $('#c-ft').textContent = votes.ft.label;
-  $('#c-gpt').textContent = votes.gpt.label;
-  $('#final').textContent = label();
-  $('#final').style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
-  const wrap = $('#other-field');
-  if (wrap) wrap.hidden = subject !== 'Other';
-}
-
-function pick(sub) {
-  subject = sub;
-  $$('[data-pick]').forEach(b => b.classList.toggle('on', b.dataset.pick === sub));
-  const wrap = $('#other-field');
-  if (wrap) wrap.hidden = sub !== 'Other';
-  if (sub === 'Other') {
-    const inp = $('#other-input');
-    if (inp) { customOther = inp.value.trim() || 'Study Skills'; inp.focus(); }
-  }
-  $('#final').textContent = label();
-  $('#final').style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
-}
-
-function renderResult() {
-  const shell = $('#result-shell');
-  if (!shell) return;
-  shell.style.setProperty('--subj', SUBJECT_COLORS[subject] || '#64748b');
-  const subEl = $('#result-subject');
-  if (subEl) subEl.textContent = label();
-  const body = $('#result-body');
-  if (!body) return;
-  if (subject === 'Physics') {
-    body.innerHTML = FORMATTED_HTML;
-  } else {
-    body.innerHTML = `<h1>${label()}</h1><section><p>${escapeHtml(noteText || MOCK_NOTE).replace(/\n/g,'<br>')}</p></section>`;
-  }
-}
-
 function escapeHtml(t) {
-  return t.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function noteHtml(title, body) {
+  return `<h1>${escapeHtml(title)}</h1><section><p>${escapeHtml(body).replace(/\n/g,'<br>')}</p></section>`;
+}
+
+function titleFromText(text) {
+  const line = (text || '').split('\n').map(s => s.trim()).find(Boolean);
+  return (line || 'Untitled note').slice(0, 64);
+}
+
+function sendNotes() {
+  const ta = $('#note-input');
+  const text = (ta?.value || '').trim() || MOCK_NOTE;
+  if (ta && !ta.value.trim()) ta.value = text;
+
+  const id = 'n-' + Date.now();
+  const title = titleFromText(text);
+  const note = {
+    id,
+    title,
+    subject: 'Physics',
+    status: 'processing',
+    html: '',
+    orchestrator: 'Physics',
+    corrected: false,
+  };
+  notes = [note, ...notes];
+
+  // Mock backend: classify + format finish later
+  if (pendingTimer) clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    const n = notes.find(x => x.id === id);
+    if (!n) return;
+    n.status = 'ready';
+    n.subject = 'Physics';
+    n.orchestrator = 'Physics';
+    n.html = FORMATTED_HTML;
+    research = [{ id, when: 'now', orchestrator: 'Physics', final: 'Physics', corrected: false }, ...research];
+    // Refresh visible screens if user already navigated
+    if (!$('[data-step="library"]')?.hidden) renderLibrary();
+    if (!$('[data-step="folder"]')?.hidden && currentFolder === n.subject) renderFolder();
+    if (!$('[data-step="research"]')?.hidden) renderResearch();
+  }, 2200);
+
+  const sentTitle = $('#sent-title');
+  if (sentTitle) sentTitle.textContent = title;
+  go('sent');
+}
+
+function onUpload(files) {
+  if (!ocrOnline || !files?.length) return;
+  const ta = $('#note-input');
+  if (ta) ta.value = MOCK_NOTE;
 }
 
 function renderLibrary() {
+  const processing = notes.filter(n => n.status === 'processing');
+  const proc = $('#processing-list');
+  if (proc) {
+    proc.hidden = processing.length === 0;
+    proc.innerHTML = processing.map(n =>
+      `<div class="pending"><span>${escapeHtml(n.title)}</span><span class="muted">Processing</span></div>`
+    ).join('');
+  }
+
   const grid = $('#folders');
+  if (!grid) return;
   grid.innerHTML = SUBJECTS.map(([name, color]) => {
-    const n = (LIBRARY[name] || []).length;
+    const n = notes.filter(x => x.status === 'ready' && x.subject === name).length;
     return `<button type="button" class="folder" style="--subj:${color}" data-folder="${name}">
       <span class="fname">${name}</span>
       <span class="fcount">${n}</span>
@@ -498,66 +406,117 @@ function renderLibrary() {
 }
 
 function renderFolder() {
-  $('#folder-name').textContent = currentFolder;
-  $('#folder-name').style.setProperty('--subj', SUBJECT_COLORS[currentFolder] || '#64748b');
-  const notes = LIBRARY[currentFolder] || [];
-  $('#folder-list').innerHTML = notes.map(n =>
-    `<button type="button" class="note-item" data-nid="${n.id}">${n.title}</button>`
+  const nameEl = $('#folder-name');
+  if (nameEl) {
+    nameEl.textContent = currentFolder;
+    nameEl.style.setProperty('--subj', SUBJECT_COLORS[currentFolder] || '#64748b');
+  }
+  const list = $('#folder-list');
+  if (!list) return;
+  const ready = notes.filter(n => n.status === 'ready' && n.subject === currentFolder);
+  const pending = notes.filter(n => n.status === 'processing');
+  let html = ready.map(n =>
+    `<button type="button" class="note-item" data-nid="${n.id}">${escapeHtml(n.title)}</button>`
   ).join('');
-  $$('[data-nid]').forEach(b => b.addEventListener('click', () => {
+  if (pending.length && currentFolder === 'Physics') {
+    // show processing under any folder visit via library banner only; skip here
+  }
+  list.innerHTML = html || `<p class="muted">No notes yet</p>`;
+  $$('[data-nid]', list).forEach(b => b.addEventListener('click', () => {
     currentNoteId = b.dataset.nid;
     go('note');
   }));
 }
 
 function renderNote() {
-  const notes = LIBRARY[currentFolder] || [];
-  const n = notes.find(x => x.id === currentNoteId) || notes[0];
-  const color = SUBJECT_COLORS[currentFolder] || '#64748b';
-  $('#note-title').textContent = n ? n.title : currentFolder;
-  $('#note-shell').style.setProperty('--subj', color);
-  $('#note-body').innerHTML = (n && n.id === 'phys-1')
-    ? FORMATTED_HTML
-    : `<h1>${n ? n.title : currentFolder}</h1><section><p>Sample note.</p></section>`;
+  const n = notes.find(x => x.id === currentNoteId);
+  if (!n || n.status !== 'ready') {
+    go('library');
+    return;
+  }
+  currentFolder = n.subject;
+  const color = SUBJECT_COLORS[n.subject] || '#64748b';
+  const title = $('#note-title');
+  if (title) title.textContent = n.title;
+  const shell = $('#note-shell');
+  if (shell) shell.style.setProperty('--subj', color);
+  const body = $('#note-body');
+  if (body) {
+    body.innerHTML = n.html || noteHtml(n.title, 'Sample note.');
+  }
+  const sel = $('#subject-select');
+  if (sel) {
+    sel.innerHTML = SUBJECTS.map(([name]) =>
+      `<option value="${name}" ${name === n.subject ? 'selected' : ''}>${name}</option>`
+    ).join('');
+  }
+  const other = $('#other-field');
+  if (other) other.hidden = n.subject !== 'Other';
+  const saved = $('#subject-saved');
+  if (saved) saved.hidden = true;
+}
+
+function changeSubject(next) {
+  const n = notes.find(x => x.id === currentNoteId);
+  if (!n || n.status !== 'ready') return;
+  const prev = n.subject;
+  if (next === prev) return;
+  n.subject = next;
+  n.corrected = next !== n.orchestrator;
+  currentFolder = next;
+
+  // Update research final label
+  let row = research.find(r => r.id === n.id);
+  if (!row) {
+    row = { id: n.id, when: 'now', orchestrator: n.orchestrator, final: next, corrected: n.corrected };
+    research = [row, ...research];
+  } else {
+    row.final = next;
+    row.corrected = n.corrected;
+  }
+
+  const shell = $('#note-shell');
+  if (shell) shell.style.setProperty('--subj', SUBJECT_COLORS[next] || '#64748b');
+  const other = $('#other-field');
+  if (other) other.hidden = next !== 'Other';
+  const saved = $('#subject-saved');
+  if (saved) {
+    saved.hidden = false;
+    saved.textContent = 'Updated';
+    setTimeout(() => { saved.hidden = true; }, 1600);
+  }
 }
 
 function renderResearch() {
   const body = $('#research-rows');
   if (!body) return;
-  body.innerHTML = `
-    <tr><td>now</td><td>${votes.base.label}</td><td>${votes.ft.label}</td><td>${votes.gpt.label}</td><td>${label()}</td></tr>
-    <tr><td>2d</td><td>Biology</td><td>Biology</td><td>Biology</td><td>Biology</td></tr>
-    <tr><td>1d</td><td>History</td><td>History</td><td>Literature</td><td>History</td></tr>
-  `;
-}
-
-function onUpload(files) {
-  if (!ocrOnline || !files?.length) return;
-  noteText = MOCK_NOTE;
-  const ta = $('#note-input');
-  if (ta) ta.value = noteText;
+  body.innerHTML = research.map(r => `
+    <tr>
+      <td>${escapeHtml(r.when)}</td>
+      <td>${escapeHtml(r.orchestrator)}</td>
+      <td>${escapeHtml(r.final)}</td>
+      <td>${r.corrected ? 'Manual' : 'Auto'}</td>
+      <td><button type="button" class="linkish" data-open-note="${r.id}">Open</button></td>
+    </tr>
+  `).join('');
+  $$('[data-open-note]', body).forEach(b => b.addEventListener('click', () => {
+    const n = notes.find(x => x.id === b.dataset.openNote && x.status === 'ready');
+    if (!n) { go('library'); return; }
+    currentNoteId = n.id;
+    currentFolder = n.subject;
+    go('note');
+  }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   $$('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
-  $$('[data-flow]').forEach(el => el.addEventListener('click', () => {
-    if (FLOW.includes(el.dataset.flow)) go(el.dataset.flow);
-  }));
   $('#ocr-toggle')?.addEventListener('change', e => setOcr(e.target.checked));
   setOcr(true);
-  $('#continue-btn')?.addEventListener('click', startClassify);
-  $('#to-confirm')?.addEventListener('click', () => go('confirm'));
-  $('#to-result')?.addEventListener('click', () => go('result'));
-  $$('[data-pick]').forEach(b => b.addEventListener('click', () => pick(b.dataset.pick)));
-  $('#other-input')?.addEventListener('input', e => {
-    customOther = e.target.value.trim() || 'Study Skills';
-    if (subject === 'Other') {
-      $('#final').textContent = label();
-    }
-  });
+  $('#send-btn')?.addEventListener('click', sendNotes);
   const file = $('#file-input');
   $('#upload-btn')?.addEventListener('click', () => { if (ocrOnline) file?.click(); });
   file?.addEventListener('change', () => onUpload(file.files));
+  $('#subject-select')?.addEventListener('change', e => changeSubject(e.target.value));
   go('input');
 });
 
