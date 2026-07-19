@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { AppNav } from "@/components/AppNav";
+import { SiteFooter } from "@/components/SiteFooter";
 import { loadResearch } from "@/lib/research-store";
 import type { ResearchRow } from "@/lib/atelier-data";
 
@@ -37,11 +38,15 @@ export default function ResearchPage() {
     return (
       <div className="app">
         <AppNav active="research" />
+        <SiteFooter />
         <style jsx>{`
           .app {
             max-width: 720px;
             margin: 0 auto;
-            padding: 1.25rem 1.25rem 4rem;
+            padding: 1.25rem 1.25rem 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
           }
         `}</style>
       </div>
@@ -80,12 +85,16 @@ export default function ResearchPage() {
             ))}
           </tbody>
         </table>
+        <SiteFooter />
       </div>
       <style jsx>{`
         .app {
           max-width: 720px;
           margin: 0 auto;
-          padding: 1.25rem 1.25rem 4rem;
+          padding: 1.25rem 1.25rem 0;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
         }
 
         .section-label {

@@ -22,7 +22,14 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           onNew();
         }}
       >
-        Note<span>LMs</span>
+        <img
+          className="brand-logo"
+          src="/logo-nav.svg"
+          alt="NoteLMs"
+          width={132}
+          height={55}
+          decoding="async"
+        />
       </Link>
       <nav className="nav">
         {signedIn ? (
@@ -75,7 +82,7 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           justify-content: space-between;
           gap: 1rem;
           margin: 0 -0.25rem 1.75rem;
-          padding: 0.85rem 0.25rem;
+          padding: 0.65rem 0.25rem;
           background: color-mix(in srgb, var(--bg) 88%, transparent);
           backdrop-filter: blur(10px);
         }
@@ -85,15 +92,16 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           background: none;
           padding: 0;
           cursor: pointer;
-          font-family: var(--display);
-          font-size: 1.35rem;
-          color: var(--ink);
-          letter-spacing: -0.02em;
+          line-height: 0;
           text-decoration: none;
+          flex-shrink: 0;
         }
 
-        :global(.brand span) {
-          color: var(--accent);
+        :global(.brand-logo),
+        .brand-logo {
+          display: block;
+          width: auto;
+          height: 2.35rem;
         }
 
         .nav {

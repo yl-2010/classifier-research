@@ -2,6 +2,7 @@ import Head from "next/head";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export default function SignInPage() {
   const { status } = useSession();
@@ -19,39 +20,48 @@ export default function SignInPage() {
         <title>Sign in — NoteLMs</title>
       </Head>
       <main className="shell">
-        <p className="brand">
-          Note<span>LMs</span>
-        </p>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => void signIn("google", { callbackUrl: "/" })}
-          disabled={status === "loading"}
-        >
-          Sign in with Google
-        </button>
+        <div className="panel">
+          <img
+            className="brand-logo"
+            src="/logo-nav.svg"
+            alt="NoteLMs"
+            width={200}
+            height={83}
+            decoding="async"
+          />
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void signIn("google", { callbackUrl: "/" })}
+            disabled={status === "loading"}
+          >
+            Sign in with Google
+          </button>
+        </div>
+        <SiteFooter />
       </main>
       <style jsx>{`
         .shell {
           min-height: 100vh;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          padding: clamp(2rem, 6vw, 5rem);
+          padding: clamp(2rem, 6vw, 5rem) clamp(1.25rem, 4vw, 2rem) 0;
           max-width: 420px;
           margin: 0 auto;
         }
 
-        .brand {
-          margin: 0 0 1.25rem;
-          font-family: var(--display);
-          font-size: 2.2rem;
-          font-weight: 500;
-          letter-spacing: -0.02em;
+        .panel {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
 
-        .brand span {
-          color: var(--accent);
+        .brand-logo {
+          display: block;
+          width: min(200px, 70vw);
+          height: auto;
+          margin: 0 0 1.25rem;
         }
 
         .btn {

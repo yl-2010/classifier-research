@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from "react";
 import { AppNav } from "@/components/AppNav";
+import { SiteFooter } from "@/components/SiteFooter";
 import {
   FORMATTED_HTML,
   INITIAL_NOTES,
@@ -254,7 +255,14 @@ export default function HomePage() {
 
         {!signedIn && (
           <section className="gate">
-            <p className="gate-title">NoteLMs</p>
+            <img
+              className="gate-logo"
+              src="/logo-nav.svg"
+              alt="NoteLMs"
+              width={280}
+              height={117}
+              decoding="async"
+            />
             <button
               type="button"
               className="btn"
@@ -470,13 +478,18 @@ export default function HomePage() {
 
           </>
         )}
+
+        <SiteFooter />
       </div>
 
       <style jsx>{`
         .app {
           max-width: 720px;
           margin: 0 auto;
-          padding: 1.25rem 1.25rem 4rem;
+          padding: 1.25rem 1.25rem 0;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
         }
 
         .gate {
@@ -488,12 +501,10 @@ export default function HomePage() {
           gap: 1.25rem;
         }
 
-        .gate-title {
-          margin: 0;
-          font-family: var(--display);
-          font-size: clamp(2.4rem, 6vw, 3.4rem);
-          font-weight: 500;
-          letter-spacing: -0.02em;
+        .gate-logo {
+          display: block;
+          width: min(280px, 72vw);
+          height: auto;
         }
 
         .block {
