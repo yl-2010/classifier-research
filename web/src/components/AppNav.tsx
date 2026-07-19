@@ -81,14 +81,14 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          margin: 0 -1.25rem 1.75rem;
-          padding: 0.65rem 1.25rem;
-          background: var(--bg);
+          margin: 0 -0.25rem 1.75rem;
+          padding: 0.65rem 0.25rem;
+          background: transparent;
         }
 
         :global(.brand) {
           border: 0;
-          background: none;
+          background: transparent;
           padding: 0;
           cursor: pointer;
           line-height: 0;
@@ -101,6 +101,12 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           display: block;
           width: auto;
           height: 2.35rem;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          /* Avoid a rectangular compositing box around transparent SVG pixels */
+          mix-blend-mode: normal;
+          isolation: auto;
         }
 
         .nav {
