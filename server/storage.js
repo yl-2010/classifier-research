@@ -72,11 +72,21 @@ async function writeJson(filePath, data) {
 
 /**
  * Ensure the per-user folder exists (named by email). Idempotent.
- * Called on first authenticated API hit after Google sign-in.
+ * - New Google account → create folder
+ * - Existing account → reuse folder; recreate if missing from disk
  */
 export async function ensureUser(email, { name = null } = {}) {
   const folder = emailToFolderName(email);
   const root = userDir(folder);
+
+  let existed = false;
+  try {
+    const st = await fs.stat(root);
+    existed = st.isDirectory();
+  } catch {
+    existed = false;
+  }
+
   await ensureDir(root);
   await ensureDir(path.join(root, "notes"));
   await ensureDir(path.join(root, "research"));
@@ -84,6 +94,7 @@ export async function ensureUser(email, { name = null } = {}) {
   const profilePath = path.join(root, "profile.json");
   let profile = await readJson(profilePath, null);
   const now = new Date().toISOString();
+  const created = !existed || !profile;
 
   if (!profile) {
     profile = {
@@ -112,7 +123,7 @@ export async function ensureUser(email, { name = null } = {}) {
     await writeJson(subjectsPath, subjects);
   }
 
-  return { email: folder, root, profile, subjects };
+  return { email: folder, root, profile, subjects, created };
 }
 
 export async function getProfile(email) {

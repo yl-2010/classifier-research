@@ -26,13 +26,17 @@ describe("storage", () => {
   });
 
   it("creates a user folder named by email", async () => {
-    const { root, profile } = await ensureUser("Alice@Example.com", {
+    const first = await ensureUser("Alice@Example.com", {
       name: "Alice",
     });
-    assert.equal(profile.email, "alice@example.com");
-    assert.equal(path.basename(root), "alice@example.com");
-    const st = await fs.stat(root);
+    assert.equal(first.profile.email, "alice@example.com");
+    assert.equal(path.basename(first.root), "alice@example.com");
+    assert.equal(first.created, true);
+    const st = await fs.stat(first.root);
     assert.ok(st.isDirectory());
+
+    const again = await ensureUser("alice@example.com", { name: "Alice" });
+    assert.equal(again.created, false);
   });
 
   it("does not duplicate folders for mixed-case email", async () => {
@@ -40,6 +44,17 @@ describe("storage", () => {
     await ensureUser("Bob@Example.com");
     const entries = await fs.readdir(tmpRoot);
     assert.equal(entries.filter((e) => e.includes("bob@")).length, 1);
+  });
+
+  it("recreates a missing folder for an existing account email", async () => {
+    const email = "recreate@example.com";
+    const first = await ensureUser(email);
+    assert.equal(first.created, true);
+    await fs.rm(first.root, { recursive: true, force: true });
+    const again = await ensureUser(email, { name: "Back" });
+    assert.equal(again.created, true);
+    const st = await fs.stat(again.root);
+    assert.ok(st.isDirectory());
   });
 
   it("stores notes under the user folder", async () => {

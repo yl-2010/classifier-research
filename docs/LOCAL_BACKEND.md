@@ -18,7 +18,10 @@ Vercel never stores notes. The browser gets a short-lived JWT from `GET /api/mac
 - Alg: HS256, TTL 10 minutes
 - Signing secret: Vercel `NEXTAUTH_SECRET` == Mac `AUTH_SECRET`
 
-On first authenticated API call, Express creates:
+On every Google sign-in (new or returning), Vercel calls Mac
+`POST /api/ensure-user`. If the email folder is missing it is created; if it
+already exists it is reused. The signed-in web app also calls same-origin
+`/api/ensure-user` as a backup.
 
 ```
 /Volumes/Samsung USB/notelms/<user@email.com>/
@@ -35,6 +38,7 @@ Folder name is the lowercased Google email (no duplicates across casing).
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
 | GET | `/health` | no | Public health + LM Studio probe |
+| POST | `/api/ensure-user` | yes | Create email folder if missing (sign-in hook) |
 | GET | `/api/me` | yes | Ensure user folder; return profile |
 | PATCH | `/api/me` | yes | Profile updates |
 | GET/POST | `/api/subjects` | yes | Fixed + custom subjects |

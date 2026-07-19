@@ -1,18 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { SignJWT } from "jose";
 import { authOptions } from "@/lib/auth-options";
-
-const ISSUER = "notelms-next";
-const AUDIENCE = "notelms-mac-api";
-const TTL = "10m";
+import {
+  MAC_JWT_AUDIENCE,
+  MAC_JWT_ISSUER,
+  mintMacToken,
+} from "@/lib/mac-api";
 
 /**
  * Mint a short-lived HS256 JWT for the Mac Studio Express API.
  * Browser cannot send NextAuth cookies cross-origin to api.notelms.com,
  * so the UI calls this same-origin route, then sends Authorization: Bearer.
- *
- * AUTH_SECRET / NEXTAUTH_SECRET on Vercel must match server/.env AUTH_SECRET.
  */
 export default async function handler(
   req: NextApiRequest,
@@ -37,24 +35,14 @@ export default async function handler(
     return;
   }
 
-  const token = await new SignJWT({
-    email,
-    name: session?.user?.name ?? null,
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(email)
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .setExpirationTime(TTL)
-    .sign(new TextEncoder().encode(secret));
+  const token = await mintMacToken(email, session?.user?.name ?? null);
 
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({
     ok: true,
     token,
     expiresIn: 600,
-    issuer: ISSUER,
-    audience: AUDIENCE,
+    issuer: MAC_JWT_ISSUER,
+    audience: MAC_JWT_AUDIENCE,
   });
 }

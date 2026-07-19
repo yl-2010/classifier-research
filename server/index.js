@@ -90,14 +90,44 @@ app.get("/health", async (_req, res) => {
   });
 });
 
+/**
+ * Explicit provision endpoint — called from Vercel on every Google sign-in.
+ * Creates /Volumes/Samsung USB/notelms/<email>/ if missing; no-op if present.
+ */
+app.post("/api/ensure-user", requireAuth, async (req, res) => {
+  try {
+    const name =
+      (typeof req.body?.name === "string" && req.body.name) || req.user.name;
+    const { profile, subjects, root, created } = await ensureUser(req.user.email, {
+      name,
+    });
+    console.log(
+      `[ensure-user] ${created ? "created" : "exists"} ${emailToFolderName(req.user.email)}`
+    );
+    res.status(created ? 201 : 200).json({
+      ok: true,
+      created,
+      folder: emailToFolderName(req.user.email),
+      dataRoot: getDataRoot(),
+      path: root,
+      user: profile,
+      subjects: { custom: subjects.custom || [] },
+    });
+  } catch (err) {
+    console.error("[/api/ensure-user]", err);
+    res.status(500).json({ ok: false, error: err.message || "failed" });
+  }
+});
+
 /** Ensure Google-signed-in users get a folder named by their email. */
 app.get("/api/me", requireAuth, async (req, res) => {
   try {
-    const { profile, subjects, root } = await ensureUser(req.user.email, {
+    const { profile, subjects, root, created } = await ensureUser(req.user.email, {
       name: req.user.name,
     });
     res.json({
       ok: true,
+      created,
       user: profile,
       subjects: {
         custom: subjects.custom || [],

@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { ensureMacUserFolder } from "@/lib/mac-api";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -39,6 +40,26 @@ export const authOptions: NextAuthOptions = {
           null;
       }
       return session;
+    },
+  },
+  events: {
+    /**
+     * Every Google sign-in (new account or returning) asks the Mac Studio
+     * to create the email folder if it does not already exist.
+     */
+    async signIn({ user }) {
+      const email = user?.email?.trim().toLowerCase();
+      if (!email) return;
+      const result = await ensureMacUserFolder(email, user.name ?? null);
+      if (!result.ok) {
+        console.warn(
+          `[notelms] Mac folder ensure failed for ${email}: ${result.error}`
+        );
+        return;
+      }
+      console.log(
+        `[notelms] Mac folder ${result.created ? "created" : "exists"}: ${result.folder}`
+      );
     },
   },
 };
