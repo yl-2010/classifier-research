@@ -5,8 +5,8 @@
   "type": "module",
   "description": "NoteLMs Express API for Mac Studio (filesystem + LM Studio)",
   "scripts": {
-    "start": "node run.mjs",
-    "dev": "node run.mjs --watch",
+    "start": "node index.js",
+    "dev": "node --watch index.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

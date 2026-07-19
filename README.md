@@ -31,7 +31,7 @@ npm install --prefix server
 npm run server
 ```
 
-First run auto-creates `server/.env`. Edit it and set `AUTH_SECRET` to the same value as Vercel `NEXTAUTH_SECRET`, then run `npm run server` again. API listens on `http://127.0.0.1:3002`.
+That’s it — no `.env` editing. Listens on `http://127.0.0.1:3002`. Defaults: USB data dir, LM Studio GPT-OSS, shared tunnel port 3002.
 
 ### Vercel / Next.js UI
 

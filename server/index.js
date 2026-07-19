@@ -5,6 +5,7 @@
  * Port 3002 — shared Cloudflare Tunnel hostname api.notelms.com.
  */
 
+import "./load-env.js";
 import express from "express";
 import cors from "cors";
 import {
@@ -12,6 +13,7 @@ import {
   requireAuth,
   getAuthConfig,
 } from "./auth.js";
+import { loadedAuth } from "./load-env.js";
 import {
   ensureUser,
   updateProfile,
@@ -414,6 +416,6 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, HOST, () => {
   console.log(
-    `[notelms-server] listening on http://${HOST}:${PORT} dataDir=${getDataRoot()} auth=${authConfigured()} model=${getLmStudioConfig().model}`
+    `[notelms-server] listening on http://${HOST}:${PORT} dataDir=${getDataRoot()} auth=${authConfigured()} authSource=${loadedAuth.source} model=${getLmStudioConfig().model}`
   );
 });

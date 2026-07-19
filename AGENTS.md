@@ -31,8 +31,9 @@ Browser
 - Do **not** implement BERT routes yet (stubs only).
 - Do **not** expose LM Studio publicly.
 - Do **not** create a second Cloudflare Tunnel.
-- `AUTH_SECRET` (Mac) must equal `NEXTAUTH_SECRET` (Vercel).
-- Never commit `server/.env` or USB user data.
+- Auth secret is auto-loaded (`web/.env.local` or `server/.auth-secret`); for production JWT bridge it must match Vercel `NEXTAUTH_SECRET`.
+- Never commit `server/.env`, `server/.auth-secret`, or USB user data.
+- Do not ask the human to hand-edit `.env` for everyday startup.
 
 ## Key docs
 

@@ -11,6 +11,7 @@ api_key.txt
 
 # NoteLMs Mac / local user data (never commit)
 server/data/
+server/.auth-secret
 /Volumes/
 
 # Python
