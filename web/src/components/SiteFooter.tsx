@@ -13,7 +13,9 @@ export function SiteFooter() {
       />
       <div className="footer-meta">
         <p className="copy">© {year} Yan Levin. All rights reserved.</p>
-        <p className="tag">NoteLMs — notes that stay on your machine.</p>
+        <p className="tag">
+          NoteLMs helps students organize notes while building research data.
+        </p>
       </div>
       <style jsx>{`
         .site-footer {
