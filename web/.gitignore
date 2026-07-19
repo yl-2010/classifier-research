@@ -4,4 +4,3 @@
 !.env.example
 *.tsbuildinfo
 .next/
-.env*
