@@ -1,12 +1,14 @@
 :root {
-  --bg-deep: #0c1f2e;
-  --bg-mid: #14384f;
-  --bg-glow: #1f5a6e;
-  --ink: #f3f7f4;
-  --ink-muted: #b7c9c2;
-  --accent: #d8e36a;
-  --accent-ink: #1a2a14;
-  --line: rgba(243, 247, 244, 0.14);
+  --ink: #0b1f33;
+  --mute: #5a7186;
+  --line: #d0dbe6;
+  --bg: #f4f7fa;
+  --surface: #ffffff;
+  --accent: #1a6b8a;
+  --on-accent: #ffffff;
+  --radius: 4px;
+  --font: "IBM Plex Sans", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
 }
 
 * {
@@ -20,13 +22,13 @@ body {
 }
 
 body {
-  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  font-family: var(--font);
   color: var(--ink);
   background:
-    radial-gradient(1200px 700px at 15% -10%, var(--bg-glow), transparent 55%),
-    radial-gradient(900px 600px at 90% 20%, #2a6a58, transparent 50%),
-    linear-gradient(160deg, var(--bg-deep), var(--bg-mid) 55%, #0a1822);
+    radial-gradient(900px 420px at 15% -10%, #dce8f1 0%, transparent 55%),
+    var(--bg);
   background-attachment: fixed;
+  line-height: 1.45;
 }
 
 a {
@@ -34,6 +36,9 @@ a {
   text-decoration: none;
 }
 
-button {
+button,
+input,
+textarea,
+select {
   font: inherit;
 }

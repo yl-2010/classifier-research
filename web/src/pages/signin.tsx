@@ -19,16 +19,16 @@ export default function SignInPage() {
         <title>Sign in — NoteLMs</title>
       </Head>
       <main className="shell">
-        <p className="brand">NoteLMs</p>
-        <h1>Sign in</h1>
-        <p className="lede">Use your Google account to continue.</p>
+        <p className="brand">
+          Note<span>LMs</span>
+        </p>
         <button
           type="button"
-          className="google"
+          className="btn"
           onClick={() => void signIn("google", { callbackUrl: "/" })}
           disabled={status === "loading"}
         >
-          Continue with Google
+          Sign in with Google
         </button>
       </main>
       <style jsx>{`
@@ -39,48 +39,33 @@ export default function SignInPage() {
           justify-content: center;
           padding: clamp(2rem, 6vw, 5rem);
           max-width: 420px;
+          margin: 0 auto;
         }
 
         .brand {
-          margin: 0 0 1rem;
-          font-family: Fraunces, Georgia, serif;
+          margin: 0 0 1.25rem;
+          font-family: var(--display);
           font-size: 2.2rem;
-          font-weight: 700;
-          letter-spacing: -0.03em;
-        }
-
-        h1 {
-          margin: 0;
-          font-family: Fraunces, Georgia, serif;
-          font-size: 1.8rem;
           font-weight: 500;
+          letter-spacing: -0.02em;
         }
 
-        .lede {
-          margin: 0.75rem 0 0;
-          color: var(--ink-muted);
-          line-height: 1.5;
+        .brand span {
+          color: var(--accent);
         }
 
-        .google {
-          margin-top: 1.75rem;
-          min-height: 2.85rem;
-          padding: 0.7rem 1.25rem;
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          background: var(--accent);
-          color: var(--accent-ink);
-          font-weight: 600;
+        .btn {
+          border: 0;
           cursor: pointer;
-          transition: transform 160ms ease, box-shadow 160ms ease;
+          font-weight: 600;
+          padding: 0.7rem 1.15rem;
+          border-radius: var(--radius);
+          background: var(--accent);
+          color: var(--on-accent);
+          align-self: flex-start;
         }
 
-        .google:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 10px 28px rgba(216, 227, 106, 0.22);
-        }
-
-        .google:disabled {
+        .btn:disabled {
           opacity: 0.7;
           cursor: wait;
         }
