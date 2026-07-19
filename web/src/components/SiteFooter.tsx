@@ -5,8 +5,8 @@ export function SiteFooter() {
         className="footer-logo"
         src="/logo-footer.svg"
         alt=""
-        width={306}
-        height={90}
+        width={1224}
+        height={360}
         decoding="async"
       />
       <style jsx>{`
@@ -14,15 +14,19 @@ export function SiteFooter() {
           display: flex;
           justify-content: center;
           align-items: center;
-          padding: 2.5rem 1.25rem 3rem;
+          width: 100vw;
           margin-top: auto;
+          margin-left: calc(50% - 50vw);
+          padding: 3rem clamp(1rem, 3.5vw, 2.25rem) 3.25rem;
+          box-sizing: border-box;
         }
 
         .footer-logo {
           display: block;
-          width: min(220px, 55vw);
+          width: 100%;
+          max-width: 100%;
           height: auto;
-          opacity: 0.14;
+          opacity: 0.12;
           pointer-events: none;
           user-select: none;
         }

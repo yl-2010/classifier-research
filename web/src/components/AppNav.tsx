@@ -81,10 +81,9 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          margin: 0 -0.25rem 1.75rem;
-          padding: 0.65rem 0.25rem;
-          background: color-mix(in srgb, var(--bg) 88%, transparent);
-          backdrop-filter: blur(10px);
+          margin: 0 -1.25rem 1.75rem;
+          padding: 0.65rem 1.25rem;
+          background: var(--bg);
         }
 
         :global(.brand) {
