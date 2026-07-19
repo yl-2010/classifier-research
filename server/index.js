@@ -27,6 +27,7 @@ import {
   writeResearchEvent,
   listResearchEvents,
   getDataRoot,
+  getDataRootStatus,
   emailToFolderName,
 } from "./storage.js";
 import { probeLmStudio, chatCompletions, getLmStudioConfig } from "./lmstudio.js";
@@ -74,11 +75,17 @@ app.use(express.json({ limit: "25mb" }));
 app.get("/health", async (_req, res) => {
   const lm = await probeLmStudio();
   const { issuer, audience } = getAuthConfig();
+  const data = getDataRootStatus();
   res.json({
     ok: true,
     service: "notelms-server",
     authConfigured: authConfigured(),
-    dataDir: getDataRoot(),
+    authSource: loadedAuth.source,
+    dataDir: data.dataRoot,
+    dataDirWritable: data.writable,
+    usbVolume: data.volumePath,
+    usbMounted: data.volumeMounted,
+    dataDirError: data.error,
     jwt: { issuer, audience },
     lmStudio: {
       ok: lm.ok,
@@ -98,24 +105,30 @@ app.post("/api/ensure-user", requireAuth, async (req, res) => {
   try {
     const name =
       (typeof req.body?.name === "string" && req.body.name) || req.user.name;
-    const { profile, subjects, root, created } = await ensureUser(req.user.email, {
-      name,
-    });
+    const { profile, subjects, root, created, dataRoot } = await ensureUser(
+      req.user.email,
+      { name }
+    );
     console.log(
-      `[ensure-user] ${created ? "created" : "exists"} ${emailToFolderName(req.user.email)}`
+      `[ensure-user] ${created ? "created" : "exists"} ${emailToFolderName(req.user.email)} -> ${root}`
     );
     res.status(created ? 201 : 200).json({
       ok: true,
       created,
       folder: emailToFolderName(req.user.email),
-      dataRoot: getDataRoot(),
+      dataRoot,
       path: root,
       user: profile,
       subjects: { custom: subjects.custom || [] },
     });
   } catch (err) {
     console.error("[/api/ensure-user]", err);
-    res.status(500).json({ ok: false, error: err.message || "failed" });
+    const status = err.status || 500;
+    res.status(status).json({
+      ok: false,
+      error: err.message || "failed",
+      details: err.details || undefined,
+    });
   }
 });
 
@@ -445,7 +458,11 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, HOST, () => {
+  const data = getDataRootStatus();
   console.log(
-    `[notelms-server] listening on http://${HOST}:${PORT} dataDir=${getDataRoot()} auth=${authConfigured()} authSource=${loadedAuth.source} model=${getLmStudioConfig().model}`
+    `[notelms-server] listening on http://${HOST}:${PORT} dataDir=${data.dataRoot} usbMounted=${data.volumeMounted} writable=${data.writable} auth=${authConfigured()} authSource=${loadedAuth.source} model=${getLmStudioConfig().model}`
   );
+  if (!data.writable) {
+    console.warn(`[notelms-server] WARNING: ${data.error}`);
+  }
 });

@@ -1,30 +1,140 @@
 /**
  * Filesystem persistence for NoteLMs on the Mac Studio.
  *
- * Root (default): /Volumes/Samsung USB/notelms
+ * Modeled after SocketHR's storage.js:
+ *   DATA_ROOT comes from env, else a discovered/default path.
+ *
+ * Default target: <Samsung USB volume>/notelms/<email>/
  * Layout:
  *   <email>/
  *     profile.json
- *     subjects.json          # custom subjects for this user
- *     notes/<noteId>/
- *       note.json
- *       content.html         # optional formatted HTML
- *       raw.txt              # original pasted / OCR text
+ *     subjects.json
+ *     notes/<noteId>/…
  *     research/<eventId>.json
  */
 
-import fs from "node:fs/promises";
+import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { FIXED_SUBJECTS, OTHER_SUBJECT, normalizeSubjectLabel } from "./subjects.js";
 
-const DEFAULT_DATA_DIR = "/Volumes/Samsung USB/notelms";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, "..");
+const VOLUMES_ROOT = "/Volumes";
+const PREFERRED_VOLUME = "Samsung USB";
+const NOTELMS_FOLDER = "notelms";
 
-export function getDataRoot() {
-  return process.env.NOTELMS_DATA_DIR || DEFAULT_DATA_DIR;
+/**
+ * Find the Samsung USB mount under /Volumes (name can vary slightly).
+ * SocketHR uses SOCKETHR_DATA_DIR for the same idea — we auto-discover.
+ */
+export function findSamsungUsbVolume() {
+  let entries = [];
+  try {
+    entries = fs.readdirSync(VOLUMES_ROOT);
+  } catch {
+    return null;
+  }
+
+  const usable = entries.filter((name) => {
+    if (!name || name === "Macintosh HD" || name === "Recovery") return false;
+    // Skip the root symlink / system volumes
+    if (name.startsWith(".")) return false;
+    try {
+      const st = fs.statSync(path.join(VOLUMES_ROOT, name));
+      return st.isDirectory();
+    } catch {
+      return false;
+    }
+  });
+
+  const lower = (s) => s.toLowerCase();
+  const exact = usable.find((n) => n === PREFERRED_VOLUME);
+  if (exact) return path.join(VOLUMES_ROOT, exact);
+
+  const samsungUsb = usable.find((n) => {
+    const l = lower(n);
+    return l.includes("samsung") && (l.includes("usb") || l.includes("t7") || l.includes("external"));
+  });
+  if (samsungUsb) return path.join(VOLUMES_ROOT, samsungUsb);
+
+  const samsung = usable.find((n) => lower(n).includes("samsung"));
+  if (samsung) return path.join(VOLUMES_ROOT, samsung);
+
+  return null;
 }
 
-/** Email folders are lowercased so Google casing variants map to one folder. */
+function resolveDataRoot() {
+  const fromEnv = process.env.NOTELMS_DATA_DIR?.trim();
+  if (fromEnv) return fromEnv;
+
+  const volume = findSamsungUsbVolume();
+  if (volume) return path.join(volume, NOTELMS_FOLDER);
+
+  // Canonical path the product expects when the drive is plugged in.
+  return path.join(VOLUMES_ROOT, PREFERRED_VOLUME, NOTELMS_FOLDER);
+}
+
+/** Live data root (re-resolves so plugging the USB in after start still works). */
+export function getDataRoot() {
+  return resolveDataRoot();
+}
+
+export function getDataRootStatus() {
+  const fromEnv = Boolean(process.env.NOTELMS_DATA_DIR?.trim());
+  const dataRoot = getDataRoot();
+  const volume = findSamsungUsbVolume();
+  const volumePath = volume || path.join(VOLUMES_ROOT, PREFERRED_VOLUME);
+  let volumeMounted = false;
+  let dataRootExists = false;
+  let writable = false;
+  let error = null;
+
+  try {
+    volumeMounted = fs.existsSync(volumePath) && fs.statSync(volumePath).isDirectory();
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err);
+  }
+
+  // Env override (tests / custom path) does not require the USB volume.
+  const canUse = fromEnv || volumeMounted;
+
+  if (canUse) {
+    try {
+      fs.mkdirSync(dataRoot, { recursive: true });
+      const probe = path.join(dataRoot, `.write-probe-${process.pid}`);
+      fs.writeFileSync(probe, "ok");
+      fs.unlinkSync(probe);
+      writable = true;
+      dataRootExists = true;
+    } catch (err) {
+      writable = false;
+      dataRootExists = fs.existsSync(dataRoot);
+      error = err instanceof Error ? err.message : String(err);
+    }
+  } else {
+    error =
+      error ||
+      `USB volume not mounted (expected under /Volumes, e.g. "/Volumes/${PREFERRED_VOLUME}")`;
+  }
+
+  return {
+    dataRoot,
+    volumePath,
+    volumeMounted,
+    dataRootExists,
+    writable,
+    usingEnvOverride: fromEnv,
+    error,
+  };
+}
+
+/**
+ * Folder name = email (lowercased). Same idea as SocketHR uploader folders,
+ * with a light sanitize so path-illegal characters cannot escape the data root.
+ */
 export function emailToFolderName(email) {
   if (typeof email !== "string") {
     throw new Error("email required");
@@ -33,16 +143,15 @@ export function emailToFolderName(email) {
   if (!normalized || !normalized.includes("@")) {
     throw new Error("invalid email");
   }
-  // Block path traversal / illegal path segments.
-  if (
-    normalized.includes("..") ||
-    normalized.includes("/") ||
-    normalized.includes("\\") ||
-    normalized.includes("\0")
-  ) {
+  // Mirror SocketHR sanitizeSegment — keep email-safe chars only.
+  const safe = normalized
+    .replace(/[^a-z0-9@._+-]/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 120);
+  if (!safe.includes("@")) {
     throw new Error("invalid email characters");
   }
-  return normalized;
+  return safe;
 }
 
 export function userDir(email) {
@@ -50,12 +159,28 @@ export function userDir(email) {
 }
 
 async function ensureDir(dir) {
-  await fs.mkdir(dir, { recursive: true });
+  await fsp.mkdir(dir, { recursive: true });
+}
+
+async function assertDataRootReady() {
+  const status = getDataRootStatus();
+  if (!status.writable) {
+    const err = new Error(
+      status.error ||
+        `NoteLMs data dir not writable: ${status.dataRoot}. Plug in the Samsung USB and run npm run server.`
+    );
+    err.code = "NOTELMS_DATA_UNAVAILABLE";
+    err.status = 503;
+    err.details = status;
+    throw err;
+  }
+  await ensureDir(status.dataRoot);
+  return status;
 }
 
 async function readJson(filePath, fallback = null) {
   try {
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await fsp.readFile(filePath, "utf8");
     return JSON.parse(raw);
   } catch (err) {
     if (err && err.code === "ENOENT") return fallback;
@@ -66,8 +191,8 @@ async function readJson(filePath, fallback = null) {
 async function writeJson(filePath, data) {
   await ensureDir(path.dirname(filePath));
   const tmp = `${filePath}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-  await fs.rename(tmp, filePath);
+  await fsp.writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  await fsp.rename(tmp, filePath);
 }
 
 /**
@@ -76,12 +201,14 @@ async function writeJson(filePath, data) {
  * - Existing account → reuse folder; recreate if missing from disk
  */
 export async function ensureUser(email, { name = null } = {}) {
+  await assertDataRootReady();
+
   const folder = emailToFolderName(email);
   const root = userDir(folder);
 
   let existed = false;
   try {
-    const st = await fs.stat(root);
+    const st = await fsp.stat(root);
     existed = st.isDirectory();
   } catch {
     existed = false;
@@ -123,7 +250,14 @@ export async function ensureUser(email, { name = null } = {}) {
     await writeJson(subjectsPath, subjects);
   }
 
-  return { email: folder, root, profile, subjects, created };
+  return {
+    email: folder,
+    root,
+    profile,
+    subjects,
+    created,
+    dataRoot: getDataRoot(),
+  };
 }
 
 export async function getProfile(email) {
@@ -187,7 +321,7 @@ export async function listNotes(email, { subject = null } = {}) {
   const notesRoot = path.join(userDir(email), "notes");
   let entries = [];
   try {
-    entries = await fs.readdir(notesRoot, { withFileTypes: true });
+    entries = await fsp.readdir(notesRoot, { withFileTypes: true });
   } catch (err) {
     if (err && err.code === "ENOENT") return [];
     throw err;
@@ -217,23 +351,18 @@ export async function getNote(email, noteId, { includeContent = true } = {}) {
   let rawText = null;
   let html = null;
   try {
-    rawText = await fs.readFile(paths.raw, "utf8");
+    rawText = await fsp.readFile(paths.raw, "utf8");
   } catch {
     /* optional */
   }
   try {
-    html = await fs.readFile(paths.html, "utf8");
+    html = await fsp.readFile(paths.html, "utf8");
   } catch {
     /* optional */
   }
   return { ...meta, rawText, html };
 }
 
-/**
- * Create a note under the user's email folder.
- * @param {string} email
- * @param {object} fields
- */
 export async function createNote(email, fields = {}) {
   const { root, profile } = await ensureUser(email);
   const noteId = fields.id || randomUUID();
@@ -255,10 +384,10 @@ export async function createNote(email, fields = {}) {
 
   await writeJson(paths.meta, meta);
   if (typeof fields.rawText === "string") {
-    await fs.writeFile(paths.raw, fields.rawText, "utf8");
+    await fsp.writeFile(paths.raw, fields.rawText, "utf8");
   }
   if (typeof fields.html === "string") {
-    await fs.writeFile(paths.html, fields.html, "utf8");
+    await fsp.writeFile(paths.html, fields.html, "utf8");
   }
 
   await writeJson(path.join(root, "profile.json"), {
@@ -290,10 +419,10 @@ export async function updateNote(email, noteId, patch = {}) {
   await writeJson(paths.meta, next);
 
   if (typeof patch.rawText === "string") {
-    await fs.writeFile(paths.raw, patch.rawText, "utf8");
+    await fsp.writeFile(paths.raw, patch.rawText, "utf8");
   }
   if (typeof patch.html === "string") {
-    await fs.writeFile(paths.html, patch.html, "utf8");
+    await fsp.writeFile(paths.html, patch.html, "utf8");
   }
 
   return next;
@@ -332,7 +461,7 @@ export async function listResearchEvents(email, { limit = 50 } = {}) {
   const dir = path.join(userDir(email), "research");
   let entries = [];
   try {
-    entries = await fs.readdir(dir);
+    entries = await fsp.readdir(dir);
   } catch (err) {
     if (err && err.code === "ENOENT") return [];
     throw err;
@@ -355,3 +484,6 @@ function deriveTitle(text) {
   if (!line) return "Untitled note";
   return line.length > 80 ? `${line.slice(0, 77)}…` : line;
 }
+
+// Keep REPO_ROOT referenced for SocketHR-style local fallback if needed later.
+void REPO_ROOT;

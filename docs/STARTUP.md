@@ -32,4 +32,8 @@ NoteLMs Express listens on **3002** (shared Cloudflare Tunnel → `api.notelms.c
 
 ## Data
 
-`/Volumes/Samsung USB/notelms/<email>/` — created automatically on first Google sign-in API call.
+User folders live on the Samsung USB volume (auto-discovered under `/Volumes`, same idea as SocketHR’s `SOCKETHR_DATA_DIR`):
+
+`/Volumes/Samsung USB/notelms/<email>/`
+
+Created automatically on Google sign-in. If `/health` shows `"usbMounted": false`, plug the drive in and restart `npm run server`.

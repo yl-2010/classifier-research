@@ -2,11 +2,14 @@
  * Zero-config env bootstrap for NoteLMs Mac API.
  * No hand-editing of .env required — just `npm run server`.
  *
- * Resolution order for AUTH_SECRET / NEXTAUTH_SECRET:
+ * Auth secret resolution (must match Vercel NEXTAUTH_SECRET for sign-in → folder):
  *  1) process env already set
  *  2) server/.env (optional)
- *  3) web/.env.local or web/.env (Auth.js secret from Vercel pull / local Next)
- *  4) server/.auth-secret (auto-generated, gitignored)
+ *  3) web/.env.local / web/.env (from `vercel env pull`)
+ *  4) server/.auth-secret (last resort local-only)
+ *
+ * Data dir is NOT forced here — storage.js discovers the Samsung USB volume
+ * the same way SocketHR uses SOCKETHR_DATA_DIR (env override optional).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -19,7 +22,7 @@ const repoRoot = path.resolve(here, "..");
 const DEFAULTS = {
   PORT: "3002",
   HOST: "0.0.0.0",
-  NOTELMS_DATA_DIR: "/Volumes/Samsung USB/notelms",
+  // NOTELMS_DATA_DIR intentionally unset — storage.js discovers Samsung USB.
   LM_STUDIO_BASE_URL: "http://127.0.0.1:1234/v1",
   LM_STUDIO_MODEL: "openai/gpt-oss-20b",
   ALLOWED_ORIGINS:
@@ -67,6 +70,15 @@ function readSecretFile(filePath) {
   }
 }
 
+function persistAuthSecret(secret) {
+  const secretPath = path.join(here, ".auth-secret");
+  try {
+    fs.writeFileSync(secretPath, `${secret}\n`, { mode: 0o600 });
+  } catch {
+    /* ignore */
+  }
+}
+
 function ensureAuthSecret() {
   const existing =
     process.env.AUTH_SECRET?.trim() ||
@@ -75,10 +87,11 @@ function ensureAuthSecret() {
   if (existing && !existing.startsWith("replace-with-")) {
     process.env.AUTH_SECRET = existing;
     process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || existing;
+    persistAuthSecret(existing);
     return { source: "env", secret: existing };
   }
 
-  // Prefer the Next/Auth.js secret if the web app already has one locally.
+  // Prefer the Next/Auth.js secret pulled from Vercel into web/.env.local
   for (const rel of ["web/.env.local", "web/.env"]) {
     const parsed = parseEnvFile(path.join(repoRoot, rel));
     const fromWeb =
@@ -86,6 +99,7 @@ function ensureAuthSecret() {
     if (fromWeb && !fromWeb.startsWith("replace-with-")) {
       process.env.AUTH_SECRET = fromWeb;
       process.env.NEXTAUTH_SECRET = fromWeb;
+      persistAuthSecret(fromWeb);
       return { source: rel, secret: fromWeb };
     }
   }
@@ -94,17 +108,14 @@ function ensureAuthSecret() {
   let local = readSecretFile(secretPath);
   if (!local) {
     local = crypto.randomBytes(32).toString("base64url");
-    fs.writeFileSync(secretPath, `${local}\n`, { mode: 0o600 });
+    persistAuthSecret(local);
   }
   process.env.AUTH_SECRET = local;
   process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || local;
   return { source: "server/.auth-secret", secret: local };
 }
 
-// Defaults first (never override real env).
 applyParsed(DEFAULTS, { overwrite: false });
-
-// Optional server/.env — convenience only, not required.
 applyParsed(parseEnvFile(path.join(here, ".env")), { overwrite: false });
 
 const auth = ensureAuthSecret();
