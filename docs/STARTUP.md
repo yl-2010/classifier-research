@@ -6,23 +6,52 @@ Mirror of SocketHR’s three-process home-lab pattern. NoteLMs Express listens o
 
 1. **LM Studio (GUI)**  
    Load `openai/gpt-oss-20b` → Developer → local server **ON** (port **1234**).  
-   Confirm: `curl -s http://127.0.0.1:1234/v1/models`
+   Confirm:
 
-2. **NoteLMs Express API**
    ```bash
-   cd ~/github/classifier-research   # or your clone path
-   cp server/.env.example server/.env   # once; set AUTH_SECRET
-   npm install --prefix server          # once
+   curl -s http://127.0.0.1:1234/v1/models
+   ```
+
+2. **NoteLMs Express API** (first time)
+
+   ```bash
+   cd ~/github/classifier-research
+   npm install --prefix server
    npm run server
    ```
-   Confirm: `curl -s http://127.0.0.1:3002/health`  
+
+   On first run, `server/.env` is created automatically from `server/.env.example`.
+   Stop the server, edit `server/.env`, and set:
+
+   ```bash
+   AUTH_SECRET=<same value as Vercel NEXTAUTH_SECRET>
+   ```
+
+   Then start again:
+
+   ```bash
+   npm run server
+   ```
+
+   Confirm:
+
+   ```bash
+   curl -s http://127.0.0.1:3002/health
+   ```
+
    Expect JSON with `"service":"notelms-server"`.
 
 3. **Shared Cloudflare Tunnel** (one process for SocketHR + NoteLMs)
+
    ```bash
    cloudflared tunnel --config ~/.cloudflared/config.yml run
    ```
-   Confirm from anywhere: `curl -sS https://api.notelms.com/health`
+
+   Confirm from anywhere:
+
+   ```bash
+   curl -sS https://api.notelms.com/health
+   ```
 
 ## Data
 

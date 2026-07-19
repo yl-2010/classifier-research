@@ -65,8 +65,10 @@ Confirm the exact model id with `GET /v1/models` after loading in LM Studio. Nev
 cd web && npm run dev
 
 # terminal B — API (use a writable data dir)
-NOTELMS_DATA_DIR=/tmp/notelms-dev AUTH_SECRET=devsecret \
-  PORT=3002 npm run server
+export NOTELMS_DATA_DIR=/tmp/notelms-dev
+export AUTH_SECRET=devsecret
+export PORT=3002
+npm run server
 ```
 
 Point the UI at the local API with `NEXT_PUBLIC_NOTELMS_API_BASE=http://127.0.0.1:3002` or a local `runtime-config.json` override. Do not ship localhost `apiBase` to production.

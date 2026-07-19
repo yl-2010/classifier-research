@@ -5,8 +5,8 @@
   "type": "module",
   "description": "NoteLMs Express API for Mac Studio (filesystem + LM Studio)",
   "scripts": {
-    "start": "node --env-file=.env index.js",
-    "dev": "node --watch --env-file=.env index.js",
+    "start": "node run.mjs",
+    "dev": "node run.mjs --watch",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

@@ -28,9 +28,10 @@ python3 -m pip install -r requirements.txt
 
 ```bash
 npm install --prefix server
-cp server/.env.example server/.env   # set AUTH_SECRET = Vercel NEXTAUTH_SECRET
-npm run server                       # http://127.0.0.1:3002
+npm run server
 ```
+
+First run auto-creates `server/.env`. Edit it and set `AUTH_SECRET` to the same value as Vercel `NEXTAUTH_SECRET`, then run `npm run server` again. API listens on `http://127.0.0.1:3002`.
 
 ### Vercel / Next.js UI
 
