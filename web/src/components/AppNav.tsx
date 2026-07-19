@@ -26,8 +26,8 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           className="brand-logo"
           src="/logo-nav.svg"
           alt="NoteLMs"
-          width={132}
-          height={55}
+          width={172}
+          height={72}
           decoding="async"
         />
       </Link>
@@ -100,7 +100,7 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
         .brand-logo {
           display: block;
           width: auto;
-          height: 2.35rem;
+          height: 3.05rem;
           border: 0;
           outline: 0;
           background: transparent;
