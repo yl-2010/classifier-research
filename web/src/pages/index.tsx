@@ -1,5 +1,5 @@
 import Head from "next/head";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import {
   useCallback,
   useEffect,
@@ -8,18 +8,22 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { AppNav } from "@/components/AppNav";
 import {
   FORMATTED_HTML,
   INITIAL_NOTES,
-  INITIAL_RESEARCH,
   MOCK_NOTE,
   SUBJECT_COLORS,
   SUBJECTS,
   type NoteItem,
   type ResearchRow,
 } from "@/lib/atelier-data";
+import { loadResearch, saveResearch } from "@/lib/research-store";
+
+type ResearchUpdater = (prev: ResearchRow[]) => ResearchRow[];
 
 const SCROLL_KEY = "notelms-scroll-y";
+const JUMP_KEY = "notelms-jump";
 
 function titleFromText(text: string) {
   const line = text
@@ -53,18 +57,14 @@ export default function HomePage() {
 
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
-  const researchRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
 
   const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
-  const [research, setResearch] = useState<ResearchRow[]>(INITIAL_RESEARCH);
   const [text, setText] = useState("");
   const [ocrOnline, setOcrOnline] = useState(true);
   const [sentTitle, setSentTitle] = useState<string | null>(null);
-  const [activeNav, setActiveNav] = useState<"new" | "library" | "research">(
-    "new"
-  );
+  const [activeNav, setActiveNav] = useState<"new" | "library">("new");
   const [folder, setFolder] = useState<string | null>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [subjectSaved, setSubjectSaved] = useState(false);
@@ -74,20 +74,19 @@ export default function HomePage() {
   }, []);
 
   const scrollToSection = useCallback(
-    (section: "new" | "library" | "research", behavior: ScrollBehavior = "smooth") => {
+    (section: "new" | "library", behavior: ScrollBehavior = "smooth") => {
       setActiveNav(section);
-      const el =
-        section === "new"
-          ? newRef.current
-          : section === "library"
-            ? libraryRef.current
-            : researchRef.current;
+      const el = section === "new" ? newRef.current : libraryRef.current;
       if (!el) return;
       el.scrollIntoView({ behavior, block: "start" });
       window.setTimeout(persistScroll, behavior === "smooth" ? 400 : 0);
     },
     [persistScroll]
   );
+
+  const updateResearch = useCallback((updater: ResearchUpdater) => {
+    saveResearch(updater(loadResearch()));
+  }, []);
 
   // Keep scroll position across refresh / remount
   useLayoutEffect(() => {
@@ -98,20 +97,22 @@ export default function HomePage() {
   useLayoutEffect(() => {
     if (!signedIn || restoredRef.current) return;
     restoredRef.current = true;
+    const jump = sessionStorage.getItem(JUMP_KEY) as "new" | "library" | null;
+    if (jump === "new" || jump === "library") {
+      sessionStorage.removeItem(JUMP_KEY);
+      window.requestAnimationFrame(() => scrollToSection(jump, "auto"));
+      return;
+    }
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (saved == null) return;
     const y = Number.parseInt(saved, 10);
     if (!Number.isFinite(y)) return;
     window.scrollTo(0, y);
-    // Infer active nav from position after restore
     window.requestAnimationFrame(() => {
       const libTop = libraryRef.current?.offsetTop ?? 0;
-      const resTop = researchRef.current?.offsetTop ?? 0;
-      if (y >= resTop - 80) setActiveNav("research");
-      else if (y >= libTop - 80) setActiveNav("library");
-      else setActiveNav("new");
+      setActiveNav(y >= libTop - 80 ? "library" : "new");
     });
-  }, [signedIn]);
+  }, [signedIn, scrollToSection]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -121,10 +122,7 @@ export default function HomePage() {
       timer = window.setTimeout(persistScroll, 80);
       const y = window.scrollY;
       const libTop = libraryRef.current?.offsetTop ?? 0;
-      const resTop = researchRef.current?.offsetTop ?? 0;
-      if (y >= resTop - 120) setActiveNav("research");
-      else if (y >= libTop - 120) setActiveNav("library");
-      else setActiveNav("new");
+      setActiveNav(y >= libTop - 120 ? "library" : "new");
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
@@ -165,7 +163,7 @@ export default function HomePage() {
             : n
         )
       );
-      setResearch((prev) => [
+      updateResearch((prev) => [
         {
           id,
           when: "now",
@@ -200,7 +198,7 @@ export default function HomePage() {
       )
     );
     setFolder(next);
-    setResearch((prev) => {
+    updateResearch((prev) => {
       const existing = prev.find((r) => r.id === openNote.id);
       if (!existing) {
         return [
@@ -244,59 +242,15 @@ export default function HomePage() {
       </Head>
 
       <div className="app">
-        <header className="top">
-          <button
-            type="button"
-            className="brand"
-            onClick={() => {
-              if (signedIn) scrollToSection("new");
-            }}
-          >
-            Note<span>LMs</span>
-          </button>
-          <nav className="nav">
-            {signedIn ? (
-              <>
-                <button
-                  type="button"
-                  className={activeNav === "new" ? "active" : undefined}
-                  onClick={() => scrollToSection("new")}
-                >
-                  New
-                </button>
-                <button
-                  type="button"
-                  className={activeNav === "library" ? "active" : undefined}
-                  onClick={() => scrollToSection("library")}
-                >
-                  Library
-                </button>
-                <button
-                  type="button"
-                  className={activeNav === "research" ? "active" : undefined}
-                  onClick={() => scrollToSection("research")}
-                >
-                  Research
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void signOut({ callbackUrl: "/" })}
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="btn"
-                onClick={() => void signIn("google", { callbackUrl: "/" })}
-                disabled={status === "loading"}
-              >
-                Sign in with Google
-              </button>
-            )}
-          </nav>
-        </header>
+        <AppNav
+          active={signedIn ? activeNav : undefined}
+          onNew={() => {
+            if (signedIn) scrollToSection("new");
+          }}
+          onLibrary={() => {
+            if (signedIn) scrollToSection("library");
+          }}
+        />
 
         {!signedIn && (
           <section className="gate">
@@ -514,47 +468,6 @@ export default function HomePage() {
               )}
             </section>
 
-            <section id="research" ref={researchRef} className="block">
-              <h2 className="section-label">Research</h2>
-              <table className="research">
-                <thead>
-                  <tr>
-                    <th>When</th>
-                    <th>Orchestrator</th>
-                    <th>Final</th>
-                    <th>Source</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {research.map((r) => (
-                    <tr key={`${r.id}-${r.when}-${r.final}`}>
-                      <td>{r.when}</td>
-                      <td>{r.orchestrator}</td>
-                      <td>{r.final}</td>
-                      <td>{r.corrected ? "Manual" : "Auto"}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="linkish"
-                          onClick={() => {
-                            const n = notes.find(
-                              (x) => x.id === r.id && x.status === "ready"
-                            );
-                            if (!n) return;
-                            setFolder(n.subject);
-                            setOpenNoteId(n.id);
-                            scrollToSection("library");
-                          }}
-                        >
-                          Open
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
           </>
         )}
       </div>
@@ -564,56 +477,6 @@ export default function HomePage() {
           max-width: 720px;
           margin: 0 auto;
           padding: 1.25rem 1.25rem 4rem;
-        }
-
-        .top {
-          position: sticky;
-          top: 0;
-          z-index: 20;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          margin: 0 -0.25rem 1.75rem;
-          padding: 0.85rem 0.25rem;
-          background: color-mix(in srgb, var(--bg) 88%, transparent);
-          backdrop-filter: blur(10px);
-        }
-
-        .brand {
-          border: 0;
-          background: none;
-          padding: 0;
-          cursor: pointer;
-          font-family: var(--display);
-          font-size: 1.35rem;
-          color: var(--ink);
-          letter-spacing: -0.02em;
-        }
-
-        .brand span {
-          color: var(--accent);
-        }
-
-        .nav {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .nav > button:not(.btn) {
-          border: 0;
-          background: none;
-          padding: 0;
-          cursor: pointer;
-          color: var(--mute);
-          font-size: 0.9rem;
-        }
-
-        .nav > button:not(.btn):hover,
-        .nav > button.active {
-          color: var(--ink);
         }
 
         .gate {
@@ -873,39 +736,6 @@ export default function HomePage() {
           border-radius: calc(var(--radius) - 2px);
         }
 
-        .research {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.9rem;
-        }
-
-        .research th,
-        .research td {
-          text-align: left;
-          padding: 0.7rem 0.4rem;
-        }
-
-        .research th {
-          color: var(--mute);
-          font-weight: 500;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .research tbody tr:nth-child(odd) td {
-          background: color-mix(in srgb, var(--surface) 70%, transparent);
-        }
-
-        .linkish {
-          background: none;
-          border: 0;
-          padding: 0;
-          color: var(--accent);
-          cursor: pointer;
-          text-decoration: underline;
-          font-weight: 600;
-        }
       `}</style>
     </>
   );
