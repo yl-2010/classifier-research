@@ -56,11 +56,11 @@ body {
 section[hidden] { display: none !important; }
 textarea {
   width: 100%; min-height: 300px; resize: vertical;
-  border: 1px solid var(--line); background: var(--surface);
-  color: var(--ink); padding: 1rem 1.1rem; font: inherit;
+  border: 0; background: var(--surface);
+  color: var(--ink); padding: 1.1rem 1.2rem; font: inherit;
   border-radius: var(--radius);
 }
-textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 1px; }
+textarea:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
 .actions {
   display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem;
   align-items: center;
@@ -71,8 +71,7 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
   background: var(--accent); color: var(--on-accent);
 }
 .btn.ghost {
-  background: transparent; color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink);
 }
 .btn.is-disabled, .btn:disabled {
   opacity: .35; cursor: not-allowed; filter: grayscale(.3);
@@ -84,7 +83,7 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
 .muted { color: var(--mute); font-size: .95rem; }
 
 .sent-card {
-  background: var(--surface); border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: var(--radius); padding: 2rem 1.5rem; text-align: center;
 }
 .sent-ok {
@@ -97,26 +96,26 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
 .pending {
   display: flex; justify-content: space-between; gap: 1rem; align-items: center;
   padding: .85rem 1rem; border-radius: var(--radius);
-  background: var(--surface); border: 1px dashed var(--line);
+  background: var(--surface);
 }
 
 .folders {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .65rem;
 }
 .folder {
-  border: 1px solid var(--line); background: var(--surface); text-align: left;
-  padding: .9rem; border-radius: var(--radius); cursor: pointer; font: inherit;
+  border: 0; background: var(--surface); text-align: left;
+  padding: .9rem 1rem; border-radius: var(--radius); cursor: pointer; font: inherit;
   display: flex; justify-content: space-between; align-items: baseline; gap: .5rem;
-  border-left: 3px solid var(--subj);
+  box-shadow: inset 3px 0 0 var(--subj);
 }
 .fname { font-weight: 600; font-size: .92rem; }
 .fcount { color: var(--mute); font-size: .85rem; }
 .note-list { display: grid; gap: .5rem; }
 .note-item {
-  width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface);
+  width: 100%; text-align: left; border: 0; background: var(--surface);
   padding: .85rem 1rem; border-radius: var(--radius); font: inherit; cursor: pointer;
 }
-.note-item:hover { border-color: var(--accent); }
+.note-item:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 
 .page-title {
   font-family: var(--display); font-size: 1.5rem; font-weight: 500;
@@ -130,20 +129,20 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
   display: flex; align-items: center; gap: .5rem; color: var(--mute); font-size: .9rem;
 }
 .subject-edit select {
-  font: inherit; color: var(--ink); border: 1px solid var(--line);
-  background: var(--surface); border-radius: var(--radius); padding: .4rem .55rem;
+  font: inherit; color: var(--ink); border: 0;
+  background: var(--surface); border-radius: var(--radius); padding: .45rem .6rem;
 }
 .saved { color: var(--accent); font-size: .85rem; font-weight: 600; }
 #other-field { margin: 0 0 1rem; }
 #other-field input {
   width: min(280px, 100%); padding: .55rem .7rem; font: inherit;
-  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+  border: 0; border-radius: var(--radius); background: var(--surface);
 }
 
 .note-shell {
-  background: var(--surface); border: 1px solid var(--line);
-  border-top: 3px solid var(--subj, var(--accent));
-  border-radius: var(--radius); padding: 1.25rem 1.35rem;
+  background: var(--surface); border: 0;
+  box-shadow: inset 0 3px 0 var(--subj, var(--accent));
+  border-radius: var(--radius); padding: 1.35rem 1.4rem;
 }
 .note-shell h1 { font-family: var(--display); font-size: 1.45rem; margin: 0 0 .75rem; color: var(--subj, var(--ink)); }
 .note-shell h2 { font-size: 1rem; margin: 1.1rem 0 .4rem; }
@@ -155,8 +154,9 @@ textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transp
 
 .research { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .research th, .research td {
-  text-align: left; padding: .55rem .4rem; border-bottom: 1px solid var(--line);
+  text-align: left; padding: .7rem .4rem;
 }
+.research tbody tr:nth-child(odd) td { background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .research th {
   color: var(--mute); font-weight: 500; font-size: .75rem;
   text-transform: uppercase; letter-spacing: .04em;
