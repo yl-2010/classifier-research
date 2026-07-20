@@ -30,7 +30,7 @@ export default function AboutPage() {
         <header className="hero">
           <h1>About</h1>
           <p className="lede">
-            NoteLMs helps students organize study notes—and every use feeds a
+            NoteLMs helps students organize study notes, and every use feeds a
             research comparison of language models.
           </p>
         </header>
@@ -59,7 +59,7 @@ export default function AboutPage() {
             <li>
               <strong>Reading aloud</strong>
               <span>
-                On Voice, paste text and hear it read back—useful for review
+                On Voice, paste text and hear it read back, useful for review
                 without staring at a screen.
               </span>
             </li>
@@ -90,7 +90,7 @@ export default function AboutPage() {
             <li>
               <strong>How categorization works</strong>
               <span>
-                Three models vote in parallel—zero-shot BERT, fine-tuned BERT,
+                Three models vote in parallel: zero-shot BERT, fine-tuned BERT,
                 and GPT-OSS 20B. An orchestrator (also GPT-OSS 20B) reviews those
                 votes and chooses the final subject.
               </span>
