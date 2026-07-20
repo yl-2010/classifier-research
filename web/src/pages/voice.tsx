@@ -52,6 +52,9 @@ export default function VoicePage() {
   const [voices, setVoices] = useState(DEFAULT_VOICES);
   const [voice, setVoice] = useState("dan");
   const [ui, setUi] = useState<VoicePlayerUi>(INITIAL_UI);
+  const [connection, setConnection] = useState<"checking" | "ok" | "error">(
+    "checking"
+  );
   const playerRef = useRef<OrpheusVoicePlayer | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -93,11 +96,10 @@ export default function VoicePage() {
         }
 
         if (data.lm_studio?.ok) {
-          playerRef.current?.setStatus(
-            "LM Studio connected. Ready to speak.",
-            "ok"
-          );
+          setConnection("ok");
+          playerRef.current?.setStatus("");
         } else {
+          setConnection("error");
           playerRef.current?.setStatus(
             `Voice service issue: ${data.lm_studio?.error || data.error || "TTS unreachable"}. Start LM Studio with Orpheus and run npm run tts.`,
             "error"
@@ -105,6 +107,7 @@ export default function VoicePage() {
         }
       } catch (err) {
         if (!cancelled) {
+          setConnection("error");
           playerRef.current?.setStatus(
             err instanceof Error ? err.message : "Could not reach Voice API",
             "error"
@@ -200,11 +203,19 @@ export default function VoicePage() {
         {!ui.lyricsVisible && (
           <textarea
             ref={textRef}
+            className={
+              connection === "ok"
+                ? "conn-ok"
+                : connection === "error"
+                  ? "conn-error"
+                  : ""
+            }
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Paste or type text here…"
             rows={12}
             disabled={ui.speakDisabled}
+            aria-invalid={connection === "error" || undefined}
           />
         )}
 
@@ -320,12 +331,14 @@ export default function VoicePage() {
           />
         )}
 
-        <p
-          className={`status${ui.statusKind ? ` ${ui.statusKind}` : ""}`}
-          role="status"
-        >
-          {ui.status}
-        </p>
+        {ui.status ? (
+          <p
+            className={`status${ui.statusKind ? ` ${ui.statusKind}` : ""}`}
+            role="status"
+          >
+            {ui.status}
+          </p>
+        ) : null}
 
         <SiteFooter />
       </div>
@@ -356,11 +369,45 @@ export default function VoicePage() {
           background: var(--surface);
           color: var(--ink);
           line-height: 1.5;
+          transition:
+            border-color 0.25s ease,
+            box-shadow 0.35s ease;
         }
 
         textarea:focus {
-          outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
-          border-color: var(--accent);
+          outline: none;
+        }
+
+        textarea.conn-ok {
+          border-color: color-mix(in srgb, #2f9d6a 55%, var(--line));
+          box-shadow:
+            0 0 0 1px color-mix(in srgb, #2f9d6a 28%, transparent),
+            0 0 18px color-mix(in srgb, #3cb371 42%, transparent),
+            0 0 42px color-mix(in srgb, #2f9d6a 22%, transparent);
+        }
+
+        textarea.conn-ok:focus {
+          border-color: #2f9d6a;
+          box-shadow:
+            0 0 0 1px color-mix(in srgb, #2f9d6a 45%, transparent),
+            0 0 22px color-mix(in srgb, #3cb371 55%, transparent),
+            0 0 48px color-mix(in srgb, #2f9d6a 28%, transparent);
+        }
+
+        textarea.conn-error {
+          border-color: color-mix(in srgb, #c94444 55%, var(--line));
+          box-shadow:
+            0 0 0 1px color-mix(in srgb, #c94444 28%, transparent),
+            0 0 18px color-mix(in srgb, #e25555 42%, transparent),
+            0 0 42px color-mix(in srgb, #c94444 22%, transparent);
+        }
+
+        textarea.conn-error:focus {
+          border-color: #c94444;
+          box-shadow:
+            0 0 0 1px color-mix(in srgb, #c94444 45%, transparent),
+            0 0 22px color-mix(in srgb, #e25555 55%, transparent),
+            0 0 48px color-mix(in srgb, #c94444 28%, transparent);
         }
 
         .row {
