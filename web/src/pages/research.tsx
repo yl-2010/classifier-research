@@ -9,12 +9,14 @@ import { useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 
 const JUMP_KEY = "notelms-jump";
 const INCLUDE_USER_KEY = "notelms-research-include-user";
+const INCLUDE_EVAL_KEY = "notelms-research-include-eval";
 
 type EvalPayload = {
   subjects?: string[];
   test_n?: number;
   updated_at?: string;
   include_user_tests?: boolean;
+  include_frozen_tests?: boolean;
   user_test_n?: number;
   frozen_test_n?: number;
   source?: string;
@@ -77,52 +79,90 @@ function readIncludeUserPref(): boolean {
   }
 }
 
+function readIncludeEvalPref(): boolean {
+  try {
+    const raw = sessionStorage.getItem(INCLUDE_EVAL_KEY);
+    if (raw === null) return true;
+    return raw !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function writePref(key: string, on: boolean) {
+  try {
+    sessionStorage.setItem(key, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function ResearchPage() {
   const { status } = useSession();
   const router = useRouter();
   const signedIn = status === "authenticated";
   const { apiBase, loading: configLoading } = useNotelmsRuntimeConfig();
   const [includeUserTests, setIncludeUserTests] = useState(false);
+  const [includeEvalTests, setIncludeEvalTests] = useState(true);
+  const [prefsReady, setPrefsReady] = useState(false);
   const [data, setData] = useState<EvalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setIncludeUserTests(readIncludeUserPref());
+    let user = readIncludeUserPref();
+    let evalOn = readIncludeEvalPref();
+    if (!user && !evalOn) {
+      evalOn = true;
+      writePref(INCLUDE_EVAL_KEY, true);
+    }
+    setIncludeUserTests(user);
+    setIncludeEvalTests(evalOn);
+    setPrefsReady(true);
   }, []);
 
   useEffect(() => {
-    if (includeUserTests && configLoading) return;
+    if (!prefsReady) return;
+    if (configLoading) return;
 
     let cancelled = false;
     void (async () => {
       setLoading(true);
       setError(null);
       try {
-        if (includeUserTests) {
-          if (!apiBase) {
+        if (!apiBase) {
+          if (!includeEvalTests) {
             throw new Error("API not configured");
           }
-          const url = `${apiBase.replace(/\/$/, "")}/api/research/metrics?includeUser=1`;
-          const res = await fetch(url, { cache: "no-store" });
-          if (!res.ok) {
-            const body = (await res.json().catch(() => null)) as {
-              error?: string;
-            } | null;
-            throw new Error(
-              body?.error || `Failed to load metrics (${res.status})`,
-            );
-          }
-          const json = (await res.json()) as EvalPayload & { ok?: boolean };
-          if (!cancelled) setData(json);
-        } else {
           const res = await fetch("/research-metrics.json", { cache: "no-store" });
           if (!res.ok) throw new Error(`Failed to load metrics (${res.status})`);
           const json = (await res.json()) as EvalPayload;
           if (!cancelled) {
-            setData({ ...json, include_user_tests: false, user_test_n: 0 });
+            setData({
+              ...json,
+              include_user_tests: false,
+              include_frozen_tests: true,
+              user_test_n: json.user_test_n ?? 0,
+            });
           }
+          return;
         }
+
+        const params = new URLSearchParams();
+        if (includeUserTests) params.set("includeUser", "1");
+        params.set("includeFrozen", includeEvalTests ? "1" : "0");
+        const url = `${apiBase.replace(/\/$/, "")}/api/research/metrics?${params}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(
+            body?.error || `Failed to load metrics (${res.status})`,
+          );
+        }
+        const json = (await res.json()) as EvalPayload & { ok?: boolean };
+        if (!cancelled) setData(json);
       } catch (err) {
         if (!cancelled) {
           setData(null);
@@ -137,15 +177,36 @@ export default function ResearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [includeUserTests, apiBase, configLoading]);
+  }, [
+    prefsReady,
+    includeUserTests,
+    includeEvalTests,
+    apiBase,
+    configLoading,
+  ]);
 
   const onToggleUserTests = (next: boolean) => {
-    setIncludeUserTests(next);
-    try {
-      sessionStorage.setItem(INCLUDE_USER_KEY, next ? "1" : "0");
-    } catch {
-      /* ignore */
+    if (!next && !includeEvalTests) {
+      setIncludeUserTests(false);
+      setIncludeEvalTests(true);
+      writePref(INCLUDE_USER_KEY, false);
+      writePref(INCLUDE_EVAL_KEY, true);
+      return;
     }
+    setIncludeUserTests(next);
+    writePref(INCLUDE_USER_KEY, next);
+  };
+
+  const onToggleEvalTests = (next: boolean) => {
+    if (!next && !includeUserTests) {
+      setIncludeEvalTests(false);
+      setIncludeUserTests(true);
+      writePref(INCLUDE_EVAL_KEY, false);
+      writePref(INCLUDE_USER_KEY, true);
+      return;
+    }
+    setIncludeEvalTests(next);
+    writePref(INCLUDE_EVAL_KEY, next);
   };
 
   const arms = useMemo(() => {
@@ -174,9 +235,22 @@ export default function ResearchPage() {
     void router.push("/");
   };
 
-  const kicker = includeUserTests
-    ? `Shared results · frozen test + ${data?.user_test_n ?? "…"} user tests`
-    : "Shared results · frozen test";
+  const userTestCount =
+    typeof data?.user_test_n === "number" ? data.user_test_n : null;
+  const userToggleLabel =
+    userTestCount === null
+      ? "Include user tests"
+      : `Include ${userTestCount} user tests`;
+
+  const toggleHint = (() => {
+    if (includeUserTests && includeEvalTests) {
+      return "Charts pool the original eval set with live classifications from every user.";
+    }
+    if (includeUserTests) {
+      return "Charts show only live classifications from every user.";
+    }
+    return "Charts show only the original offline eval run.";
+  })();
 
   return (
     <>
@@ -190,7 +264,6 @@ export default function ResearchPage() {
         />
 
         <header className="hero">
-          <p className="kicker">{kicker}</p>
           <h1>Research</h1>
           <div className="toggle-row">
             <label className="toggle">
@@ -200,13 +273,18 @@ export default function ResearchPage() {
                 onChange={(e) => onToggleUserTests(e.target.checked)}
               />
               <span className="toggle-ui" aria-hidden="true" />
-              <span className="toggle-label">Include user tests</span>
+              <span className="toggle-label">{userToggleLabel}</span>
             </label>
-            <p className="toggle-hint">
-              {includeUserTests
-                ? "Charts pool the frozen eval set with live classifications from every user."
-                : "Charts show only the frozen offline eval run."}
-            </p>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeEvalTests}
+                onChange={(e) => onToggleEvalTests(e.target.checked)}
+              />
+              <span className="toggle-ui" aria-hidden="true" />
+              <span className="toggle-label">Include original eval tests</span>
+            </label>
+            <p className="toggle-hint">{toggleHint}</p>
           </div>
         </header>
 
@@ -313,15 +391,6 @@ export default function ResearchPage() {
           animation: rise 0.55s ease both;
         }
 
-        .kicker {
-          margin: 0 0 0.35rem;
-          font-size: 0.72rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: var(--mute);
-          font-weight: 600;
-        }
-
         h1 {
           margin: 0 0 0.55rem;
           font-family: var(--display);
@@ -332,6 +401,9 @@ export default function ResearchPage() {
 
         .toggle-row {
           margin-top: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
 
         .toggle {
@@ -396,7 +468,7 @@ export default function ResearchPage() {
         }
 
         .toggle-hint {
-          margin: 0.4rem 0 0;
+          margin: 0.15rem 0 0;
           max-width: 36rem;
           font-size: 0.88rem;
           color: var(--mute);

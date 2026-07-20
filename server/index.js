@@ -517,8 +517,10 @@ app.get("/api/research", requireAuth, async (req, res) => {
 
 /**
  * Shared research chart metrics (public).
- * ?includeUser=1 pools frozen eval with every user's classify_ingest events
- * on this Mac — not scoped to the caller. Test accounts excluded in storage.
+ * ?includeUser=1 / ?includeFrozen=0|1 select which pools to chart.
+ * At least one must be on (server forces frozen if both are off).
+ * User events are always loaded so user_test_n is available for UI captions.
+ * Test accounts excluded in storage.
  */
 app.get("/api/research/metrics", async (req, res) => {
   try {
@@ -527,11 +529,20 @@ app.get("/api/research/metrics", async (req, res) => {
       req.query.includeUser === "true" ||
       req.query.include_user === "1";
 
-    const userEvents = includeUser
-      ? await listAllResearchEvents({ limit: 10000 })
-      : [];
+    const frozenParam =
+      req.query.includeFrozen ??
+      req.query.include_frozen ??
+      req.query.includeEval ??
+      req.query.include_eval;
+    // Default frozen on unless explicitly turned off.
+    const includeFrozen = !(
+      frozenParam === "0" || frozenParam === "false"
+    );
+
+    const userEvents = await listAllResearchEvents({ limit: 10000 });
 
     const metrics = await buildResearchMetrics({
+      includeFrozen,
       includeUser,
       userEvents,
     });

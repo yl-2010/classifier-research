@@ -156,65 +156,80 @@ export async function loadFrozenMetrics(filePath = DEFAULT_FROZEN_PATH) {
 
 /**
  * Build metrics payload.
+ * At least one of includeFrozen / includeUser must be true; if both are false,
+ * includeFrozen is forced on.
  * @param {object} opts
- * @param {boolean} opts.includeUser
+ * @param {boolean} [opts.includeFrozen]
+ * @param {boolean} [opts.includeUser]
  * @param {object[]} [opts.userEvents]
  * @param {object} [opts.frozen]
  * @param {string} [opts.frozenPath]
  */
 export async function buildResearchMetrics({
+  includeFrozen = true,
   includeUser = false,
   userEvents = [],
   frozen = null,
   frozenPath = DEFAULT_FROZEN_PATH,
 } = {}) {
+  let useFrozen = includeFrozen !== false;
+  let useUser = Boolean(includeUser);
+  if (!useFrozen && !useUser) {
+    useFrozen = true;
+  }
+
   const base = frozen || (await loadFrozenMetrics(frozenPath));
   const subjects = Array.isArray(base.subjects) ? base.subjects : [...FIXED_SUBJECTS];
+  // Always score user events for user_test_n (toggle caption), even when not pooled.
+  const { byArm: userByArm, used: userTestN } = accumulateUserEvents(userEvents);
+  const frozenN = typeof base.test_n === "number" ? base.test_n : 0;
 
-  if (!includeUser) {
+  if (useFrozen && !useUser) {
     return {
       ...base,
       subjects,
       include_user_tests: false,
-      user_test_n: 0,
+      include_frozen_tests: true,
+      user_test_n: userTestN,
+      frozen_test_n: frozenN,
       source: "frozen_eval",
     };
   }
 
-  const { byArm: userByArm, used: userTestN } = accumulateUserEvents(userEvents);
   const arms = {};
-
   for (const armKey of ARM_KEYS) {
     const frozenArm = base.arms?.[armKey] || {};
-    const frozenCounts = countsFromPerClass(frozenArm.per_class);
-    // Prefer arm.n when present (more reliable than reconstructed support sum).
-    if (typeof frozenArm.n === "number" && frozenArm.n > frozenCounts.n) {
-      // Scale is already in per_class supports for balanced sets; keep reconstructed.
-    }
-    const merged = mergeCounts(frozenCounts, userByArm[armKey]);
+    const frozenCounts = useFrozen
+      ? countsFromPerClass(frozenArm.per_class)
+      : emptyCounts();
+    const userCounts = userByArm[armKey];
+    const merged = useFrozen ? mergeCounts(frozenCounts, userCounts) : userCounts;
     const meta = ARM_META[armKey];
     arms[armKey] = summarizeCounts(merged, armKey, {
       label: frozenArm.label || meta.label,
       protocol: frozenArm.protocol,
       model: frozenArm.model,
       model_dir: frozenArm.model_dir,
-      frozen_n: frozenArm.n ?? frozenCounts.n,
-      user_n: userByArm[armKey].n,
+      frozen_n: useFrozen ? (frozenArm.n ?? frozenCounts.n) : 0,
+      user_n: userCounts.n,
     });
   }
 
-  const frozenN = typeof base.test_n === "number" ? base.test_n : 0;
+  const sources = [];
+  if (useFrozen) sources.push("frozen_eval");
+  if (useUser) sources.push("user_tests");
 
   return {
     subjects,
-    test_n: frozenN + userTestN,
+    test_n: (useFrozen ? frozenN : 0) + userTestN,
     arms,
     updated_at: new Date().toISOString(),
     frozen_updated_at: base.updated_at || null,
-    include_user_tests: true,
+    include_user_tests: useUser,
+    include_frozen_tests: useFrozen,
     user_test_n: userTestN,
-    frozen_test_n: frozenN,
-    source: "frozen_eval+user_tests",
+    frozen_test_n: useFrozen ? frozenN : 0,
+    source: sources.join("+"),
   };
 }
 

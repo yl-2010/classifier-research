@@ -148,6 +148,8 @@ describe("research-metrics", () => {
       userEvents,
     });
     assert.equal(off.include_user_tests, false);
+    assert.equal(off.include_frozen_tests, true);
+    assert.equal(off.user_test_n, 1);
     assert.equal(off.arms.zero_shot.accuracy, 0.5);
 
     const on = await buildResearchMetrics({
@@ -156,9 +158,48 @@ describe("research-metrics", () => {
       userEvents,
     });
     assert.equal(on.include_user_tests, true);
+    assert.equal(on.include_frozen_tests, true);
     assert.equal(on.user_test_n, 1);
     assert.equal(on.test_n, 3);
     assert.ok(Math.abs(on.arms.zero_shot.accuracy - 2 / 3) < 1e-9);
+  });
+
+  it("supports user-only when includeFrozen is false", async () => {
+    const userEvents = [
+      {
+        finalSubject: "Physics",
+        votes: {
+          baseBert: { subject: "Physics" },
+          fineTunedBert: { subject: "Physics" },
+          gptOss: { subject: "Physics" },
+        },
+      },
+    ];
+    const userOnly = await buildResearchMetrics({
+      includeFrozen: false,
+      includeUser: true,
+      frozen: frozenFixture,
+      userEvents,
+    });
+    assert.equal(userOnly.include_user_tests, true);
+    assert.equal(userOnly.include_frozen_tests, false);
+    assert.equal(userOnly.user_test_n, 1);
+    assert.equal(userOnly.frozen_test_n, 0);
+    assert.equal(userOnly.test_n, 1);
+    assert.equal(userOnly.arms.zero_shot.accuracy, 1);
+    assert.equal(userOnly.source, "user_tests");
+  });
+
+  it("forces frozen on when both includes are false", async () => {
+    const forced = await buildResearchMetrics({
+      includeFrozen: false,
+      includeUser: false,
+      frozen: frozenFixture,
+      userEvents: [],
+    });
+    assert.equal(forced.include_frozen_tests, true);
+    assert.equal(forced.include_user_tests, false);
+    assert.equal(forced.source, "frozen_eval");
   });
 
   it("mergeCounts adds supports", () => {
