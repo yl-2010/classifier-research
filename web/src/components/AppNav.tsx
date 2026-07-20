@@ -2,12 +2,11 @@ import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 type AppNavProps = {
-  active?: "new" | "library" | "research" | "voice";
-  onNew?: () => void;
-  onLibrary?: () => void;
+  active?: "notebook" | "research" | "voice";
+  onNotebook?: () => void;
 };
 
-export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
+export function AppNav({ active, onNotebook }: AppNavProps) {
   const { status } = useSession();
   const signedIn = status === "authenticated";
 
@@ -26,9 +25,9 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           href="/"
           className="brand"
           onClick={(e) => {
-            if (!onNew) return;
+            if (!onNotebook) return;
             e.preventDefault();
-            onNew();
+            onNotebook();
           }}
         >
           <img
@@ -43,20 +42,17 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
         <nav className="nav">
           {signedIn ? (
             <>
-              <button
-                type="button"
-                className={`nav-tab${active === "new" ? " active" : ""}`}
-                onClick={onNew}
+              <Link
+                href="/"
+                className={`nav-tab${active === "notebook" ? " active" : ""}`}
+                onClick={(e) => {
+                  if (!onNotebook) return;
+                  e.preventDefault();
+                  onNotebook();
+                }}
               >
-                New
-              </button>
-              <button
-                type="button"
-                className={`nav-tab${active === "library" ? " active" : ""}`}
-                onClick={onLibrary}
-              >
-                Library
-              </button>
+                Notebook
+              </Link>
               <Link
                 href="/voice"
                 className={`nav-tab${active === "voice" ? " active" : ""}`}

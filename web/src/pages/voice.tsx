@@ -118,8 +118,8 @@ export default function VoicePage() {
     };
   }, [signedIn, apiBase, configLoading]);
 
-  const jumpHome = (section: "new" | "library") => {
-    sessionStorage.setItem("notelms-jump", section);
+  const jumpHome = () => {
+    sessionStorage.setItem("notelms-jump", "notebook");
     void router.push("/");
   };
 
@@ -193,11 +193,7 @@ export default function VoicePage() {
         <title>Voice — NoteLMs</title>
       </Head>
       <div className="app">
-        <AppNav
-          active="voice"
-          onNew={() => jumpHome("new")}
-          onLibrary={() => jumpHome("library")}
-        />
+        <AppNav active="voice" onNotebook={jumpHome} />
 
         <h1 className="section-label">Voice</h1>
 

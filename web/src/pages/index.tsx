@@ -123,7 +123,6 @@ export default function HomePage() {
   const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [sentTitle, setSentTitle] = useState<string | null>(null);
-  const [activeNav, setActiveNav] = useState<"new" | "library">("new");
   const [folder, setFolder] = useState<string | null>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [subjectSaved, setSubjectSaved] = useState(false);
@@ -141,7 +140,6 @@ export default function HomePage() {
 
   const scrollToSection = useCallback(
     (section: "new" | "library", behavior: ScrollBehavior = "smooth") => {
-      setActiveNav(section);
       const el = section === "new" ? newRef.current : libraryRef.current;
       if (!el) return;
       el.scrollIntoView({ behavior, block: "start" });
@@ -216,10 +214,12 @@ export default function HomePage() {
   useLayoutEffect(() => {
     if (!signedIn || restoredRef.current) return;
     restoredRef.current = true;
-    const jump = sessionStorage.getItem(JUMP_KEY) as "new" | "library" | null;
-    if (jump === "new" || jump === "library") {
+    const jump = sessionStorage.getItem(JUMP_KEY);
+    if (jump === "new" || jump === "library" || jump === "notebook") {
       sessionStorage.removeItem(JUMP_KEY);
-      window.requestAnimationFrame(() => scrollToSection(jump, "auto"));
+      window.requestAnimationFrame(() =>
+        scrollToSection(jump === "library" ? "library" : "new", "auto")
+      );
       return;
     }
     const saved = sessionStorage.getItem(SCROLL_KEY);
@@ -227,10 +227,6 @@ export default function HomePage() {
     const y = Number.parseInt(saved, 10);
     if (!Number.isFinite(y)) return;
     window.scrollTo(0, y);
-    window.requestAnimationFrame(() => {
-      const libTop = libraryRef.current?.offsetTop ?? 0;
-      setActiveNav(y >= libTop - 80 ? "library" : "new");
-    });
   }, [signedIn, scrollToSection]);
 
   useEffect(() => {
@@ -239,9 +235,6 @@ export default function HomePage() {
     const onScroll = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(persistScroll, 80);
-      const y = window.scrollY;
-      const libTop = libraryRef.current?.offsetTop ?? 0;
-      setActiveNav(y >= libTop - 120 ? "library" : "new");
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
@@ -605,9 +598,8 @@ export default function HomePage() {
       <div className={`app${!signedIn ? " app-gate" : ""}`}>
         {signedIn && (
           <AppNav
-            active={activeNav}
-            onNew={() => scrollToSection("new")}
-            onLibrary={() => scrollToSection("library")}
+            active="notebook"
+            onNotebook={() => scrollToSection("new")}
           />
         )}
 

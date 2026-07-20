@@ -110,8 +110,8 @@ export default function ResearchPage() {
     });
   }, [data]);
 
-  const jumpHome = (section: "new" | "library") => {
-    sessionStorage.setItem(JUMP_KEY, section);
+  const jumpHome = () => {
+    sessionStorage.setItem(JUMP_KEY, "notebook");
     void router.push("/");
   };
 
@@ -123,8 +123,7 @@ export default function ResearchPage() {
       <div className="app">
         <AppNav
           active="research"
-          onNew={signedIn ? () => jumpHome("new") : undefined}
-          onLibrary={signedIn ? () => jumpHome("library") : undefined}
+          onNotebook={signedIn ? jumpHome : undefined}
         />
 
         <header className="hero">
