@@ -150,18 +150,35 @@ export default function ResearchPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(data.subjects || []).map((subj) => (
-                    <tr key={subj}>
-                      <td>{subj}</td>
-                      {arms.map((a) => {
-                        const pc = data.arms?.[a.name]?.per_class as
-                          | Record<string, { f1?: number }>
-                          | undefined;
-                        const f1 = pc?.[subj]?.f1;
-                        return <td key={a.name}>{pct(f1)}</td>;
-                      })}
-                    </tr>
-                  ))}
+                  {(data.subjects || []).map((subj) => {
+                    const rowF1 = arms.map((a) => {
+                      const pc = data.arms?.[a.name]?.per_class as
+                        | Record<string, { f1?: number }>
+                        | undefined;
+                      return pc?.[subj]?.f1;
+                    });
+                    const numeric = rowF1.filter(
+                      (v): v is number => typeof v === "number" && !Number.isNaN(v),
+                    );
+                    const maxF1 = numeric.length > 0 ? Math.max(...numeric) : undefined;
+                    return (
+                      <tr key={subj}>
+                        <td>{subj}</td>
+                        {arms.map((a, i) => {
+                          const f1 = rowF1[i];
+                          const isBest =
+                            typeof f1 === "number" &&
+                            typeof maxF1 === "number" &&
+                            f1 === maxF1;
+                          return (
+                            <td key={a.name}>
+                              {isBest ? <strong>{pct(f1)}</strong> : pct(f1)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
