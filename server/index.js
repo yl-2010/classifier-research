@@ -20,6 +20,7 @@ import {
   updateProfile,
   listSubjects,
   addCustomSubject,
+  deleteSubject,
   listNotes,
   getNote,
   createNote,
@@ -197,6 +198,23 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
     res.status(201).json({ ok: true, subjects });
   } catch (err) {
     const status = /invalid|already/i.test(err.message || "") ? 400 : 500;
+    res.status(status).json({ ok: false, error: err.message || "failed" });
+  }
+});
+
+/** Remove a subject from this user's library (notes only; research kept). */
+app.delete("/api/subjects", requireAuth, async (req, res) => {
+  try {
+    await ensureUser(req.user.email, { name: req.user.name });
+    const label = req.body?.label || req.body?.subject;
+    const result = await deleteSubject(req.user.email, label);
+    const subjects = await listSubjects(req.user.email);
+    res.json({ ok: true, ...result, subjects });
+  } catch (err) {
+    const status =
+      err.status ||
+      (/invalid|cannot delete/i.test(err.message || "") ? 400 : 500);
+    console.error("[DELETE /api/subjects]", err);
     res.status(status).json({ ok: false, error: err.message || "failed" });
   }
 });

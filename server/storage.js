@@ -306,6 +306,61 @@ export async function addCustomSubject(email, label) {
   return next;
 }
 
+/**
+ * Remove a subject from one user's library:
+ * - soft-delete all notes with that subject
+ * - drop custom labels from subjects.json
+ * - fixed taxonomy labels stay available to re-add later
+ * Never touches research/ event logs.
+ */
+export async function deleteSubject(email, label) {
+  const normalized = normalizeSubjectLabel(label);
+  if (!normalized) {
+    const err = new Error("invalid subject");
+    err.status = 400;
+    throw err;
+  }
+  if (normalized === OTHER_SUBJECT) {
+    const err = new Error("cannot delete Other");
+    err.status = 400;
+    throw err;
+  }
+
+  await ensureUser(email);
+  const notes = await listNotes(email, { subject: normalized });
+  let deletedNotes = 0;
+  for (const note of notes) {
+    const ok = await deleteNote(email, note.id);
+    if (ok) deletedNotes += 1;
+  }
+
+  let removedCustom = false;
+  const isFixed = FIXED_SUBJECTS.some(
+    (s) => s.toLowerCase() === normalized.toLowerCase()
+  );
+  if (!isFixed) {
+    const { root, subjects } = await ensureUser(email);
+    const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+    const nextCustom = custom.filter(
+      (c) => c.toLowerCase() !== normalized.toLowerCase()
+    );
+    removedCustom = nextCustom.length !== custom.length;
+    if (removedCustom) {
+      await writeJson(path.join(root, "subjects.json"), {
+        custom: nextCustom,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  return {
+    label: normalized,
+    fixed: isFixed,
+    deletedNotes,
+    removedCustom,
+  };
+}
+
 function notePaths(email, noteId) {
   const dir = path.join(userDir(email), "notes", noteId);
   return {

@@ -11,6 +11,9 @@ import {
   emailToFolderName,
   addCustomSubject,
   listSubjects,
+  deleteSubject,
+  listResearchEvents,
+  writeResearchEvent,
 } from "../storage.js";
 
 const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "notelms-test-"));
@@ -78,5 +81,65 @@ describe("storage", () => {
     await addCustomSubject(email, "APUSH");
     const subjects = await listSubjects(email);
     assert.ok(subjects.custom.includes("APUSH"));
+  });
+
+  it("deletes a subject from one user's library without touching research", async () => {
+    const email = "delete-subj@example.com";
+    await ensureUser(email);
+    await addCustomSubject(email, "APUSH");
+    const noteA = await createNote(email, {
+      rawText: "Cold War outline",
+      subject: "APUSH",
+    });
+    const noteB = await createNote(email, {
+      rawText: "Derivatives",
+      subject: "Mathematics",
+    });
+    await writeResearchEvent(email, {
+      kind: "classify_ingest",
+      finalSubject: "APUSH",
+      textPreview: "Cold War outline",
+    });
+
+    const result = await deleteSubject(email, "APUSH");
+    assert.equal(result.label, "APUSH");
+    assert.equal(result.fixed, false);
+    assert.equal(result.deletedNotes, 1);
+    assert.equal(result.removedCustom, true);
+
+    const subjects = await listSubjects(email);
+    assert.equal(subjects.custom.includes("APUSH"), false);
+    assert.deepEqual(
+      (await listNotes(email)).map((n) => n.id).sort(),
+      [noteB.id]
+    );
+    assert.equal(await getNote(email, noteA.id), null);
+
+    const events = await listResearchEvents(email);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].finalSubject, "APUSH");
+  });
+
+  it("soft-deletes notes for a fixed subject so it can be re-added later", async () => {
+    const email = "delete-fixed@example.com";
+    await ensureUser(email);
+    await createNote(email, {
+      rawText: "Newton laws",
+      subject: "Physics",
+    });
+    await createNote(email, {
+      rawText: "Cells",
+      subject: "Biology",
+    });
+
+    const result = await deleteSubject(email, "Physics");
+    assert.equal(result.fixed, true);
+    assert.equal(result.deletedNotes, 1);
+    assert.equal(result.removedCustom, false);
+
+    const subjects = await listSubjects(email);
+    assert.ok(subjects.fixed.includes("Physics"));
+    assert.equal((await listNotes(email)).length, 1);
+    assert.equal((await listNotes(email))[0].subject, "Biology");
   });
 });

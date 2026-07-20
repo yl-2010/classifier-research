@@ -25,6 +25,7 @@ import {
   loadInvokedSubjects,
   saveInvokedSubjects,
 } from "@/lib/invoked-subjects";
+import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { loadResearch, saveResearch } from "@/lib/research-store";
 
 type ResearchUpdater = (prev: ResearchRow[]) => ResearchRow[];
@@ -71,6 +72,7 @@ function formatNoteHtml(title: string, body: string) {
 export default function HomePage() {
   const { status } = useSession();
   const signedIn = status === "authenticated";
+  const { apiBase } = useNotelmsRuntimeConfig();
 
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
@@ -88,6 +90,7 @@ export default function HomePage() {
   const [subjectSaved, setSubjectSaved] = useState(false);
   const [addingSubject, setAddingSubject] = useState(false);
   const [customDraft, setCustomDraft] = useState("");
+  const [deletingSubject, setDeletingSubject] = useState(false);
 
   const persistScroll = useCallback(() => {
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
@@ -198,6 +201,48 @@ export default function HomePage() {
       }
     },
     [invokedSubjects, persistInvoked]
+  );
+
+  const deleteSubjectFromLibrary = useCallback(
+    async (label: string) => {
+      const name = label.trim();
+      if (!name || name.toLowerCase() === "other") return;
+
+      const noteCount = notes.filter(
+        (n) => n.status === "ready" && n.subject === name
+      ).length;
+      const message =
+        noteCount > 0
+          ? `Delete “${name}” and its ${noteCount} note${noteCount === 1 ? "" : "s"} from your library? Research history is kept.`
+          : `Delete “${name}” from your library?`;
+      if (!window.confirm(message)) return;
+
+      setDeletingSubject(true);
+      try {
+        if (apiBase) {
+          try {
+            await notelmsFetch(apiBase, "/api/subjects", {
+              method: "DELETE",
+              body: JSON.stringify({ label: name }),
+            });
+          } catch {
+            // Local library still updates if the Mac API is unreachable.
+          }
+        }
+
+        // Drop notes in this subject only — leave research rows untouched.
+        setNotes((prev) => prev.filter((n) => n.subject !== name));
+        persistInvoked(
+          invokedSubjects.filter((s) => s.toLowerCase() !== name.toLowerCase())
+        );
+        setFolder(null);
+        setOpenNoteId(null);
+        setAddingSubject(false);
+      } finally {
+        setDeletingSubject(false);
+      }
+    },
+    [apiBase, invokedSubjects, notes, persistInvoked]
   );
 
   const submitCustomSubject = (e: FormEvent) => {
@@ -545,6 +590,14 @@ export default function HomePage() {
                     >
                       Back
                     </button>
+                    <button
+                      type="button"
+                      className="btn ghost danger"
+                      disabled={deletingSubject}
+                      onClick={() => deleteSubjectFromLibrary(folder)}
+                    >
+                      {deletingSubject ? "Deleting…" : "Delete subject"}
+                    </button>
                   </div>
                 </div>
               ) : addingSubject ? (
@@ -796,6 +849,15 @@ export default function HomePage() {
         .btn.ghost {
           background: color-mix(in srgb, var(--ink) 6%, transparent);
           color: var(--ink);
+        }
+
+        .btn.ghost.danger {
+          color: #9b2c2c;
+          background: color-mix(in srgb, #9b2c2c 8%, transparent);
+        }
+
+        .btn.ghost.danger:hover:not(:disabled) {
+          background: color-mix(in srgb, #9b2c2c 14%, transparent);
         }
 
         :global(.btn.is-disabled),
