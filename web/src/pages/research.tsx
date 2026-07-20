@@ -162,9 +162,6 @@ export default function ResearchPage() {
                 </tbody>
               </table>
             </div>
-            {data?.updated_at ? (
-              <p className="stamp">Updated {formatUpdatedStamp(data.updated_at)}</p>
-            ) : null}
           </section>
         ) : null}
 
@@ -215,6 +212,10 @@ export default function ResearchPage() {
               </table>
             </div>
           </section>
+        ) : null}
+
+        {data?.updated_at ? (
+          <p className="stamp">Updated {formatUpdatedStamp(data.updated_at)}</p>
         ) : null}
 
         <SiteFooter />
