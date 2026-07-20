@@ -2,7 +2,7 @@ import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 type AppNavProps = {
-  active?: "notebook" | "research" | "voice";
+  active?: "notebook" | "research" | "voice" | "about";
   onNotebook?: () => void;
 };
 
@@ -58,6 +58,12 @@ export function AppNav({ active, onNotebook }: AppNavProps) {
             className={`nav-tab${active === "research" ? " active" : ""}`}
           >
             Research
+          </Link>
+          <Link
+            href="/about"
+            className={`nav-tab${active === "about" ? " active" : ""}`}
+          >
+            About
           </Link>
           {signedIn ? (
             <button
