@@ -80,7 +80,6 @@ export default function HomePage() {
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
   const [text, setText] = useState("");
-  const [ocrOnline, setOcrOnline] = useState(true);
   const [sentTitle, setSentTitle] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState<"new" | "library">("new");
   const [folder, setFolder] = useState<string | null>(null);
@@ -268,7 +267,7 @@ export default function HomePage() {
   };
 
   const onUpload = (files: FileList | null) => {
-    if (!ocrOnline || !files?.length) return;
+    if (!files?.length) return;
     // OCR pipeline not wired yet — leave textarea unchanged.
   };
 
@@ -406,8 +405,7 @@ export default function HomePage() {
                   <div className="actions">
                     <button
                       type="button"
-                      className={`btn ghost${ocrOnline ? "" : " is-disabled"}`}
-                      disabled={!ocrOnline}
+                      className="btn ghost"
                       onClick={() => fileRef.current?.click()}
                     >
                       Upload image
@@ -428,14 +426,6 @@ export default function HomePage() {
                       Send
                     </button>
                   </div>
-                  <label className="ocr">
-                    <input
-                      type="checkbox"
-                      checked={ocrOnline}
-                      onChange={(e) => setOcrOnline(e.target.checked)}
-                    />
-                    Image upload available
-                  </label>
                 </>
               )}
             </section>
@@ -749,16 +739,6 @@ export default function HomePage() {
           opacity: 0.35;
           cursor: not-allowed;
           filter: grayscale(0.3);
-        }
-
-        .ocr {
-          display: inline-flex;
-          gap: 0.45rem;
-          align-items: center;
-          margin-top: 1rem;
-          color: var(--mute);
-          font-size: 0.85rem;
-          cursor: pointer;
         }
 
         .muted {
