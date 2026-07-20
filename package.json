@@ -14,7 +14,8 @@
     "test:server": "npm test --prefix server",
     "bert:serve": ".venv/bin/python scripts/bert_serve.py",
     "bert:train": ".venv/bin/python scripts/train_bert.py",
-    "bert:eval": ".venv/bin/python scripts/eval_bert.py"
+    "bert:eval": ".venv/bin/python scripts/eval_bert.py",
+    "bert:eval:gptoss": ".venv/bin/python scripts/eval_bert.py --only-gpt-oss"
   },
   "engines": {
     "node": ">=20"

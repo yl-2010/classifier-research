@@ -27,16 +27,20 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-Train / evaluate / serve BERT (weights stay gitignored under `models/`):
+Train / evaluate / serve classifiers (weights stay gitignored under `models/`):
 
 ```bash
-npm run bert:train    # fine-tune → models/fine-tuned-bert/
-npm run bert:eval     # frozen test → data/processed/bert_eval.json
-npm run bert:serve    # http://127.0.0.1:3003
+npm run bert:train         # fine-tune → models/fine-tuned-bert/
+npm run bert:eval          # frozen test: zero-shot + fine-tuned + GPT-OSS
+npm run bert:eval:gptoss   # GPT-OSS arm only (resumable cache)
+npm run bert:serve         # http://127.0.0.1:3003
 ```
+
+Metrics land in `data/processed/bert_eval.json` and `web/public/research-metrics.json` (shared Research tab).
 
 - **Zero-shot BERT:** pretrained `bert-base-uncased` only (no corpus training); `[CLS]` cosine to `"This student note is about {Subject}."`
 - **Fine-tuned BERT:** full sequence-classification fine-tune on the frozen train split @ `max_length=512`
+- **GPT-OSS 20B:** prompted classifier via local LM Studio (`openai/gpt-oss-20b`)
 
 ### Mac Studio API (Express + LM Studio)
 

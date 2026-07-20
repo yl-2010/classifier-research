@@ -63,19 +63,21 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
               >
                 Voice
               </Link>
-              <Link
-                href="/research"
-                className={`nav-pill${active === "research" ? " active" : ""}`}
-              >
-                Research
-              </Link>
-              <button
-                type="button"
-                onClick={() => void signOut({ callbackUrl: "/" })}
-              >
-                Sign out
-              </button>
             </>
+          ) : null}
+          <Link
+            href="/research"
+            className={`nav-pill${active === "research" ? " active" : ""}`}
+          >
+            Research
+          </Link>
+          {signedIn ? (
+            <button
+              type="button"
+              onClick={() => void signOut({ callbackUrl: "/" })}
+            >
+              Sign out
+            </button>
           ) : (
             <button
               type="button"

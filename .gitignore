@@ -1,6 +1,9 @@
 # Raw downloads (HF cache dumps, OpenStax exports)
 data/raw/
 
+# Offline LLM prediction caches (large / regenerable)
+data/processed/gpt_oss_test_preds.jsonl
+
 # Secrets
 .env
 .env.*
