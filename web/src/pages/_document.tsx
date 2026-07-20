@@ -4,6 +4,9 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content="#f4f7fa" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0b1622" media="(prefers-color-scheme: dark)" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />

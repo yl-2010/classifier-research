@@ -35,10 +35,28 @@
       .cls-5 {
         stroke: #356a88;
       }
+
+      .ink-stop {
+        stop-color: #101f32;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .cls-2 {
+          fill: #e4eef6;
+        }
+
+        .cls-2, .cls-3, .cls-4 {
+          stroke: #e4eef6;
+        }
+
+        .ink-stop {
+          stop-color: #e4eef6;
+        }
+      }
     </style>
     <linearGradient id="linear-gradient" x1="233.35" y1="240.61" x2="299.59" y2="240.61" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#101f32" stop-opacity="0"/>
-      <stop offset=".68" stop-color="#101f32"/>
+      <stop class="ink-stop" offset="0" stop-color="#101f32" stop-opacity="0"/>
+      <stop class="ink-stop" offset=".68" stop-color="#101f32"/>
     </linearGradient>
   </defs>
   <g id="Layer_2_copy_3" data-name="Layer 2 copy 3">

@@ -55,6 +55,12 @@ export function SiteFooter() {
           user-select: none;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .footer-logo {
+            opacity: 0.18;
+          }
+        }
+
         .footer-meta {
           display: flex;
           flex-wrap: wrap;

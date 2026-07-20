@@ -35,10 +35,28 @@
       .ft-5 {
         stroke: #356a88;
       }
+
+      .ink-stop {
+        stop-color: #101f32;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .ft-2 {
+          fill: #e4eef6;
+        }
+
+        .ft-2, .ft-3, .ft-4 {
+          stroke: #e4eef6;
+        }
+
+        .ink-stop {
+          stop-color: #e4eef6;
+        }
+      }
     </style>
     <linearGradient id="footer-logo-grad" x1="558.97" y1="254.84" x2="630.61" y2="254.84" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#101f32" stop-opacity="0"/>
-      <stop offset=".68" stop-color="#101f32"/>
+      <stop class="ink-stop" offset="0" stop-color="#101f32" stop-opacity="0"/>
+      <stop class="ink-stop" offset=".68" stop-color="#101f32"/>
     </linearGradient>
   </defs>
   <g id="Layer_2_copy" data-name="Layer 2 copy">

@@ -531,7 +531,7 @@ export default function VoicePage() {
           border-radius: var(--radius);
           background: linear-gradient(
             180deg,
-            color-mix(in srgb, var(--surface) 92%, #dce8f1) 0%,
+            color-mix(in srgb, var(--surface) 92%, var(--glow)) 0%,
             var(--surface) 100%
           );
           scroll-behavior: smooth;
@@ -570,12 +570,12 @@ export default function VoicePage() {
 
         :global(.lyrics-word.chunk-a.spoken),
         :global(.lyrics-word.chunk-a.current) {
-          color: #165a74;
+          color: color-mix(in srgb, var(--accent) 82%, var(--ink));
         }
 
         :global(.lyrics-word.chunk-b.spoken),
         :global(.lyrics-word.chunk-b.current) {
-          color: #3d5a80;
+          color: color-mix(in srgb, var(--mute) 55%, var(--accent));
         }
 
         :global(.lyrics-word.seekable) {

@@ -439,13 +439,13 @@ export default function ResearchPage() {
           width: calc(1.35rem - 4px);
           height: calc(1.35rem - 4px);
           border-radius: 50%;
-          background: #fff;
+          background: var(--surface);
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
           transition: transform 0.18s ease;
         }
 
         .toggle input:checked + .toggle-ui {
-          background: #1a6b8a;
+          background: var(--accent);
         }
 
         .toggle input:checked + .toggle-ui::after {
@@ -453,7 +453,7 @@ export default function ResearchPage() {
         }
 
         .toggle input:focus-visible + .toggle-ui {
-          outline: 2px solid #1a6b8a;
+          outline: 2px solid var(--accent);
           outline-offset: 2px;
         }
 

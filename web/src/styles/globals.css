@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --ink: #0b1f33;
   --mute: #5a7186;
   --line: #d0dbe6;
@@ -6,9 +7,24 @@
   --surface: #ffffff;
   --accent: #1a6b8a;
   --on-accent: #ffffff;
+  --glow: #dce8f1;
   --radius: 4px;
   --font: "IBM Plex Sans", system-ui, sans-serif;
   --display: "Fraunces", Georgia, serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ink: #e4eef6;
+    --mute: #8aa0b5;
+    --line: #2a3f55;
+    --bg: #0b1622;
+    --surface: #132333;
+    --accent: #3d8fad;
+    --on-accent: #061018;
+    --glow: #1a3348;
+  }
 }
 
 * {
@@ -25,7 +41,7 @@ body {
   font-family: var(--font);
   color: var(--ink);
   background:
-    radial-gradient(900px 420px at 15% -10%, #dce8f1 0%, transparent 55%),
+    radial-gradient(900px 420px at 15% -10%, var(--glow) 0%, transparent 55%),
     var(--bg);
   background-attachment: fixed;
   line-height: 1.45;
