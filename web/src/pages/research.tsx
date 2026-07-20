@@ -22,6 +22,47 @@ function pct(v: number | undefined) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+function dayOrdinal(day: number): string {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+/** e.g. "June 5th 2010, 10:02:09 am pacific" */
+function formatUpdatedStamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    })
+      .formatToParts(date)
+      .filter((p) => p.type !== "literal")
+      .map((p) => [p.type, p.value]),
+  ) as Record<string, string>;
+
+  const day = Number(parts.day);
+  const period = (parts.dayPeriod || "am").toLowerCase();
+  return `${parts.month} ${dayOrdinal(day)} ${parts.year}, ${parts.hour}:${parts.minute}:${parts.second} ${period} pacific`;
+}
+
 export default function ResearchPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -122,7 +163,7 @@ export default function ResearchPage() {
               </table>
             </div>
             {data?.updated_at ? (
-              <p className="stamp">Updated {data.updated_at}</p>
+              <p className="stamp">Updated {formatUpdatedStamp(data.updated_at)}</p>
             ) : null}
           </section>
         ) : null}
