@@ -753,17 +753,7 @@ export default function HomePage() {
                   <p className="muted">
                     You’ll find it in your library when it’s ready.
                   </p>
-                  <div className="actions">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setSentTitle(null);
-                        scrollToSection("library");
-                      }}
-                    >
-                      Library
-                    </button>
+                  <div className="actions actions-sent">
                     <button
                       type="button"
                       className="btn ghost"
@@ -1187,6 +1177,10 @@ export default function HomePage() {
           gap: 0.6rem;
           margin-top: 1rem;
           align-items: center;
+        }
+
+        .actions-sent {
+          justify-content: flex-end;
         }
 
         .actions-end {
