@@ -774,11 +774,17 @@ export default function HomePage() {
                     </button>
                     {openNote.votes && (
                       <p className="model-votes muted">
-                        GPT: {openNote.votes.gptOss || "—"}
-                        {" · "}
                         Zero-shot: {openNote.votes.baseBert || "—"}
-                        {" · "}
+                        <span className="model-votes-sep" aria-hidden="true">
+                          {" "}
+                          ·{" "}
+                        </span>
                         Fine-tuned: {openNote.votes.fineTunedBert || "—"}
+                        <span className="model-votes-sep" aria-hidden="true">
+                          {" "}
+                          ·{" "}
+                        </span>
+                        GPT: {openNote.votes.gptOss || "—"}
                       </p>
                     )}
                     <button
@@ -1085,6 +1091,11 @@ export default function HomePage() {
           font-size: 0.75rem;
           line-height: 1.35;
           letter-spacing: 0.01em;
+        }
+
+        .model-votes-sep {
+          font-weight: 700;
+          color: var(--ink);
         }
 
         :global(.btn),

@@ -293,6 +293,7 @@ app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
   }
 });
 
+/** Soft-delete a note from the library; research event logs are kept. */
 app.delete("/api/notes/:noteId", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });

@@ -483,11 +483,16 @@ export async function updateNote(email, noteId, patch = {}) {
   return next;
 }
 
+/**
+ * Soft-delete a note from the user's library (sets deletedAt).
+ * Never removes or modifies research/ event logs for that note.
+ */
 export async function deleteNote(email, noteId) {
   await ensureUser(email);
   const paths = notePaths(email, noteId);
   const meta = await readJson(paths.meta, null);
   if (!meta) return false;
+  if (meta.deletedAt) return true;
   const next = {
     ...meta,
     deletedAt: new Date().toISOString(),

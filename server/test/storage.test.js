@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   ensureUser,
   createNote,
+  deleteNote,
   listNotes,
   getNote,
   emailToFolderName,
@@ -81,6 +82,39 @@ describe("storage", () => {
     await addCustomSubject(email, "APUSH");
     const subjects = await listSubjects(email);
     assert.ok(subjects.custom.includes("APUSH"));
+  });
+
+  it("soft-deletes a note without touching research events", async () => {
+    const email = "delete-note@example.com";
+    await ensureUser(email);
+    const note = await createNote(email, {
+      rawText: "Photosynthesis steps",
+      subject: "Biology",
+      researchEventId: "evt-keep",
+    });
+    await writeResearchEvent(email, {
+      id: "evt-keep",
+      kind: "classify_ingest",
+      finalSubject: "Biology",
+      textPreview: "Photosynthesis steps",
+      votes: {
+        gptOss: { subject: "Biology", confidence: 0.9 },
+        baseBert: { subject: "Biology", confidence: 0.8 },
+        fineTunedBert: { subject: "Biology", confidence: 0.85 },
+      },
+    });
+
+    const ok = await deleteNote(email, note.id);
+    assert.equal(ok, true);
+    assert.equal(await getNote(email, note.id), null);
+    assert.equal((await listNotes(email)).length, 0);
+
+    const events = await listResearchEvents(email);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].id, "evt-keep");
+    assert.equal(events[0].finalSubject, "Biology");
+    assert.equal(events[0].textPreview, "Photosynthesis steps");
+    assert.equal(events[0].votes.gptOss.subject, "Biology");
   });
 
   it("deletes a subject from one user's library without touching research", async () => {
