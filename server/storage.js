@@ -536,6 +536,67 @@ export async function listResearchEvents(email, { limit = 50 } = {}) {
   return events.slice(0, Math.max(1, Math.min(limit, 500)));
 }
 
+/**
+ * Patch fields on an existing research event (e.g. user subject correction).
+ * Returns the updated event, or null if missing.
+ */
+export async function updateResearchEvent(email, eventId, patch = {}) {
+  await ensureUser(email);
+  if (!eventId || typeof eventId !== "string") return null;
+  const file = path.join(userDir(email), "research", `${eventId}.json`);
+  const existing = await readJson(file, null);
+  if (!existing) return null;
+  const next = {
+    ...existing,
+    ...patch,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson(file, next);
+  return next;
+}
+
+/**
+ * All research events across every user folder under the data root.
+ * Used for shared research charts (frozen eval + live user tests).
+ */
+export async function listAllResearchEvents({ limit = 10000 } = {}) {
+  await assertDataRootReady();
+  const root = getDataRoot();
+  let userFolders = [];
+  try {
+    userFolders = await fsp.readdir(root);
+  } catch (err) {
+    if (err && err.code === "ENOENT") return [];
+    throw err;
+  }
+
+  const events = [];
+  for (const folder of userFolders) {
+    if (!folder.includes("@")) continue;
+    const dir = path.join(root, folder, "research");
+    let names = [];
+    try {
+      names = await fsp.readdir(dir);
+    } catch (err) {
+      if (err && err.code === "ENOENT") continue;
+      throw err;
+    }
+    for (const name of names) {
+      if (!name.endsWith(".json")) continue;
+      const ev = await readJson(path.join(dir, name), null);
+      if (ev) {
+        events.push({ ...ev, _userFolder: folder });
+      }
+    }
+  }
+
+  events.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  const cap = Math.max(1, Math.min(limit, 50000));
+  return events.slice(0, cap);
+}
+
 function deriveTitle(text) {
   const line = String(text || "")
     .split(/\r?\n/)

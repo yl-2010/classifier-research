@@ -5,13 +5,19 @@ import { useEffect, useMemo, useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { ClusteredMetricsChart, type ArmMetrics } from "@/components/ClusteredMetricsChart";
 import { SiteFooter } from "@/components/SiteFooter";
+import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 
 const JUMP_KEY = "notelms-jump";
+const INCLUDE_USER_KEY = "notelms-research-include-user";
 
 type EvalPayload = {
   subjects?: string[];
   test_n?: number;
   updated_at?: string;
+  include_user_tests?: boolean;
+  user_test_n?: number;
+  frozen_test_n?: number;
+  source?: string;
   arms?: Record<string, ArmMetrics & { per_class?: Record<string, unknown> }>;
 };
 
@@ -63,31 +69,89 @@ function formatUpdatedStamp(iso: string): string {
   return `${parts.month} ${dayOrdinal(day)} ${parts.year}, ${parts.hour}:${parts.minute}:${parts.second} ${period} pacific`;
 }
 
+function readIncludeUserPref(): boolean {
+  try {
+    return sessionStorage.getItem(INCLUDE_USER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function ResearchPage() {
   const { status } = useSession();
   const router = useRouter();
   const signedIn = status === "authenticated";
+  const { apiBase } = useNotelmsRuntimeConfig();
+  const [includeUserTests, setIncludeUserTests] = useState(false);
   const [data, setData] = useState<EvalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setIncludeUserTests(readIncludeUserPref());
+  }, []);
+
+  useEffect(() => {
+    if (includeUserTests && status === "loading") return;
+
     let cancelled = false;
     void (async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch("/research-metrics.json", { cache: "no-store" });
-        if (!res.ok) throw new Error(`Failed to load metrics (${res.status})`);
-        const json = (await res.json()) as EvalPayload;
-        if (!cancelled) setData(json);
+        if (includeUserTests) {
+          if (!signedIn) {
+            throw new Error("Sign in to include user tests in the charts");
+          }
+          if (!apiBase) {
+            throw new Error("API not configured");
+          }
+          const res = await notelmsFetch(
+            apiBase,
+            "/api/research/metrics?includeUser=1",
+          );
+          if (!res.ok) {
+            const body = (await res.json().catch(() => null)) as {
+              error?: string;
+            } | null;
+            throw new Error(
+              body?.error || `Failed to load metrics (${res.status})`,
+            );
+          }
+          const json = (await res.json()) as EvalPayload & { ok?: boolean };
+          if (!cancelled) setData(json);
+        } else {
+          const res = await fetch("/research-metrics.json", { cache: "no-store" });
+          if (!res.ok) throw new Error(`Failed to load metrics (${res.status})`);
+          const json = (await res.json()) as EvalPayload;
+          if (!cancelled) {
+            setData({ ...json, include_user_tests: false, user_test_n: 0 });
+          }
+        }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load research metrics");
+          setData(null);
+          setError(
+            err instanceof Error ? err.message : "Failed to load research metrics",
+          );
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [includeUserTests, signedIn, apiBase, status]);
+
+  const onToggleUserTests = (next: boolean) => {
+    setIncludeUserTests(next);
+    try {
+      sessionStorage.setItem(INCLUDE_USER_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
 
   const arms = useMemo(() => {
     if (!data?.arms) return [] as ArmMetrics[];
@@ -115,6 +179,10 @@ export default function ResearchPage() {
     void router.push("/");
   };
 
+  const kicker = includeUserTests
+    ? `Shared results · frozen test + ${data?.user_test_n ?? "…"} user tests`
+    : "Shared results · frozen test";
+
   return (
     <>
       <Head>
@@ -127,14 +195,31 @@ export default function ResearchPage() {
         />
 
         <header className="hero">
-          <p className="kicker">Shared results · frozen test</p>
+          <p className="kicker">{kicker}</p>
           <h1>Research</h1>
+          <div className="toggle-row">
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={includeUserTests}
+                onChange={(e) => onToggleUserTests(e.target.checked)}
+                disabled={status === "loading"}
+              />
+              <span className="toggle-ui" aria-hidden="true" />
+              <span className="toggle-label">Include user tests</span>
+            </label>
+            <p className="toggle-hint">
+              {includeUserTests
+                ? "Charts pool the frozen eval set with live classifications from uploads."
+                : "Charts show only the frozen offline eval run."}
+            </p>
+          </div>
         </header>
 
         {error ? <p className="error">{error}</p> : null}
-        {!data && !error ? <p className="muted">Loading metrics…</p> : null}
+        {loading && !error ? <p className="muted">Loading metrics…</p> : null}
 
-        {arms.length > 0 ? (
+        {!loading && arms.length > 0 ? (
           <section className="panel" aria-labelledby="headline-metrics">
             <h2 id="headline-metrics">Classifier comparison</h2>
             <ClusteredMetricsChart arms={arms} order={[...ARM_ORDER]} />
@@ -164,7 +249,7 @@ export default function ResearchPage() {
           </section>
         ) : null}
 
-        {data?.arms && Object.keys(data.arms).length > 0 ? (
+        {!loading && data?.arms && Object.keys(data.arms).length > 0 ? (
           <section className="panel" aria-labelledby="per-class">
             <h2 id="per-class">Per-class F1</h2>
             <div className="table-scroll">
@@ -213,7 +298,7 @@ export default function ResearchPage() {
           </section>
         ) : null}
 
-        {data?.updated_at ? (
+        {!loading && data?.updated_at ? (
           <p className="stamp">Updated {formatUpdatedStamp(data.updated_at)}</p>
         ) : null}
 
@@ -249,6 +334,78 @@ export default function ResearchPage() {
           font-size: clamp(1.85rem, 4vw, 2.4rem);
           font-weight: 500;
           letter-spacing: -0.02em;
+        }
+
+        .toggle-row {
+          margin-top: 1rem;
+        }
+
+        .toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.65rem;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .toggle input {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .toggle-ui {
+          position: relative;
+          width: 2.4rem;
+          height: 1.35rem;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--line) 85%, var(--mute));
+          transition: background 0.18s ease;
+          flex-shrink: 0;
+        }
+
+        .toggle-ui::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: calc(1.35rem - 4px);
+          height: calc(1.35rem - 4px);
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          transition: transform 0.18s ease;
+        }
+
+        .toggle input:checked + .toggle-ui {
+          background: #1a6b8a;
+        }
+
+        .toggle input:checked + .toggle-ui::after {
+          transform: translateX(1.05rem);
+        }
+
+        .toggle input:focus-visible + .toggle-ui {
+          outline: 2px solid #1a6b8a;
+          outline-offset: 2px;
+        }
+
+        .toggle input:disabled + .toggle-ui {
+          opacity: 0.5;
+        }
+
+        .toggle-label {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--ink);
+        }
+
+        .toggle-hint {
+          margin: 0.4rem 0 0;
+          max-width: 36rem;
+          font-size: 0.88rem;
+          color: var(--mute);
         }
 
         .lede {

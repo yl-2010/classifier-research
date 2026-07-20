@@ -12,6 +12,7 @@ import { Readable } from "node:stream";
 import {
   authConfigured,
   requireAuth,
+  getAuthFromRequest,
   getAuthConfig,
 } from "./auth.js";
 import { loadedAuth } from "./load-env.js";
@@ -28,6 +29,8 @@ import {
   deleteNote,
   writeResearchEvent,
   listResearchEvents,
+  listAllResearchEvents,
+  updateResearchEvent,
   getDataRoot,
   getDataRootStatus,
   emailToFolderName,
@@ -41,6 +44,8 @@ import {
 } from "./classify.js";
 import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
+import { buildResearchMetrics } from "./research-metrics.js";
+import { normalizeSubjectLabel } from "./subjects.js";
 
 const PORT = Number(process.env.PORT || 3002);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -286,6 +291,19 @@ app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
       res.status(404).json({ ok: false, error: "not found" });
       return;
     }
+
+    // Keep linked research event gold in sync when the user corrects subject.
+    if (req.body?.subject != null && note.researchEventId) {
+      const gold = normalizeSubjectLabel(note.subject);
+      if (gold) {
+        await updateResearchEvent(req.user.email, note.researchEventId, {
+          finalSubject: gold,
+          userGoldSubject: gold,
+          corrected: true,
+        });
+      }
+    }
+
     res.json({ ok: true, note });
   } catch (err) {
     console.error("[PATCH /api/notes/:id]", err);
@@ -495,6 +513,41 @@ app.get("/api/research", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[/api/research]", err);
     res.status(500).json({ ok: false, error: err.message || "failed" });
+  }
+});
+
+/**
+ * Shared research chart metrics.
+ * ?includeUser=1 pools frozen eval with all users' classify_ingest events.
+ * includeUser requires a signed-in Mac JWT (USB scan is not public).
+ */
+app.get("/api/research/metrics", async (req, res) => {
+  try {
+    const includeUser =
+      req.query.includeUser === "1" ||
+      req.query.includeUser === "true" ||
+      req.query.include_user === "1";
+
+    let userEvents = [];
+    if (includeUser) {
+      const user = await getAuthFromRequest(req);
+      if (!user) {
+        res.status(401).json({ ok: false, error: "unauthorized" });
+        return;
+      }
+      req.user = user;
+      userEvents = await listAllResearchEvents({ limit: 10000 });
+    }
+
+    const metrics = await buildResearchMetrics({
+      includeUser,
+      userEvents,
+    });
+    res.json({ ok: true, ...metrics });
+  } catch (err) {
+    console.error("[/api/research/metrics]", err);
+    const status = err?.status || 500;
+    res.status(status).json({ ok: false, error: err.message || "failed" });
   }
 });
 

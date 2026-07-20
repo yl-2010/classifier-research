@@ -14,6 +14,8 @@ import {
   listSubjects,
   deleteSubject,
   listResearchEvents,
+  listAllResearchEvents,
+  updateResearchEvent,
   writeResearchEvent,
 } from "../storage.js";
 
@@ -175,5 +177,50 @@ describe("storage", () => {
     assert.ok(subjects.fixed.includes("Physics"));
     assert.equal((await listNotes(email)).length, 1);
     assert.equal((await listNotes(email))[0].subject, "Biology");
+  });
+
+  it("lists research events across users and patches gold on correction", async () => {
+    const a = "chart-a@example.com";
+    const b = "chart-b@example.com";
+    await ensureUser(a);
+    await ensureUser(b);
+
+    await createNote(a, {
+      rawText: "mitosis",
+      subject: "Biology",
+      researchEventId: "evt-a1",
+    });
+    await writeResearchEvent(a, {
+      id: "evt-a1",
+      kind: "classify_ingest",
+      finalSubject: "Biology",
+      votes: {
+        gptOss: { subject: "Biology" },
+        baseBert: { subject: "Biology" },
+        fineTunedBert: { subject: "Biology" },
+      },
+    });
+    await writeResearchEvent(b, {
+      id: "evt-b1",
+      kind: "classify_ingest",
+      finalSubject: "Mathematics",
+      votes: {
+        gptOss: { subject: "Mathematics" },
+        baseBert: { subject: "Physics" },
+        fineTunedBert: { subject: "Mathematics" },
+      },
+    });
+
+    const all = await listAllResearchEvents();
+    assert.ok(all.some((e) => e.id === "evt-a1"));
+    assert.ok(all.some((e) => e.id === "evt-b1"));
+
+    const updated = await updateResearchEvent(a, "evt-a1", {
+      userGoldSubject: "Chemistry",
+      finalSubject: "Chemistry",
+      corrected: true,
+    });
+    assert.equal(updated.userGoldSubject, "Chemistry");
+    assert.equal(updated.corrected, true);
   });
 });
