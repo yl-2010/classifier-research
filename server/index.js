@@ -12,7 +12,6 @@ import { Readable } from "node:stream";
 import {
   authConfigured,
   requireAuth,
-  getAuthFromRequest,
   getAuthConfig,
 } from "./auth.js";
 import { loadedAuth } from "./load-env.js";
@@ -517,9 +516,9 @@ app.get("/api/research", requireAuth, async (req, res) => {
 });
 
 /**
- * Shared research chart metrics.
- * ?includeUser=1 pools frozen eval with all users' classify_ingest events.
- * includeUser requires a signed-in Mac JWT (USB scan is not public).
+ * Shared research chart metrics (public).
+ * ?includeUser=1 pools frozen eval with every user's classify_ingest events
+ * on this Mac — not scoped to the caller.
  */
 app.get("/api/research/metrics", async (req, res) => {
   try {
@@ -528,16 +527,9 @@ app.get("/api/research/metrics", async (req, res) => {
       req.query.includeUser === "true" ||
       req.query.include_user === "1";
 
-    let userEvents = [];
-    if (includeUser) {
-      const user = await getAuthFromRequest(req);
-      if (!user) {
-        res.status(401).json({ ok: false, error: "unauthorized" });
-        return;
-      }
-      req.user = user;
-      userEvents = await listAllResearchEvents({ limit: 10000 });
-    }
+    const userEvents = includeUser
+      ? await listAllResearchEvents({ limit: 10000 })
+      : [];
 
     const metrics = await buildResearchMetrics({
       includeUser,

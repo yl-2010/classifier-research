@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppNav } from "@/components/AppNav";
 import { ClusteredMetricsChart, type ArmMetrics } from "@/components/ClusteredMetricsChart";
 import { SiteFooter } from "@/components/SiteFooter";
-import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
+import { useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 
 const JUMP_KEY = "notelms-jump";
 const INCLUDE_USER_KEY = "notelms-research-include-user";
@@ -81,7 +81,7 @@ export default function ResearchPage() {
   const { status } = useSession();
   const router = useRouter();
   const signedIn = status === "authenticated";
-  const { apiBase } = useNotelmsRuntimeConfig();
+  const { apiBase, loading: configLoading } = useNotelmsRuntimeConfig();
   const [includeUserTests, setIncludeUserTests] = useState(false);
   const [data, setData] = useState<EvalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export default function ResearchPage() {
   }, []);
 
   useEffect(() => {
-    if (includeUserTests && status === "loading") return;
+    if (includeUserTests && configLoading) return;
 
     let cancelled = false;
     void (async () => {
@@ -100,16 +100,11 @@ export default function ResearchPage() {
       setError(null);
       try {
         if (includeUserTests) {
-          if (!signedIn) {
-            throw new Error("Sign in to include user tests in the charts");
-          }
           if (!apiBase) {
             throw new Error("API not configured");
           }
-          const res = await notelmsFetch(
-            apiBase,
-            "/api/research/metrics?includeUser=1",
-          );
+          const url = `${apiBase.replace(/\/$/, "")}/api/research/metrics?includeUser=1`;
+          const res = await fetch(url, { cache: "no-store" });
           if (!res.ok) {
             const body = (await res.json().catch(() => null)) as {
               error?: string;
@@ -142,7 +137,7 @@ export default function ResearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [includeUserTests, signedIn, apiBase, status]);
+  }, [includeUserTests, apiBase, configLoading]);
 
   const onToggleUserTests = (next: boolean) => {
     setIncludeUserTests(next);
@@ -203,14 +198,13 @@ export default function ResearchPage() {
                 type="checkbox"
                 checked={includeUserTests}
                 onChange={(e) => onToggleUserTests(e.target.checked)}
-                disabled={status === "loading"}
               />
               <span className="toggle-ui" aria-hidden="true" />
               <span className="toggle-label">Include user tests</span>
             </label>
             <p className="toggle-hint">
               {includeUserTests
-                ? "Charts pool the frozen eval set with live classifications from uploads."
+                ? "Charts pool the frozen eval set with live classifications from every user."
                 : "Charts show only the frozen offline eval run."}
             </p>
           </div>
