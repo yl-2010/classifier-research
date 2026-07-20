@@ -225,7 +225,7 @@ export default function HomePage() {
     if (!value) return;
     const id = `n-${Date.now()}`;
     const title = titleFromText(value);
-    // Demo classify stub — real ingest will assign subject later.
+    // Demo classify stub - real ingest will assign subject later.
     const subject = "Physics";
     const note: NoteItem = {
       id,
@@ -269,7 +269,7 @@ export default function HomePage() {
 
   const onUpload = (files: FileList | null) => {
     if (!files?.length) return;
-    // OCR pipeline not wired yet — leave textarea unchanged.
+    // OCR pipeline not wired yet - leave textarea unchanged.
   };
 
   const openNote = notes.find((n) => n.id === openNoteId && n.status === "ready");
@@ -355,7 +355,7 @@ export default function HomePage() {
               />
               <div className="gate-copy">
                 <p className="gate-lead">
-                  Classify and organize your notes — and help build research
+                  Classify and organize your notes, and help build research
                   along the way.
                 </p>
                 <div className="gate-actions">

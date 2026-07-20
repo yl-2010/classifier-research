@@ -30,7 +30,7 @@ export default function ResearchPage() {
   return (
     <>
       <Head>
-        <title>Research — NoteLMs</title>
+        <title>Research - NoteLMs</title>
       </Head>
       <div className="app">
         <AppNav
