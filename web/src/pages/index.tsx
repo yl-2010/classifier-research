@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import {
   useCallback,
@@ -332,35 +333,42 @@ export default function HomePage() {
         />
       </Head>
 
-      <div className="app">
-        <AppNav
-          active={signedIn ? activeNav : undefined}
-          onNew={() => {
-            if (signedIn) scrollToSection("new");
-          }}
-          onLibrary={() => {
-            if (signedIn) scrollToSection("library");
-          }}
-        />
+      <div className={`app${!signedIn ? " app-gate" : ""}`}>
+        {signedIn && (
+          <AppNav
+            active={activeNav}
+            onNew={() => scrollToSection("new")}
+            onLibrary={() => scrollToSection("library")}
+          />
+        )}
 
         {!signedIn && (
           <section className="gate">
             <img
               className="gate-logo"
-              src="/logo-nav.svg"
+              src="/logo-plain.svg"
               alt="NoteLMs"
-              width={280}
-              height={117}
+              width={864}
+              height={360}
               decoding="async"
             />
-            <button
-              type="button"
-              className="btn"
-              onClick={() => void signIn("google", { callbackUrl: "/" })}
-              disabled={status === "loading"}
-            >
-              Sign in with Google
-            </button>
+            <p className="gate-lead">
+              Classify and organize your notes — and help build research along
+              the way.
+            </p>
+            <div className="gate-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void signIn("google", { callbackUrl: "/" })}
+                disabled={status === "loading"}
+              >
+                Sign in with Google
+              </button>
+              <Link href="/research" className="btn gate-research">
+                View Research
+              </Link>
+            </div>
           </section>
         )}
 
@@ -659,19 +667,75 @@ export default function HomePage() {
           flex-direction: column;
         }
 
+        .app-gate {
+          max-width: 860px;
+          padding-top: clamp(2.5rem, 8vh, 5rem);
+        }
+
         .gate {
-          min-height: 60vh;
+          flex: 1;
+          min-height: min(68vh, 640px);
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: flex-start;
-          gap: 1.25rem;
+          gap: 1.5rem;
+          padding: 0.5rem 0 2rem;
         }
 
         .gate-logo {
           display: block;
-          width: min(280px, 72vw);
+          width: min(520px, 86vw);
           height: auto;
+          opacity: 1;
+          animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .gate-lead {
+          margin: 0;
+          max-width: 28rem;
+          color: var(--mute);
+          font-size: clamp(1.05rem, 2.4vw, 1.2rem);
+          line-height: 1.55;
+          animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+        }
+
+        .gate-actions {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 0.35rem;
+          animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
+        }
+
+        :global(.gate-research),
+        .gate-research {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          background: color-mix(in srgb, var(--ink) 7%, transparent);
+          color: var(--ink);
+          box-shadow: inset 0 0 0 1.5px
+            color-mix(in srgb, var(--accent) 35%, transparent);
+        }
+
+        :global(.gate-research:hover),
+        .gate-research:hover {
+          background: color-mix(in srgb, var(--accent) 12%, transparent);
+          color: var(--ink);
+        }
+
+        @keyframes gate-rise {
+          from {
+            opacity: 0;
+            transform: translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
         .block {

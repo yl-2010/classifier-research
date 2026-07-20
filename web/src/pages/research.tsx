@@ -16,42 +16,16 @@ export default function ResearchPage() {
   const [rows, setRows] = useState<ResearchRow[]>([]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      void router.replace("/");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    if (!signedIn) return;
     setRows(loadResearch());
     const onFocus = () => setRows(loadResearch());
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [signedIn]);
+  }, []);
 
   const jumpHome = (section: "new" | "library") => {
     sessionStorage.setItem(JUMP_KEY, section);
     void router.push("/");
   };
-
-  if (status === "loading" || !signedIn) {
-    return (
-      <div className="app">
-        <AppNav active="research" />
-        <SiteFooter />
-        <style jsx>{`
-          .app {
-            max-width: 720px;
-            margin: 0 auto;
-            padding: 1.25rem 1.25rem 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -61,30 +35,38 @@ export default function ResearchPage() {
       <div className="app">
         <AppNav
           active="research"
-          onNew={() => jumpHome("new")}
-          onLibrary={() => jumpHome("library")}
+          onNew={signedIn ? () => jumpHome("new") : undefined}
+          onLibrary={signedIn ? () => jumpHome("library") : undefined}
         />
         <h1 className="section-label">Research</h1>
-        <table className="research">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Orchestrator</th>
-              <th>Final</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={`${r.id}-${r.when}-${r.final}-${r.corrected}`}>
-                <td>{r.when}</td>
-                <td>{r.orchestrator}</td>
-                <td>{r.final}</td>
-                <td>{r.corrected ? "Manual" : "Auto"}</td>
+        {rows.length === 0 ? (
+          <p className="muted">
+            {signedIn
+              ? "No classifications yet. Send a note and corrections will show up here."
+              : "Sign in to contribute classifications. Research rows appear here as notes are processed."}
+          </p>
+        ) : (
+          <table className="research">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Orchestrator</th>
+                <th>Final</th>
+                <th>Source</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={`${r.id}-${r.when}-${r.final}-${r.corrected}`}>
+                  <td>{r.when}</td>
+                  <td>{r.orchestrator}</td>
+                  <td>{r.final}</td>
+                  <td>{r.corrected ? "Manual" : "Auto"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <SiteFooter />
       </div>
       <style jsx>{`
@@ -102,6 +84,12 @@ export default function ResearchPage() {
           font-family: var(--display);
           font-size: 1.35rem;
           font-weight: 500;
+        }
+
+        .muted {
+          color: var(--mute);
+          font-size: 0.95rem;
+          margin: 0 0 1rem;
         }
 
         .research {
