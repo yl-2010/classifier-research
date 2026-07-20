@@ -344,34 +344,30 @@ export default function HomePage() {
 
         {!signedIn && (
           <section className="gate">
-            <div className="gate-cluster">
-              <img
-                className="gate-logo"
-                src="/logo-plain.svg"
-                alt="NoteLMs"
-                width={864}
-                height={360}
-                decoding="async"
-              />
-              <div className="gate-copy">
-                <p className="gate-lead">
-                  Classify and organize your notes, and help build research
-                  along the way.
-                </p>
-                <div className="gate-actions">
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => void signIn("google", { callbackUrl: "/" })}
-                    disabled={status === "loading"}
-                  >
-                    Sign in with Google
-                  </button>
-                  <Link href="/research" className="btn gate-research">
-                    View Research
-                  </Link>
-                </div>
-              </div>
+            <img
+              className="gate-logo"
+              src="/logo-plain.svg"
+              alt="NoteLMs"
+              width={600}
+              height={211}
+              decoding="async"
+            />
+            <p className="gate-lead">
+              Classify and organize your notes, and help build research along
+              the way.
+            </p>
+            <div className="gate-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void signIn("google", { callbackUrl: "/" })}
+                disabled={status === "loading"}
+              >
+                Sign in with Google
+              </button>
+              <Link href="/research" className="btn gate-research">
+                View Research
+              </Link>
             </div>
           </section>
         )}
@@ -683,36 +679,23 @@ export default function HomePage() {
           flex-direction: column;
           justify-content: center;
           align-items: flex-start;
-          padding: 0.5rem 0 2rem;
-        }
-
-        .gate-cluster {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
           gap: 1.5rem;
-          width: fit-content;
-          max-width: 100%;
+          padding: 0.5rem 0 2rem;
         }
 
         .gate-logo {
           display: block;
-          width: min(520px, 86vw);
+          width: min(420px, 88vw);
           height: auto;
           opacity: 1;
+          /* Cropped SVG: ink starts at the left edge of the box */
+          margin: 0;
           animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
-
-        .gate-copy {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 1.5rem;
-          width: min(28rem, 100%);
         }
 
         .gate-lead {
           margin: 0;
+          max-width: 28rem;
           color: var(--mute);
           font-size: clamp(1.05rem, 2.4vw, 1.2rem);
           line-height: 1.55;

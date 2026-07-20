@@ -22,34 +22,30 @@ export default function SignInPage() {
       </Head>
       <main className="shell">
         <div className="panel">
-          <div className="cluster">
-            <img
-              className="brand-logo"
-              src="/logo-plain.svg"
-              alt="NoteLMs"
-              width={864}
-              height={360}
-              decoding="async"
-            />
-            <div className="copy">
-              <p className="lead">
-                Classify and organize your notes, and help build research along
-                the way.
-              </p>
-              <div className="actions">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => void signIn("google", { callbackUrl: "/" })}
-                  disabled={status === "loading"}
-                >
-                  Sign in with Google
-                </button>
-                <Link href="/research" className="btn research">
-                  View Research
-                </Link>
-              </div>
-            </div>
+          <img
+            className="brand-logo"
+            src="/logo-plain.svg"
+            alt="NoteLMs"
+            width={600}
+            height={211}
+            decoding="async"
+          />
+          <p className="lead">
+            Classify and organize your notes, and help build research along the
+            way.
+          </p>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void signIn("google", { callbackUrl: "/" })}
+              disabled={status === "loading"}
+            >
+              Sign in with Google
+            </button>
+            <Link href="/research" className="btn research">
+              View Research
+            </Link>
           </div>
         </div>
         <SiteFooter />
@@ -70,35 +66,21 @@ export default function SignInPage() {
           flex-direction: column;
           justify-content: center;
           align-items: flex-start;
-          padding-bottom: 2rem;
-        }
-
-        .cluster {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
           gap: 1.5rem;
-          width: fit-content;
-          max-width: 100%;
+          padding-bottom: 2rem;
         }
 
         .brand-logo {
           display: block;
-          width: min(520px, 86vw);
+          width: min(420px, 88vw);
           height: auto;
           opacity: 1;
-        }
-
-        .copy {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 1.5rem;
-          width: min(28rem, 100%);
+          margin: 0;
         }
 
         .lead {
           margin: 0;
+          max-width: 28rem;
           color: var(--mute);
           font-size: clamp(1.05rem, 2.4vw, 1.2rem);
           line-height: 1.55;
