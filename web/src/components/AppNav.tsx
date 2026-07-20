@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 type AppNavProps = {
   active?: "notebook" | "research" | "voice" | "about";
@@ -65,14 +65,7 @@ export function AppNav({ active, onNotebook }: AppNavProps) {
           >
             About
           </Link>
-          {signedIn ? (
-            <button
-              type="button"
-              onClick={() => void signOut({ callbackUrl: "/" })}
-            >
-              Sign out
-            </button>
-          ) : (
+          {!signedIn ? (
             <button
               type="button"
               className="btn"
@@ -81,7 +74,7 @@ export function AppNav({ active, onNotebook }: AppNavProps) {
             >
               Sign in with Google
             </button>
-          )}
+          ) : null}
         </nav>
       </div>
       <style jsx>{`
@@ -215,14 +208,6 @@ export function AppNav({ active, onNotebook }: AppNavProps) {
           flex-wrap: wrap;
           align-items: center;
           gap: 0.85rem;
-        }
-
-        .nav > button:not(.btn) {
-          border: 0;
-          background: none;
-          padding: 0;
-          cursor: pointer;
-          font: inherit;
         }
 
         :global(.nav-tab) {

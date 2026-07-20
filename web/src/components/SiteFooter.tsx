@@ -1,5 +1,9 @@
+import { signOut, useSession } from "next-auth/react";
+
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  const { status } = useSession();
+  const signedIn = status === "authenticated";
 
   return (
     <footer className="site-footer">
@@ -13,9 +17,19 @@ export function SiteFooter() {
       />
       <div className="footer-meta">
         <p className="copy">© {year} Yan Levin. All rights reserved.</p>
-        <p className="tag">
-          NoteLMs helps students organize notes while building research data.
-        </p>
+        {signedIn ? (
+          <button
+            type="button"
+            className="sign-out"
+            onClick={() => void signOut({ callbackUrl: "/" })}
+          >
+            Sign out
+          </button>
+        ) : (
+          <p className="tag">
+            NoteLMs helps students organize notes while building research data.
+          </p>
+        )}
       </div>
       <style jsx>{`
         .site-footer {
@@ -54,7 +68,8 @@ export function SiteFooter() {
         }
 
         .copy,
-        .tag {
+        .tag,
+        .sign-out {
           margin: 0;
           color: var(--mute);
           font-size: 0.8rem;
@@ -63,6 +78,20 @@ export function SiteFooter() {
 
         .tag {
           opacity: 0.85;
+        }
+
+        .sign-out {
+          border: 0;
+          background: none;
+          padding: 0;
+          cursor: pointer;
+          font: inherit;
+          opacity: 0.85;
+        }
+
+        .sign-out:hover {
+          color: var(--ink);
+          opacity: 1;
         }
       `}</style>
     </footer>
