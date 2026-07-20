@@ -423,7 +423,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
 
     res.status(201).json({
       ok: true,
-      note,
+      note: { ...note, html: formatted.html },
       classification,
       resolved,
       votes: classification.votes,

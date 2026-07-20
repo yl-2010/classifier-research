@@ -34,9 +34,9 @@ export async function chatCompletions({
     temperature,
     max_tokens: maxTokens,
   };
-  if (json) {
-    body.response_format = { type: "json_object" };
-  }
+  // Intentionally omit response_format: LM Studio gpt-oss-20b rejects
+  // OpenAI's json_object. Callers prompt for JSON and parse with extractJsonObject.
+  void json;
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",

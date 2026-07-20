@@ -4,7 +4,6 @@ export { useNotelmsRuntimeConfig, fetchMacToken };
 
 /**
  * Call the Mac Studio Express API with a freshly minted Bearer token.
- * UI code can use this later; backend is ready now.
  */
 export async function notelmsFetch(
   apiBase: string,

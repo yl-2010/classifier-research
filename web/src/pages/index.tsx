@@ -41,10 +41,6 @@ function titleFromText(text: string) {
   return (line || "Untitled note").slice(0, 64);
 }
 
-function sampleHtml(title: string) {
-  return `<h1>${escapeHtml(title)}</h1><section><p>Sample note.</p></section>`;
-}
-
 function escapeHtml(t: string) {
   return t.replace(
     /[&<>"']/g,
@@ -59,14 +55,36 @@ function escapeHtml(t: string) {
   );
 }
 
-function formatNoteHtml(title: string, body: string) {
-  const paras = body
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
-    .join("");
-  return `<h1>${escapeHtml(title)}</h1><section>${paras || "<p></p>"}</section>`;
+function placeholderHtml(title: string) {
+  return `<h1>${escapeHtml(title)}</h1><section><p class="muted">Loading note…</p></section>`;
+}
+
+type ApiNoteMeta = {
+  id: string;
+  title?: string;
+  subject?: string;
+  html?: string | null;
+  classification?: {
+    subject?: string;
+    resolvedSubject?: string;
+  } | null;
+};
+
+function mapApiNote(meta: ApiNoteMeta): NoteItem {
+  const subject = meta.subject || "Other";
+  const orchestrator =
+    meta.classification?.resolvedSubject ||
+    meta.classification?.subject ||
+    subject;
+  return {
+    id: meta.id,
+    title: meta.title || "Untitled note",
+    subject,
+    status: "ready",
+    html: typeof meta.html === "string" ? meta.html : "",
+    orchestrator,
+    corrected: false,
+  };
 }
 
 export default function HomePage() {
@@ -76,9 +94,9 @@ export default function HomePage() {
 
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
+  const htmlFetchRef = useRef<Set<string>>(new Set());
 
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
@@ -91,6 +109,9 @@ export default function HomePage() {
   const [addingSubject, setAddingSubject] = useState(false);
   const [customDraft, setCustomDraft] = useState("");
   const [deletingSubject, setDeletingSubject] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [ingestError, setIngestError] = useState<string | null>(null);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
 
   const persistScroll = useCallback(() => {
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
@@ -120,6 +141,44 @@ export default function HomePage() {
   useEffect(() => {
     setInvokedSubjects(loadInvokedSubjects());
   }, []);
+
+  useEffect(() => {
+    if (!signedIn || !apiBase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await notelmsFetch(apiBase, "/api/notes");
+        const data = (await res.json()) as {
+          ok?: boolean;
+          notes?: ApiNoteMeta[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!res.ok || !data.ok) {
+          setLibraryError(data.error || "Could not load library");
+          setNotes([]);
+          return;
+        }
+        const mapped = (data.notes || []).map(mapApiNote);
+        setNotes(mapped);
+        setLibraryError(null);
+        const subjects = mapped.map((n) => n.subject);
+        if (subjects.length) {
+          persistInvoked(
+            sortLibrarySubjects([...loadInvokedSubjects(), ...subjects])
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setLibraryError("Could not reach the note API");
+          setNotes([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, apiBase, persistInvoked]);
 
   useEffect(() => {
     if (!addingSubject) return;
@@ -265,70 +324,146 @@ export default function HomePage() {
     addSubjectToLibrary(name);
   };
 
-  const sendNotes = () => {
+  const sendNotes = async () => {
     const value = text.trim();
-    if (!value) return;
-    const id = `n-${Date.now()}`;
+    if (!value || sending) return;
+    if (!apiBase) {
+      setIngestError("Note API is not configured");
+      return;
+    }
+
+    const tempId = `pending-${Date.now()}`;
     const title = titleFromText(value);
-    // Demo classify stub - real ingest will assign subject later.
-    const subject = "Physics";
-    const note: NoteItem = {
-      id,
-      title,
-      subject,
-      status: "processing",
-      html: "",
-      orchestrator: subject,
-      corrected: false,
-    };
-    setNotes((prev) => [note, ...prev]);
+    setIngestError(null);
+    setSending(true);
+    setNotes((prev) => [
+      {
+        id: tempId,
+        title,
+        subject: "…",
+        status: "processing",
+        html: "",
+        orchestrator: "",
+        corrected: false,
+      },
+      ...prev,
+    ]);
     setSentTitle(title);
     setText("");
 
-    window.setTimeout(() => {
+    try {
+      const res = await notelmsFetch(apiBase, "/api/notes/ingest", {
+        method: "POST",
+        body: JSON.stringify({ rawText: value, source: "paste", title }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        note?: ApiNoteMeta;
+        resolved?: { subject?: string; createdCustom?: string | null };
+        orchestrator?: { subject?: string };
+      };
+      if (!res.ok || !data.ok || !data.note) {
+        throw new Error(data.error || "Ingest failed");
+      }
+
+      const mapped = mapApiNote(data.note);
+      const orchestratorSubject =
+        data.orchestrator?.subject ||
+        data.resolved?.subject ||
+        mapped.orchestrator;
+      const finalSubject = data.resolved?.subject || mapped.subject;
+
       setNotes((prev) =>
         prev.map((n) =>
-          n.id === id
+          n.id === tempId
             ? {
-                ...n,
+                ...mapped,
+                subject: finalSubject,
+                orchestrator: orchestratorSubject,
                 status: "ready",
-                subject,
-                orchestrator: subject,
-                html: formatNoteHtml(title, value),
               }
             : n
         )
       );
+
+      if (data.resolved?.createdCustom) {
+        persistInvoked([...invokedSubjects, data.resolved.createdCustom]);
+      } else {
+        persistInvoked([...invokedSubjects, finalSubject]);
+      }
+
       updateResearch((prev) => [
         {
-          id,
+          id: mapped.id,
           when: "now",
-          orchestrator: subject,
-          final: subject,
+          orchestrator: orchestratorSubject,
+          final: finalSubject,
           corrected: false,
         },
         ...prev,
       ]);
-    }, 2200);
-  };
-
-  const onUpload = (files: FileList | null) => {
-    if (!files?.length) return;
-    // OCR pipeline not wired yet - leave textarea unchanged.
+    } catch (err) {
+      setNotes((prev) => prev.filter((n) => n.id !== tempId));
+      setSentTitle(null);
+      setText(value);
+      setIngestError(
+        err instanceof Error ? err.message : "Could not classify notes"
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   const openNote = notes.find((n) => n.id === openNoteId && n.status === "ready");
 
-  const changeSubject = (next: string) => {
+  const openNoteNeedsHtml = Boolean(
+    openNote && openNote.status === "ready" && !openNote.html
+  );
+
+  useEffect(() => {
+    if (!openNoteId || !apiBase || !signedIn || !openNoteNeedsHtml) return;
+    if (htmlFetchRef.current.has(openNoteId)) return;
+    htmlFetchRef.current.add(openNoteId);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await notelmsFetch(apiBase, `/api/notes/${openNoteId}`);
+        const data = (await res.json()) as {
+          ok?: boolean;
+          note?: ApiNoteMeta;
+        };
+        if (cancelled) return;
+        if (!res.ok || !data.ok || !data.note) return;
+        const html =
+          typeof data.note.html === "string" ? data.note.html : "";
+        setNotes((prev) =>
+          prev.map((n) => (n.id === openNoteId ? { ...n, html } : n))
+        );
+      } catch {
+        /* keep placeholder; ref stays set so we do not retry spam */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [openNoteId, apiBase, signedIn, openNoteNeedsHtml]);
+
+  const changeSubject = async (next: string) => {
     if (!openNote) return;
     if (next === openNote.subject) return;
+
+    const prevSubject = openNote.subject;
+    const noteId = openNote.id;
+    const corrected = next !== openNote.orchestrator;
+
     setNotes((prev) =>
       prev.map((n) =>
-        n.id === openNote.id
+        n.id === noteId
           ? {
               ...n,
               subject: next,
-              corrected: next !== n.orchestrator,
+              corrected,
             }
           : n
       )
@@ -336,31 +471,64 @@ export default function HomePage() {
     persistInvoked([...invokedSubjects, next]);
     setFolder(next);
     updateResearch((prev) => {
-      const existing = prev.find((r) => r.id === openNote.id);
+      const existing = prev.find((r) => r.id === noteId);
       if (!existing) {
         return [
           {
-            id: openNote.id,
+            id: noteId,
             when: "now",
             orchestrator: openNote.orchestrator,
             final: next,
-            corrected: next !== openNote.orchestrator,
+            corrected,
           },
           ...prev,
         ];
       }
       return prev.map((r) =>
-        r.id === openNote.id
+        r.id === noteId
           ? {
               ...r,
               final: next,
-              corrected: next !== openNote.orchestrator,
+              corrected,
             }
           : r
       );
     });
     setSubjectSaved(true);
     window.setTimeout(() => setSubjectSaved(false), 1600);
+
+    if (!apiBase) return;
+    try {
+      const res = await notelmsFetch(apiBase, `/api/notes/${noteId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ subject: next }),
+      });
+      if (!res.ok) {
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === noteId
+              ? {
+                  ...n,
+                  subject: prevSubject,
+                  corrected: prevSubject !== n.orchestrator,
+                }
+              : n
+          )
+        );
+      }
+    } catch {
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === noteId
+            ? {
+                ...n,
+                subject: prevSubject,
+                corrected: prevSubject !== n.orchestrator,
+              }
+            : n
+        )
+      );
+    }
   };
 
   const processing = notes.filter((n) => n.status === "processing");
@@ -451,40 +619,44 @@ export default function HomePage() {
                 <>
                   <textarea
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      if (ingestError) setIngestError(null);
+                    }}
                     placeholder="Paste notes…"
                     rows={12}
+                    disabled={sending}
                   />
+                  {ingestError && <p className="form-error">{ingestError}</p>}
                   <div className="actions">
                     <button
                       type="button"
-                      className="btn ghost"
-                      onClick={() => fileRef.current?.click()}
+                      className="btn ghost is-disabled"
+                      disabled
+                      aria-disabled="true"
+                      title="Image upload unavailable — paste text only."
                     >
                       Upload image
                     </button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => onUpload(e.target.files)}
-                    />
                     <button
                       type="button"
                       className="btn"
-                      onClick={sendNotes}
-                      disabled={!text.trim()}
+                      onClick={() => void sendNotes()}
+                      disabled={!text.trim() || sending}
                     >
-                      Send
+                      {sending ? "Sending…" : "Send"}
                     </button>
                   </div>
+                  <p className="muted upload-hint">
+                    Image upload unavailable — paste text only.
+                  </p>
                 </>
               )}
             </section>
 
             <section id="library" ref={libraryRef} className="block library">
               <h2 className="section-label">Library</h2>
+              {libraryError && <p className="form-error">{libraryError}</p>}
 
               {processing.length > 0 && (
                 <div className="processing">
@@ -537,7 +709,7 @@ export default function HomePage() {
                     <div
                       dangerouslySetInnerHTML={{
                         __html:
-                          openNote.html || sampleHtml(openNote.title),
+                          openNote.html || placeholderHtml(openNote.title),
                       }}
                     />
                   </div>
@@ -872,6 +1044,17 @@ export default function HomePage() {
         .muted {
           color: var(--mute);
           font-size: 0.95rem;
+        }
+
+        .upload-hint {
+          margin: 0.35rem 0 0;
+          font-size: 0.85rem;
+        }
+
+        .form-error {
+          margin: 0.65rem 0 0;
+          color: #9b2c2c;
+          font-size: 0.92rem;
         }
 
         .empty-lib {
