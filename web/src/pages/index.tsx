@@ -4,21 +4,26 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type FormEvent,
 } from "react";
 import { AppNav } from "@/components/AppNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import {
-  FORMATTED_HTML,
-  INITIAL_NOTES,
-  MOCK_NOTE,
-  SUBJECT_COLORS,
-  SUBJECTS,
+  FIXED_SUBJECTS,
+  sortLibrarySubjects,
+  subjectColor,
   type NoteItem,
   type ResearchRow,
 } from "@/lib/atelier-data";
+import {
+  availableFixedToAdd,
+  loadInvokedSubjects,
+  saveInvokedSubjects,
+} from "@/lib/invoked-subjects";
 import { loadResearch, saveResearch } from "@/lib/research-store";
 
 type ResearchUpdater = (prev: ResearchRow[]) => ResearchRow[];
@@ -52,16 +57,28 @@ function escapeHtml(t: string) {
   );
 }
 
+function formatNoteHtml(title: string, body: string) {
+  const paras = body
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+  return `<h1>${escapeHtml(title)}</h1><section>${paras || "<p></p>"}</section>`;
+}
+
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const signedIn = status === "authenticated";
 
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const customInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
 
-  const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [ocrOnline, setOcrOnline] = useState(true);
   const [sentTitle, setSentTitle] = useState<string | null>(null);
@@ -69,6 +86,8 @@ export default function HomePage() {
   const [folder, setFolder] = useState<string | null>(null);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
   const [subjectSaved, setSubjectSaved] = useState(false);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [customDraft, setCustomDraft] = useState("");
 
   const persistScroll = useCallback(() => {
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
@@ -88,6 +107,21 @@ export default function HomePage() {
   const updateResearch = useCallback((updater: ResearchUpdater) => {
     saveResearch(updater(loadResearch()));
   }, []);
+
+  const persistInvoked = useCallback((next: string[]) => {
+    const sorted = sortLibrarySubjects(next);
+    setInvokedSubjects(sorted);
+    saveInvokedSubjects(sorted);
+  }, []);
+
+  useEffect(() => {
+    setInvokedSubjects(loadInvokedSubjects());
+  }, []);
+
+  useEffect(() => {
+    if (!addingSubject) return;
+    window.requestAnimationFrame(() => customInputRef.current?.focus());
+  }, [addingSubject]);
 
   // Keep scroll position across refresh / remount
   useLayoutEffect(() => {
@@ -132,18 +166,74 @@ export default function HomePage() {
     };
   }, [signedIn, persistScroll]);
 
+  const librarySubjects = useMemo(() => {
+    const fromNotes = notes
+      .filter((n) => n.status === "ready")
+      .map((n) => n.subject);
+    return sortLibrarySubjects([...invokedSubjects, ...fromNotes]);
+  }, [notes, invokedSubjects]);
+
+  const unusedFixed = useMemo(
+    () => availableFixedToAdd(librarySubjects),
+    [librarySubjects]
+  );
+
+  const subjectOptions = useMemo(() => {
+    const custom = librarySubjects.filter(
+      (s) => !(FIXED_SUBJECTS as readonly string[]).includes(s)
+    );
+    return sortLibrarySubjects([...FIXED_SUBJECTS, ...custom]);
+  }, [librarySubjects]);
+
+  const addSubjectToLibrary = useCallback(
+    (label: string, open = true) => {
+      const name = label.trim();
+      if (!name || name.toLowerCase() === "other") return;
+      persistInvoked([...invokedSubjects, name]);
+      setAddingSubject(false);
+      setCustomDraft("");
+      if (open) {
+        setFolder(name);
+        setOpenNoteId(null);
+      }
+    },
+    [invokedSubjects, persistInvoked]
+  );
+
+  const submitCustomSubject = (e: FormEvent) => {
+    e.preventDefault();
+    const name = customDraft.trim();
+    if (!name) return;
+    if (name.toLowerCase() === "other") return;
+    const exists = librarySubjects.some(
+      (s) => s.toLowerCase() === name.toLowerCase()
+    );
+    if (exists) {
+      const match =
+        librarySubjects.find((s) => s.toLowerCase() === name.toLowerCase()) ||
+        name;
+      setAddingSubject(false);
+      setCustomDraft("");
+      setFolder(match);
+      return;
+    }
+    addSubjectToLibrary(name);
+  };
+
   const sendNotes = () => {
-    const value = text.trim() || MOCK_NOTE;
-    if (!text.trim()) setText(value);
+    const value = text.trim();
+    if (!value) return;
     const id = `n-${Date.now()}`;
     const title = titleFromText(value);
+    // Demo classify stub — real ingest will assign subject later.
+    const subject = "Physics";
     const note: NoteItem = {
       id,
       title,
-      subject: "Physics",
+      subject,
       status: "processing",
       html: "",
-      orchestrator: "Physics",
+      orchestrator: subject,
       corrected: false,
     };
     setNotes((prev) => [note, ...prev]);
@@ -157,9 +247,9 @@ export default function HomePage() {
             ? {
                 ...n,
                 status: "ready",
-                subject: "Physics",
-                orchestrator: "Physics",
-                html: FORMATTED_HTML,
+                subject,
+                orchestrator: subject,
+                html: formatNoteHtml(title, value),
               }
             : n
         )
@@ -168,8 +258,8 @@ export default function HomePage() {
         {
           id,
           when: "now",
-          orchestrator: "Physics",
-          final: "Physics",
+          orchestrator: subject,
+          final: subject,
           corrected: false,
         },
         ...prev,
@@ -179,7 +269,7 @@ export default function HomePage() {
 
   const onUpload = (files: FileList | null) => {
     if (!ocrOnline || !files?.length) return;
-    setText(MOCK_NOTE);
+    // OCR pipeline not wired yet — leave textarea unchanged.
   };
 
   const openNote = notes.find((n) => n.id === openNoteId && n.status === "ready");
@@ -198,6 +288,7 @@ export default function HomePage() {
           : n
       )
     );
+    persistInvoked([...invokedSubjects, next]);
     setFolder(next);
     updateResearch((prev) => {
       const existing = prev.find((r) => r.id === openNote.id);
@@ -328,7 +419,12 @@ export default function HomePage() {
                       hidden
                       onChange={(e) => onUpload(e.target.files)}
                     />
-                    <button type="button" className="btn" onClick={sendNotes}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={sendNotes}
+                      disabled={!text.trim()}
+                    >
                       Send
                     </button>
                   </div>
@@ -365,7 +461,7 @@ export default function HomePage() {
                       className="page-title"
                       style={
                         {
-                          "--subj": SUBJECT_COLORS[openNote.subject],
+                          "--subj": subjectColor(openNote.subject),
                         } as CSSProperties
                       }
                     >
@@ -378,7 +474,7 @@ export default function HomePage() {
                         value={openNote.subject}
                         onChange={(e) => changeSubject(e.target.value)}
                       >
-                        {SUBJECTS.map(([name]) => (
+                        {subjectOptions.map((name) => (
                           <option key={name} value={name}>
                             {name}
                           </option>
@@ -391,7 +487,7 @@ export default function HomePage() {
                     className="note-shell"
                     style={
                       {
-                        "--subj": SUBJECT_COLORS[openNote.subject],
+                        "--subj": subjectColor(openNote.subject),
                       } as CSSProperties
                     }
                   >
@@ -421,7 +517,7 @@ export default function HomePage() {
                     className="page-title"
                     style={
                       {
-                        "--subj": SUBJECT_COLORS[folder],
+                        "--subj": subjectColor(folder),
                       } as CSSProperties
                     }
                   >
@@ -453,29 +549,110 @@ export default function HomePage() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="folders">
-                  {SUBJECTS.map(([name, color]) => {
-                    const count = notes.filter(
-                      (n) => n.status === "ready" && n.subject === name
-                    ).length;
-                    return (
+              ) : addingSubject ? (
+                <div className="add-subject">
+                  <p className="add-lead">
+                    Add a subject to your library. Pick one of the eight, or
+                    type your own.
+                  </p>
+                  {unusedFixed.length > 0 && (
+                    <div className="pick-grid">
+                      {unusedFixed.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="pick"
+                          style={
+                            {
+                              "--subj": subjectColor(name),
+                            } as CSSProperties
+                          }
+                          onClick={() => addSubjectToLibrary(name)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <form className="custom-form" onSubmit={submitCustomSubject}>
+                    <label htmlFor="custom-subject" className="sr-only">
+                      New subject name
+                    </label>
+                    <input
+                      id="custom-subject"
+                      ref={customInputRef}
+                      type="text"
+                      value={customDraft}
+                      onChange={(e) => setCustomDraft(e.target.value)}
+                      placeholder="Or type a new subject…"
+                      maxLength={64}
+                      autoComplete="off"
+                    />
+                    <div className="actions">
                       <button
-                        key={name}
-                        type="button"
-                        className="folder"
-                        style={{ "--subj": color } as CSSProperties}
-                        onClick={() => setFolder(name)}
+                        type="submit"
+                        className="btn"
+                        disabled={!customDraft.trim()}
                       >
-                        <span className="fname">{name}</span>
-                        <span className="fcount">{count}</span>
+                        Add subject
                       </button>
-                    );
-                  })}
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={() => {
+                          setAddingSubject(false);
+                          setCustomDraft("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="folders-wrap">
+                  {librarySubjects.length === 0 ? (
+                    <p className="muted empty-lib">
+                      No subjects yet. Add one to get started, or send a note
+                      and it’ll appear here when ready.
+                    </p>
+                  ) : (
+                    <div className="folders">
+                      {librarySubjects.map((name) => {
+                        const count = notes.filter(
+                          (n) => n.status === "ready" && n.subject === name
+                        ).length;
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            className="folder"
+                            style={
+                              {
+                                "--subj": subjectColor(name),
+                              } as CSSProperties
+                            }
+                            onClick={() => setFolder(name)}
+                          >
+                            <span className="fname">{name}</span>
+                            <span className="fcount">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="actions">
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={() => setAddingSubject(true)}
+                    >
+                      Add subject
+                    </button>
+                  </div>
                 </div>
               )}
             </section>
-
           </>
         )}
 
@@ -589,6 +766,10 @@ export default function HomePage() {
           font-size: 0.95rem;
         }
 
+        .empty-lib {
+          margin: 0 0 0.25rem;
+        }
+
         .sent-card {
           background: var(--surface);
           border-radius: var(--radius);
@@ -653,6 +834,72 @@ export default function HomePage() {
         .fcount {
           color: var(--mute);
           font-size: 0.85rem;
+        }
+
+        .add-subject {
+          display: grid;
+          gap: 1rem;
+        }
+
+        .add-lead {
+          margin: 0;
+          color: var(--mute);
+          font-size: 0.95rem;
+        }
+
+        .pick-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 0.55rem;
+        }
+
+        .pick {
+          border: 0;
+          background: var(--surface);
+          text-align: left;
+          padding: 0.85rem 1rem;
+          border-radius: var(--radius);
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.92rem;
+          box-shadow: inset 3px 0 0 var(--subj);
+        }
+
+        .pick:hover {
+          background: color-mix(in srgb, var(--subj) 10%, var(--surface));
+        }
+
+        .custom-form {
+          display: grid;
+          gap: 0.35rem;
+        }
+
+        .custom-form input {
+          width: 100%;
+          border: 0;
+          background: var(--surface);
+          color: var(--ink);
+          padding: 0.85rem 1rem;
+          border-radius: var(--radius);
+          font-size: 1rem;
+        }
+
+        .custom-form input:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px
+            color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
         }
 
         .note-list {
@@ -746,7 +993,6 @@ export default function HomePage() {
           );
           border-radius: calc(var(--radius) - 2px);
         }
-
       `}</style>
     </>
   );

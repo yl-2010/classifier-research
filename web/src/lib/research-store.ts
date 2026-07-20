@@ -1,16 +1,16 @@
-import { INITIAL_RESEARCH, type ResearchRow } from "@/lib/atelier-data";
+import { type ResearchRow } from "@/lib/atelier-data";
 
 const KEY = "notelms-research";
 
 export function loadResearch(): ResearchRow[] {
-  if (typeof window === "undefined") return INITIAL_RESEARCH;
+  if (typeof window === "undefined") return [];
   try {
     const raw = sessionStorage.getItem(KEY);
-    if (!raw) return INITIAL_RESEARCH;
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as ResearchRow[];
-    return Array.isArray(parsed) ? parsed : INITIAL_RESEARCH;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return INITIAL_RESEARCH;
+    return [];
   }
 }
 
