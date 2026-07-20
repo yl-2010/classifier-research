@@ -207,7 +207,7 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
   }
 });
 
-/** Remove a subject from this user's library (notes only; research kept). */
+/** Remove a subject from this user's library (soft-deletes notes + linked research). */
 app.delete("/api/subjects", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });
@@ -310,7 +310,7 @@ app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
   }
 });
 
-/** Soft-delete a note from the library; research event logs are kept. */
+/** Soft-delete a note from the library and remove its linked research event. */
 app.delete("/api/notes/:noteId", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });

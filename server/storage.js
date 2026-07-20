@@ -309,9 +309,9 @@ export async function addCustomSubject(email, label) {
 /**
  * Remove a subject from one user's library:
  * - soft-delete all notes with that subject
+ * - remove each note's linked research/ event (via deleteNote)
  * - drop custom labels from subjects.json
  * - fixed taxonomy labels stay available to re-add later
- * Never touches research/ event logs.
  */
 export async function deleteSubject(email, label) {
   const normalized = normalizeSubjectLabel(label);
@@ -484,8 +484,8 @@ export async function updateNote(email, noteId, patch = {}) {
 }
 
 /**
- * Soft-delete a note from the user's library (sets deletedAt).
- * Never removes or modifies research/ event logs for that note.
+ * Soft-delete a note from the user's library (sets deletedAt) and remove
+ * its linked research/ event file when researchEventId is set.
  */
 export async function deleteNote(email, noteId) {
   await ensureUser(email);
@@ -499,7 +499,24 @@ export async function deleteNote(email, noteId) {
     updatedAt: new Date().toISOString(),
   };
   await writeJson(paths.meta, next);
+  if (meta.researchEventId) {
+    await deleteResearchEvent(email, meta.researchEventId);
+  }
   return true;
+}
+
+/** Remove a research event file. Returns true if removed or already absent. */
+export async function deleteResearchEvent(email, eventId) {
+  await ensureUser(email);
+  if (!eventId || typeof eventId !== "string") return false;
+  const file = path.join(userDir(email), "research", `${eventId}.json`);
+  try {
+    await fsp.unlink(file);
+    return true;
+  } catch (err) {
+    if (err && err.code === "ENOENT") return true;
+    throw err;
+  }
 }
 
 export async function writeResearchEvent(email, event) {
@@ -558,17 +575,8 @@ export async function updateResearchEvent(email, eventId, patch = {}) {
 }
 
 /**
- * Accounts whose classify/research events must never enter shared research
- * metrics (e.g. personal smoke-test accounts that inject random notes).
- */
-const RESEARCH_METRICS_EXCLUDED_FOLDERS = new Set(
-  ["yanylevin@gmail.com"].map((email) => emailToFolderName(email))
-);
-
-/**
  * All research events across every user folder under the data root.
  * Used for shared research charts (frozen eval + live user tests).
- * Skips RESEARCH_METRICS_EXCLUDED_FOLDERS so test noise never pools in.
  */
 export async function listAllResearchEvents({ limit = 10000 } = {}) {
   await assertDataRootReady();
@@ -584,7 +592,6 @@ export async function listAllResearchEvents({ limit = 10000 } = {}) {
   const events = [];
   for (const folder of userFolders) {
     if (!folder.includes("@")) continue;
-    if (RESEARCH_METRICS_EXCLUDED_FOLDERS.has(folder)) continue;
     const dir = path.join(root, folder, "research");
     let names = [];
     try {

@@ -43,7 +43,7 @@ Folder name is the lowercased Google email (no duplicates across casing).
 | POST | `/api/ensure-user` | yes | Create email folder if missing (sign-in hook) |
 | GET | `/api/me` | yes | Ensure user folder; return profile |
 | PATCH | `/api/me` | yes | Profile updates |
-| GET/POST/DELETE | `/api/subjects` | yes | Fixed + custom subjects; DELETE removes from this user's library (soft-deletes notes; research kept) |
+| GET/POST/DELETE | `/api/subjects` | yes | Fixed + custom subjects; DELETE removes from this user's library (soft-deletes notes and their linked research events) |
 | GET/POST | `/api/notes` | yes | List / create |
 | GET/PATCH/DELETE | `/api/notes/:id` | yes | CRUD |
 | POST | `/api/notes/ingest` | yes | Ensemble classify → format → save |

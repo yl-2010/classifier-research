@@ -86,7 +86,7 @@ describe("storage", () => {
     assert.ok(subjects.custom.includes("APUSH"));
   });
 
-  it("soft-deletes a note without touching research events", async () => {
+  it("soft-deletes a note and removes its linked research event", async () => {
     const email = "delete-note@example.com";
     await ensureUser(email);
     const note = await createNote(email, {
@@ -105,6 +105,12 @@ describe("storage", () => {
         fineTunedBert: { subject: "Biology", confidence: 0.85 },
       },
     });
+    await writeResearchEvent(email, {
+      id: "evt-other",
+      kind: "classify_ingest",
+      finalSubject: "Physics",
+      textPreview: "Unrelated",
+    });
 
     const ok = await deleteNote(email, note.id);
     assert.equal(ok, true);
@@ -113,28 +119,34 @@ describe("storage", () => {
 
     const events = await listResearchEvents(email);
     assert.equal(events.length, 1);
-    assert.equal(events[0].id, "evt-keep");
-    assert.equal(events[0].finalSubject, "Biology");
-    assert.equal(events[0].textPreview, "Photosynthesis steps");
-    assert.equal(events[0].votes.gptOss.subject, "Biology");
+    assert.equal(events[0].id, "evt-other");
   });
 
-  it("deletes a subject from one user's library without touching research", async () => {
+  it("deletes a subject and removes research events for its notes", async () => {
     const email = "delete-subj@example.com";
     await ensureUser(email);
     await addCustomSubject(email, "APUSH");
     const noteA = await createNote(email, {
       rawText: "Cold War outline",
       subject: "APUSH",
+      researchEventId: "evt-apush",
     });
     const noteB = await createNote(email, {
       rawText: "Derivatives",
       subject: "Mathematics",
+      researchEventId: "evt-math",
     });
     await writeResearchEvent(email, {
+      id: "evt-apush",
       kind: "classify_ingest",
       finalSubject: "APUSH",
       textPreview: "Cold War outline",
+    });
+    await writeResearchEvent(email, {
+      id: "evt-math",
+      kind: "classify_ingest",
+      finalSubject: "Mathematics",
+      textPreview: "Derivatives",
     });
 
     const result = await deleteSubject(email, "APUSH");
@@ -153,7 +165,7 @@ describe("storage", () => {
 
     const events = await listResearchEvents(email);
     assert.equal(events.length, 1);
-    assert.equal(events[0].finalSubject, "APUSH");
+    assert.equal(events[0].id, "evt-math");
   });
 
   it("soft-deletes notes for a fixed subject so it can be re-added later", async () => {
@@ -224,7 +236,7 @@ describe("storage", () => {
     assert.equal(updated.corrected, true);
   });
 
-  it("excludes yanylevin@gmail.com from shared research metrics pools", async () => {
+  it("includes yanylevin@gmail.com in shared research metrics pools", async () => {
     const tester = "yanylevin@gmail.com";
     const real = "real-user@example.com";
     await ensureUser(tester);
@@ -253,7 +265,7 @@ describe("storage", () => {
 
     const all = await listAllResearchEvents();
     assert.ok(all.some((e) => e.id === "evt-real"));
-    assert.ok(!all.some((e) => e.id === "evt-test-noise"));
-    assert.ok(!all.some((e) => e._userFolder === "yanylevin@gmail.com"));
+    assert.ok(all.some((e) => e.id === "evt-test-noise"));
+    assert.ok(all.some((e) => e._userFolder === "yanylevin@gmail.com"));
   });
 });

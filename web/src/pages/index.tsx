@@ -304,8 +304,11 @@ export default function HomePage() {
           }
         }
 
-        // Drop notes in this subject only — leave research rows untouched.
+        const removedIds = new Set(
+          notes.filter((n) => n.subject === name).map((n) => n.id)
+        );
         setNotes((prev) => prev.filter((n) => n.subject !== name));
+        updateResearch((prev) => prev.filter((r) => !removedIds.has(r.id)));
         persistInvoked(
           invokedSubjects.filter((s) => s.toLowerCase() !== name.toLowerCase())
         );
@@ -316,7 +319,7 @@ export default function HomePage() {
         setDeletingSubject(false);
       }
     },
-    [apiBase, invokedSubjects, notes, persistInvoked]
+    [apiBase, invokedSubjects, notes, persistInvoked, updateResearch]
   );
 
   const deleteOpenNote = useCallback(async () => {
@@ -328,10 +331,11 @@ export default function HomePage() {
     if (!window.confirm(`Delete “${label}”?`)) return;
 
     const subject = note.subject;
+    const noteId = openNoteId;
     setDeletingNote(true);
     try {
       if (apiBase) {
-        const res = await notelmsFetch(apiBase, `/api/notes/${openNoteId}`, {
+        const res = await notelmsFetch(apiBase, `/api/notes/${noteId}`, {
           method: "DELETE",
         });
         const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -339,7 +343,8 @@ export default function HomePage() {
           throw new Error(data.error || "Could not delete note");
         }
       }
-      setNotes((prev) => prev.filter((n) => n.id !== openNoteId));
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      updateResearch((prev) => prev.filter((r) => r.id !== noteId));
       setOpenNoteId(null);
       setFolder(subject);
     } catch (err) {
@@ -349,7 +354,7 @@ export default function HomePage() {
     } finally {
       setDeletingNote(false);
     }
-  }, [apiBase, deletingNote, notes, openNoteId]);
+  }, [apiBase, deletingNote, notes, openNoteId, updateResearch]);
 
   const submitCustomSubject = (e: FormEvent) => {
     e.preventDefault();
