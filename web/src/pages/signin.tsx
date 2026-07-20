@@ -18,7 +18,7 @@ export default function SignInPage() {
   return (
     <>
       <Head>
-        <title>Sign in — NoteLMs</title>
+        <title>Sign in - NoteLMs</title>
       </Head>
       <main className="shell">
         <div className="panel">
@@ -31,7 +31,7 @@ export default function SignInPage() {
             decoding="async"
           />
           <p className="lead">
-            Classify and organize your notes — and help build research along the
+            Classify and organize your notes, and help build research along the
             way.
           </p>
           <div className="actions">
