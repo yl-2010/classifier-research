@@ -1094,8 +1094,11 @@ export default function HomePage() {
         }
 
         .model-votes-sep {
-          font-weight: 700;
+          font-weight: 900;
+          font-size: 1.55em;
+          line-height: 1;
           color: var(--ink);
+          vertical-align: -0.06em;
         }
 
         :global(.btn),
