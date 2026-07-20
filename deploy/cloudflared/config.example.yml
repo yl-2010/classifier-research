@@ -1,16 +1,13 @@
-# Shared Cloudflare Tunnel example (SocketHR + NoteLMs).
-# Copy fields into ~/.cloudflared/config.yml — do NOT create a second tunnel.
+# NoteLMs dedicated Cloudflare Tunnel (separate account from SocketHR).
+# Copy to ~/.cloudflared/config-notelms.yml and replace UUID / paths.
 #
-# SocketHR Express  → 127.0.0.1:3000 → api.sockethr.com
-# NoteLMs Express   → 127.0.0.1:3002 → api.notelms.com
-# LM Studio         → 127.0.0.1:1234 (localhost only; never tunnel this)
+# Do NOT put LM Studio (:1234) on this tunnel.
+# SocketHR keeps its own tunnel + ~/.cloudflared/config.yml → :3000.
 
-tunnel: REPLACE_WITH_EXISTING_TUNNEL_UUID
-credentials-file: /Users/REPLACE_USER/.cloudflared/REPLACE_WITH_EXISTING_TUNNEL_UUID.json
+tunnel: REPLACE_WITH_NOTELMS_TUNNEL_UUID
+credentials-file: /Users/REPLACE_USER/.cloudflared/REPLACE_WITH_NOTELMS_TUNNEL_UUID.json
 
 ingress:
-  - hostname: api.sockethr.com
-    service: http://127.0.0.1:3000
   - hostname: api.notelms.com
     service: http://127.0.0.1:3002
   - service: http_status:404

@@ -1,18 +1,39 @@
-# Cloudflare Tunnel (shared with SocketHR)
+# NoteLMs Cloudflare Tunnel
 
-NoteLMs does **not** own a separate tunnel. It adds a second ingress hostname on the existing SocketHR `cloudflared` process.
+NoteLMs uses its **own** Cloudflare account and tunnel (separate from SocketHR).
 
-See:
+| Public hostname | Local service | Port | Tunnel |
+|-----------------|---------------|------|--------|
+| `api.sockethr.com` | SocketHR Express | 3000 | SocketHR account / `~/.cloudflared/config.yml` |
+| `api.notelms.com` | NoteLMs Express | **3002** | NoteLMs account / `~/.cloudflared/config-notelms.yml` |
 
-- [`docs/PUBLIC_TUNNEL.md`](../../docs/PUBLIC_TUNNEL.md)
-- [`SHARED_CLOUDFLARE_TUNNEL_PLAN.html`](../../agent-plans/SHARED_CLOUDFLARE_TUNNEL_PLAN.html)
-- [`NOTELMS_API_TUNNEL_DNS_FIX.html`](../../agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html) — if `api.notelms.com` has no public CF edge IPs
-- [`config.example.yml`](./config.example.yml)
+LM Studio (`127.0.0.1:1234`) stays localhost-only — never on either tunnel.
 
-Everyday start:
+## Live Mac config
 
 ```bash
+# SocketHR (existing)
 cloudflared tunnel --config ~/.cloudflared/config.yml run
+
+# NoteLMs (this product)
+cloudflared tunnel --config ~/.cloudflared/config-notelms.yml run
 ```
 
-One command serves both `api.sockethr.com` and `api.notelms.com`.
+Example: [`config.example.yml`](./config.example.yml)
+
+## DNS
+
+`notelms.com` nameservers are on the **NoteLMs Cloudflare account**. Proxied Tunnel / CNAME record:
+
+| Type | Name | Target | Proxy |
+|------|------|--------|-------|
+| Tunnel / CNAME | `api` | `<NOTELMS_TUNNEL_UUID>.cfargotunnel.com` | Proxied |
+
+Do **not** attach `api.notelms.com` as a Vercel project domain.
+
+## Verify
+
+```bash
+curl -sS http://127.0.0.1:3002/health
+curl -sS https://api.notelms.com/health
+```

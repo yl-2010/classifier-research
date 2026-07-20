@@ -1,39 +1,49 @@
 # NoteLMs public API tunnel
 
-NoteLMs **shares** SocketHR’s existing Cloudflare Tunnel. Do **not** create a second tunnel.
+NoteLMs uses a **dedicated** Cloudflare Tunnel in its own Cloudflare account (separate from SocketHR).
 
 ## Contract
 
-| Public hostname | Local service | Port |
-|-----------------|---------------|------|
-| `api.sockethr.com` | SocketHR Express | 3000 |
-| `api.notelms.com` | NoteLMs Express | **3002** |
+| Public hostname | Local service | Port | Cloudflare account |
+|-----------------|---------------|------|--------------------|
+| `api.sockethr.com` | SocketHR Express | 3000 | SocketHR |
+| `api.notelms.com` | NoteLMs Express | **3002** | NoteLMs |
 
-## Live Mac config (`~/.cloudflared/config.yml`)
+## Live Mac config (`~/.cloudflared/config-notelms.yml`)
 
 ```yaml
-tunnel: <EXISTING_TUNNEL_UUID>
-credentials-file: /Users/<YOU>/.cloudflared/<EXISTING_TUNNEL_UUID>.json
+tunnel: <NOTELMS_TUNNEL_UUID>
+credentials-file: /Users/<YOU>/.cloudflared/<NOTELMS_TUNNEL_UUID>.json
 
 ingress:
-  - hostname: api.sockethr.com
-    service: http://127.0.0.1:3000
   - hostname: api.notelms.com
     service: http://127.0.0.1:3002
   - service: http_status:404
 ```
 
-## DNS (Cloudflare-proxied — required)
+SocketHR keeps `~/.cloudflared/config.yml` with only `api.sockethr.com` → `:3000`.
 
-A bare CNAME on Vercel DNS to `*.cfargotunnel.com` is **not enough**. Cloudflare Tunnel only publishes public edge IPs when `api.notelms.com` is a **proxied** record in the **same Cloudflare account** as the tunnel (same pattern as live `api.sockethr.com` / `sockethr.com` on Cloudflare NS).
+## DNS
+
+`notelms.com` NS must be on the **NoteLMs Cloudflare account** (same account as the tunnel). Proxied Tunnel/CNAME for `api`:
 
 | Type | Name | Value | Proxy |
 |------|------|-------|-------|
-| CNAME | `api` | `<SAME_TUNNEL_UUID>.cfargotunnel.com` | **Proxied (orange cloud)** |
+| Tunnel / CNAME | `api` | `<NOTELMS_TUNNEL_UUID>.cfargotunnel.com` | **Proxied** |
 
-Do **not** attach `api.notelms.com` as a domain on the Vercel project (that yields `DEPLOYMENT_NOT_FOUND`).
+Do **not** attach `api.notelms.com` as a domain on the Vercel project.
 
-If HTTPS to `api.notelms.com` fails with no public A records, follow [`agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html`](../agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html).
+## Everyday start
+
+```bash
+# Terminal A — NoteLMs Express
+npm run server   # :3002
+
+# Terminal B — NoteLMs tunnel
+cloudflared tunnel --config ~/.cloudflared/config-notelms.yml run
+
+# (Optional) SocketHR Express + its own tunnel if you need api.sockethr.com
+```
 
 ## Verify
 
@@ -42,5 +52,5 @@ curl -sS http://127.0.0.1:3002/health
 curl -sS https://api.notelms.com/health
 ```
 
-- **502** on the public URL with nothing listening on :3002 = tunnel + DNS OK, server down.
+- **502** on the public URL with nothing on `:3002` = tunnel + DNS OK, server down.
 - LM Studio (`:1234`) must never appear in ingress.

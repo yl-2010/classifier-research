@@ -1,6 +1,6 @@
 # NoteLMs everyday startup (Mac Studio)
 
-NoteLMs Express listens on **3002** (shared Cloudflare Tunnel → `api.notelms.com`).
+NoteLMs Express listens on **3002**. Public API: `https://api.notelms.com` via the **NoteLMs** Cloudflare Tunnel (separate from SocketHR).
 
 ## Order
 
@@ -24,7 +24,13 @@ NoteLMs Express listens on **3002** (shared Cloudflare Tunnel → `api.notelms.c
    curl -s http://127.0.0.1:3002/health
    ```
 
-3. **Shared Cloudflare Tunnel** (same process as SocketHR)
+3. **NoteLMs Cloudflare Tunnel**
+
+   ```bash
+   cloudflared tunnel --config ~/.cloudflared/config-notelms.yml run
+   ```
+
+   SocketHR (if needed) uses a **different** process:
 
    ```bash
    cloudflared tunnel --config ~/.cloudflared/config.yml run
