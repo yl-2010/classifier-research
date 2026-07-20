@@ -53,6 +53,7 @@ export default function VoicePage() {
   const [voice, setVoice] = useState("dan");
   const [ui, setUi] = useState<VoicePlayerUi>(INITIAL_UI);
   const playerRef = useRef<OrpheusVoicePlayer | null>(null);
+  const textRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -142,6 +143,20 @@ export default function VoicePage() {
     });
   };
 
+  const onClear = () => {
+    playerRef.current?.stopPlayback();
+    setText("");
+    playerRef.current?.setStatus("Ready.");
+    window.setTimeout(() => textRef.current?.focus(), 0);
+  };
+
+  const canClear =
+    Boolean(text) ||
+    ui.mediaVisible ||
+    ui.lyricsVisible ||
+    ui.stopVisible ||
+    ui.progressVisible;
+
   const onLyricsClick = (event: MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest(
       ".lyrics-word.seekable"
@@ -188,6 +203,7 @@ export default function VoicePage() {
 
         {!ui.lyricsVisible && (
           <textarea
+            ref={textRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Paste or type text here…"
@@ -233,6 +249,15 @@ export default function VoicePage() {
               Stop
             </button>
           )}
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={onClear}
+            disabled={!canClear}
+            aria-label="Clear text and reset voice session"
+          >
+            Clear
+          </button>
           <button
             type="button"
             className="btn"
@@ -391,6 +416,12 @@ export default function VoicePage() {
 
         .btn.ghost:hover:not(:disabled) {
           background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+        }
+
+        .btn.small {
+          padding: 0.45rem 0.75rem;
+          font-size: 0.85rem;
+          font-weight: 500;
         }
 
         .btn.icon {
