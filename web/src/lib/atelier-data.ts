@@ -53,6 +53,12 @@ export function sortLibrarySubjects(labels: Iterable<string>): string[] {
 
 export type NoteStatus = "processing" | "ready";
 
+export type ModelVotes = {
+  gptOss: string | null;
+  baseBert: string | null;
+  fineTunedBert: string | null;
+};
+
 export type NoteItem = {
   id: string;
   title: string;
@@ -61,6 +67,7 @@ export type NoteItem = {
   html: string;
   orchestrator: string;
   corrected: boolean;
+  votes: ModelVotes | null;
 };
 
 export type ResearchRow = {

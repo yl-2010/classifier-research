@@ -17,6 +17,7 @@ import {
   FIXED_SUBJECTS,
   sortLibrarySubjects,
   subjectColor,
+  type ModelVotes,
   type NoteItem,
   type ResearchRow,
 } from "@/lib/atelier-data";
@@ -59,6 +60,8 @@ function placeholderHtml(title: string) {
   return `<h1>${escapeHtml(title)}</h1><section><p class="muted">Loading note…</p></section>`;
 }
 
+type ApiVote = { subject?: string } | null | undefined;
+
 type ApiNoteMeta = {
   id: string;
   title?: string;
@@ -67,8 +70,25 @@ type ApiNoteMeta = {
   classification?: {
     subject?: string;
     resolvedSubject?: string;
+    votes?: {
+      gptOss?: ApiVote;
+      baseBert?: ApiVote;
+      fineTunedBert?: ApiVote;
+    } | null;
   } | null;
 };
+
+function mapVotes(
+  classification: ApiNoteMeta["classification"]
+): ModelVotes | null {
+  const v = classification?.votes;
+  if (!v) return null;
+  const gptOss = v.gptOss?.subject?.trim() || null;
+  const baseBert = v.baseBert?.subject?.trim() || null;
+  const fineTunedBert = v.fineTunedBert?.subject?.trim() || null;
+  if (!gptOss && !baseBert && !fineTunedBert) return null;
+  return { gptOss, baseBert, fineTunedBert };
+}
 
 function mapApiNote(meta: ApiNoteMeta): NoteItem {
   const subject = meta.subject || "Other";
@@ -84,6 +104,7 @@ function mapApiNote(meta: ApiNoteMeta): NoteItem {
     html: typeof meta.html === "string" ? meta.html : "",
     orchestrator,
     corrected: false,
+    votes: mapVotes(meta.classification),
   };
 }
 
@@ -345,6 +366,7 @@ export default function HomePage() {
         html: "",
         orchestrator: "",
         corrected: false,
+        votes: null,
       },
       ...prev,
     ]);
@@ -354,7 +376,7 @@ export default function HomePage() {
     try {
       const res = await notelmsFetch(apiBase, "/api/notes/ingest", {
         method: "POST",
-        body: JSON.stringify({ rawText: value, source: "paste", title }),
+        body: JSON.stringify({ rawText: value, source: "paste" }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -374,6 +396,7 @@ export default function HomePage() {
         mapped.orchestrator;
       const finalSubject = data.resolved?.subject || mapped.subject;
 
+      setSentTitle(mapped.title);
       setNotes((prev) =>
         prev.map((n) =>
           n.id === tempId
@@ -724,6 +747,15 @@ export default function HomePage() {
                     >
                       Back
                     </button>
+                    {openNote.votes && (
+                      <p className="model-votes muted">
+                        GPT: {openNote.votes.gptOss || "—"}
+                        {" · "}
+                        Zero-shot: {openNote.votes.baseBert || "—"}
+                        {" · "}
+                        Fine-tuned: {openNote.votes.fineTunedBert || "—"}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : folder ? (
@@ -1004,6 +1036,13 @@ export default function HomePage() {
           gap: 0.6rem;
           margin-top: 1rem;
           align-items: center;
+        }
+
+        .model-votes {
+          margin: 0;
+          font-size: 0.75rem;
+          line-height: 1.35;
+          letter-spacing: 0.01em;
         }
 
         :global(.btn),

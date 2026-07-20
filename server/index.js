@@ -36,6 +36,7 @@ import { probeLmStudio, chatCompletions, getLmStudioConfig } from "./lmstudio.js
 import {
   classifyEnsemble,
   formatNotesWithGptOss,
+  generateTitleWithGptOss,
   resolveSubject,
 } from "./classify.js";
 import { probeBertService } from "./bert.js";
@@ -375,7 +376,10 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
       await addCustomSubject(req.user.email, resolved.createdCustom);
     }
 
-    const formatted = await formatNotesWithGptOss(rawText, resolved.subject);
+    const [formatted, title] = await Promise.all([
+      formatNotesWithGptOss(rawText, resolved.subject),
+      generateTitleWithGptOss(rawText),
+    ]);
 
     const research = await writeResearchEvent(req.user.email, {
       kind: "classify_ingest",
@@ -401,13 +405,14 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
       createdCustom: resolved.createdCustom,
       formatLatencyMs: formatted.latencyMs,
       formatModel: formatted.model,
+      title,
       bert: classification.bert,
     });
 
     const note = await createNote(req.user.email, {
       rawText,
       html: formatted.html,
-      title: req.body?.title,
+      title,
       subject: resolved.subject,
       source: req.body?.source || "paste",
       classification: {

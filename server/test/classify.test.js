@@ -1,7 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBertVote } from "../bert.js";
-import { extractJsonObject, resolveSubject } from "../classify.js";
+import {
+  extractJsonObject,
+  generateTitleWithGptOss,
+  resolveSubject,
+} from "../classify.js";
 import { OTHER_SUBJECT } from "../subjects.js";
 
 describe("normalizeBertVote", () => {
@@ -61,5 +65,12 @@ describe("resolveSubject", () => {
     );
     assert.equal(r.subject, "APUSH");
     assert.equal(r.createdCustom, null);
+  });
+});
+
+describe("generateTitleWithGptOss", () => {
+  it("falls back for empty text without calling LM Studio", async () => {
+    const title = await generateTitleWithGptOss("   ");
+    assert.equal(title, "Untitled note");
   });
 });

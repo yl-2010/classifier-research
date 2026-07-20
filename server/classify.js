@@ -234,6 +234,52 @@ export async function orchestrateWithGptOss(rawText, votes, customSubjects = [])
 }
 
 /**
+ * Short study-note title from openai/gpt-oss-20b. Falls back to first-line heuristic.
+ */
+export async function generateTitleWithGptOss(rawText) {
+  const fallback = deriveTitleFallback(rawText);
+  if (!String(rawText || "").trim()) return fallback;
+
+  try {
+    const system = [
+      "You create short titles for student study notes.",
+      "Respond with a single JSON object only, no markdown.",
+      'Schema: {"title": string}',
+      "Title: 3–10 words, capture the main topic, plain text,",
+      "no quotation marks, no trailing punctuation.",
+    ].join(" ");
+
+    const result = await chatCompletions({
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: String(rawText).slice(0, 8000) },
+      ],
+      temperature: 0.2,
+      maxTokens: 128,
+      json: true,
+    });
+
+    const parsed = extractJsonObject(result.content) || {};
+    let title = typeof parsed.title === "string" ? parsed.title.trim() : "";
+    title = title.replace(/^["'“”]+|["'“”]+$/g, "").replace(/[.!?]+$/g, "").trim();
+    if (!title) return fallback;
+    if (title.length > 80) title = `${title.slice(0, 77)}…`;
+    return title;
+  } catch {
+    return fallback;
+  }
+}
+
+function deriveTitleFallback(text) {
+  const line = String(text || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find(Boolean);
+  if (!line) return "Untitled note";
+  return line.length > 80 ? `${line.slice(0, 77)}…` : line;
+}
+
+/**
  * Format raw notes into clean, readable HTML for the given subject.
  */
 export async function formatNotesWithGptOss(rawText, subject) {
