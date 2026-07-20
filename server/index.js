@@ -279,13 +279,17 @@ app.post("/api/notes", requireAuth, async (req, res) => {
 app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });
-    const note = await updateNote(req.user.email, req.params.noteId, {
-      title: req.body?.title,
-      subject: req.body?.subject,
-      rawText: req.body?.rawText,
-      html: req.body?.html,
-      classification: req.body?.classification,
-    });
+    // Only forward fields that were actually sent so a subject-only move
+    // does not wipe title / classification with undefined.
+    const patch = {};
+    if (req.body?.title !== undefined) patch.title = req.body.title;
+    if (req.body?.subject !== undefined) patch.subject = req.body.subject;
+    if (req.body?.rawText !== undefined) patch.rawText = req.body.rawText;
+    if (req.body?.html !== undefined) patch.html = req.body.html;
+    if (req.body?.classification !== undefined) {
+      patch.classification = req.body.classification;
+    }
+    const note = await updateNote(req.user.email, req.params.noteId, patch);
     if (!note) {
       res.status(404).json({ ok: false, error: "not found" });
       return;

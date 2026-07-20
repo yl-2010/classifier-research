@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   ensureUser,
   createNote,
+  updateNote,
   deleteNote,
   listNotes,
   getNote,
@@ -84,6 +85,44 @@ describe("storage", () => {
     await addCustomSubject(email, "APUSH");
     const subjects = await listSubjects(email);
     assert.ok(subjects.custom.includes("APUSH"));
+  });
+
+  it("preserves title and classification when only subject is patched", async () => {
+    const email = "move-subject@example.com";
+    await ensureUser(email);
+    await addCustomSubject(email, "APUSH");
+    const classification = {
+      subject: "History",
+      resolvedSubject: "History",
+      votes: {
+        gptOss: { subject: "History", confidence: 0.9 },
+        baseBert: { subject: "History", confidence: 0.8 },
+        fineTunedBert: { subject: "History", confidence: 0.85 },
+      },
+    };
+    const note = await createNote(email, {
+      title: "Industrial Revolution",
+      rawText: "Causes of the Industrial Revolution",
+      subject: "History",
+      classification,
+    });
+
+    // Mimic a subject-only move that previously forwarded title: undefined.
+    const updated = await updateNote(email, note.id, {
+      title: undefined,
+      subject: "APUSH",
+      rawText: undefined,
+      html: undefined,
+      classification: undefined,
+    });
+    assert.equal(updated.title, "Industrial Revolution");
+    assert.equal(updated.subject, "APUSH");
+    assert.deepEqual(updated.classification, classification);
+
+    const reloaded = await getNote(email, note.id);
+    assert.equal(reloaded.title, "Industrial Revolution");
+    assert.equal(reloaded.subject, "APUSH");
+    assert.deepEqual(reloaded.classification, classification);
   });
 
   it("soft-deletes a note and removes its linked research event", async () => {

@@ -460,24 +460,30 @@ export async function updateNote(email, noteId, patch = {}) {
   const meta = await readJson(paths.meta, null);
   if (!meta || meta.deletedAt) return null;
 
+  // Ignore undefined so callers that pass sparse patches (e.g. subject-only)
+  // do not wipe existing fields that JSON.stringify would then omit.
+  const cleaned = Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined)
+  );
+
   const now = new Date().toISOString();
   const next = {
     ...meta,
-    ...patch,
+    ...cleaned,
     id: meta.id,
     createdAt: meta.createdAt,
     updatedAt: now,
   };
-  if (patch.subject != null) {
-    next.subject = normalizeSubjectLabel(patch.subject) || meta.subject;
+  if (cleaned.subject != null) {
+    next.subject = normalizeSubjectLabel(cleaned.subject) || meta.subject;
   }
   await writeJson(paths.meta, next);
 
-  if (typeof patch.rawText === "string") {
-    await fsp.writeFile(paths.raw, patch.rawText, "utf8");
+  if (typeof cleaned.rawText === "string") {
+    await fsp.writeFile(paths.raw, cleaned.rawText, "utf8");
   }
-  if (typeof patch.html === "string") {
-    await fsp.writeFile(paths.html, patch.html, "utf8");
+  if (typeof cleaned.html === "string") {
+    await fsp.writeFile(paths.html, cleaned.html, "utf8");
   }
 
   return next;
