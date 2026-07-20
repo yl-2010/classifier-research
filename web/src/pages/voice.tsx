@@ -251,7 +251,7 @@ export default function VoicePage() {
           )}
           <button
             type="button"
-            className="btn ghost small"
+            className="btn ghost"
             onClick={onClear}
             disabled={!canClear}
             aria-label="Clear text and reset voice session"
@@ -394,7 +394,7 @@ export default function VoicePage() {
         }
 
         .btn {
-          border: 0;
+          border: 1px solid transparent;
           cursor: pointer;
           font-weight: 600;
           padding: 0.7rem 1.15rem;
@@ -416,12 +416,6 @@ export default function VoicePage() {
 
         .btn.ghost:hover:not(:disabled) {
           background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-        }
-
-        .btn.small {
-          padding: 0.45rem 0.75rem;
-          font-size: 0.85rem;
-          font-weight: 500;
         }
 
         .btn.icon {
