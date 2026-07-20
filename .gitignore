@@ -46,3 +46,4 @@ web/.next/
 .vercel/
 web/.vercel/
 .vercel
+.env*
