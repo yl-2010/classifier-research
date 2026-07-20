@@ -42,15 +42,19 @@
 
       @media (prefers-color-scheme: dark) {
         .ft-2 {
-          fill: #e4eef6;
+          fill: #ffffff;
         }
 
         .ft-2, .ft-3, .ft-4 {
-          stroke: #e4eef6;
+          stroke: #ffffff;
+        }
+
+        .ft-5 {
+          stroke: #9ec9de;
         }
 
         .ink-stop {
-          stop-color: #e4eef6;
+          stop-color: #ffffff;
         }
       }
     </style>

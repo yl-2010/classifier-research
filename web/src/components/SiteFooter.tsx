@@ -57,7 +57,7 @@ export function SiteFooter() {
 
         @media (prefers-color-scheme: dark) {
           .footer-logo {
-            opacity: 0.18;
+            opacity: 0.42;
           }
         }
 
