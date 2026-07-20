@@ -390,10 +390,6 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
     });
     const resolved = resolveSubject(classification, subjects.custom);
 
-    if (resolved.createdCustom) {
-      await addCustomSubject(req.user.email, resolved.createdCustom);
-    }
-
     const [formatted, title] = await Promise.all([
       formatNotesWithGptOss(rawText, resolved.subject),
       generateTitleWithGptOss(rawText),

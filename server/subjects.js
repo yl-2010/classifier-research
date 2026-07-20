@@ -1,4 +1,4 @@
-/** Fixed 8-subject taxonomy (BERT labels). Orchestrator may also use Other / custom. */
+/** Fixed 8-subject taxonomy (BERT + GPT-OSS vote labels). Orchestrator may also pick existing user customs or Other. */
 
 export const FIXED_SUBJECTS = [
   "Mathematics",

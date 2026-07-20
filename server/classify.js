@@ -28,29 +28,20 @@ export function extractJsonObject(text) {
 
 /**
  * Zero-shot subject classification via openai/gpt-oss-20b.
- * Returns one of the 8 fixed subjects, or Other (+ optional customSuggestion).
+ * Must return one of the 8 fixed subjects (same constraint as BERT arms).
  */
-export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) {
-  const customList =
-    Array.isArray(customSubjects) && customSubjects.length
-      ? customSubjects.join(", ")
-      : "(none)";
-
+export async function classifyWithGptOss(rawText) {
   const system = [
     "You classify student study notes into academic subjects.",
-    `Allowed fixed subjects: ${FIXED_SUBJECTS.join(", ")}.`,
-    `If none of the eight fit, use subject "${OTHER_SUBJECT}" and optionally suggest a short custom subject name.`,
+    `You MUST pick exactly one of these eight subjects: ${FIXED_SUBJECTS.join(", ")}.`,
+    `Do not invent subjects. Do not use "${OTHER_SUBJECT}" or any custom label.`,
+    "If the notes are a poor fit, still choose the closest of the eight.",
     "Respond with a single JSON object only, no markdown.",
-    'Schema: {"subject": string, "confidence": number, "rationale": string, "customSuggestion": string|null}',
+    'Schema: {"subject": string, "confidence": number, "rationale": string}',
     "confidence is 0..1.",
   ].join(" ");
 
-  const user = [
-    `User custom subjects (for Other path): ${customList}`,
-    "",
-    "Notes:",
-    rawText.slice(0, 12000),
-  ].join("\n");
+  const user = ["Notes:", rawText.slice(0, 12000)].join("\n");
 
   const started = Date.now();
   const result = await chatCompletions({
@@ -65,15 +56,7 @@ export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) 
   const latencyMs = Date.now() - started;
 
   const parsed = extractJsonObject(result.content) || {};
-  let subject = normalizeSubjectLabel(parsed.subject) || OTHER_SUBJECT;
-  if (
-    subject !== OTHER_SUBJECT &&
-    !FIXED_SUBJECTS.includes(subject) &&
-    !customSubjects.some((c) => c.toLowerCase() === subject.toLowerCase())
-  ) {
-    parsed.customSuggestion = parsed.customSuggestion || subject;
-    subject = OTHER_SUBJECT;
-  }
+  const subject = clampToFixedSubject(parsed.subject);
 
   let confidence = Number(parsed.confidence);
   if (!Number.isFinite(confidence)) confidence = 0.5;
@@ -83,10 +66,6 @@ export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) 
     subject,
     confidence,
     rationale: typeof parsed.rationale === "string" ? parsed.rationale : "",
-    customSuggestion:
-      typeof parsed.customSuggestion === "string" && parsed.customSuggestion.trim()
-        ? parsed.customSuggestion.trim()
-        : null,
     model: result.model,
     latencyMs,
     usage: result.usage,
@@ -98,7 +77,7 @@ export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) 
  */
 export async function classifyEnsemble(rawText, { customSubjects = [] } = {}) {
   const [gptOss, bertResult] = await Promise.all([
-    classifyWithGptOss(rawText, { customSubjects }),
+    classifyWithGptOss(rawText),
     classifyWithBert(rawText),
   ]);
 
@@ -140,7 +119,6 @@ export async function classifyEnsemble(rawText, { customSubjects = [] } = {}) {
       subject: gptOss.subject,
       confidence: gptOss.confidence,
       rationale: `Orchestrator failed (${err?.message || "error"}); using GPT-OSS vote.`,
-      customSuggestion: gptOss.customSuggestion,
       model: gptOss.model,
       latencyMs: 0,
       degraded: true,
@@ -151,7 +129,6 @@ export async function classifyEnsemble(rawText, { customSubjects = [] } = {}) {
     subject: orchestrator.subject,
     confidence: orchestrator.confidence,
     rationale: orchestrator.rationale,
-    customSuggestion: orchestrator.customSuggestion,
     model: orchestrator.model,
     latencyMs: orchestrator.latencyMs,
     votes,
@@ -162,30 +139,34 @@ export async function classifyEnsemble(rawText, { customSubjects = [] } = {}) {
 }
 
 /**
- * Orchestrator LLM: reads note + three votes; may pick one of 8 or Other/custom.
+ * Orchestrator LLM: reads note + three votes.
+ * May pick one of the 8 fixed subjects, or an existing user custom subject — never invents new ones.
  */
 export async function orchestrateWithGptOss(rawText, votes, customSubjects = []) {
-  const customList =
-    Array.isArray(customSubjects) && customSubjects.length
-      ? customSubjects.join(", ")
-      : "(none)";
+  const customs = Array.isArray(customSubjects)
+    ? customSubjects.filter((c) => typeof c === "string" && c.trim())
+    : [];
+  const customList = customs.length ? customs.join(", ") : "(none)";
+  const allowed = [...FIXED_SUBJECTS, ...customs];
 
   const system = [
     "You are an orchestrator that picks the final academic subject for student notes.",
-    `Fixed subjects: ${FIXED_SUBJECTS.join(", ")}.`,
-    `You may also choose "${OTHER_SUBJECT}" and suggest a short custom subject name.`,
-    "You receive votes from three classifiers: GPT-OSS, zero-shot BERT, and fine-tuned BERT.",
-    "Prefer agreement among models; weigh fine-tuned BERT highly when confidence is strong;",
-    "use Other when none of the eight fit (especially if GPT-OSS already suggested Other).",
+    `The three submodels (GPT-OSS, zero-shot BERT, fine-tuned BERT) can ONLY vote among these eight: ${FIXED_SUBJECTS.join(", ")}.`,
+    "Your final choice may be one of those eight, OR one of the user's existing custom subjects listed below.",
+    "You must NOT invent a new subject name. Only use a custom subject if it already appears in the user's list.",
+    `If none of the eight and none of the user's custom subjects fit, use "${OTHER_SUBJECT}".`,
+    "Prefer agreement among the three votes; weigh fine-tuned BERT highly when its confidence is strong.",
+    "Remember: a good final answer can sit outside the eight when an existing user custom subject is a better fit.",
     "Respond with a single JSON object only, no markdown.",
-    'Schema: {"subject": string, "confidence": number, "rationale": string, "customSuggestion": string|null}',
+    'Schema: {"subject": string, "confidence": number, "rationale": string}',
     "confidence is 0..1.",
   ].join(" ");
 
   const user = [
+    `Allowed subjects (8 fixed + user's existing customs): ${allowed.join(", ")}`,
     `User custom subjects: ${customList}`,
     "",
-    "Votes (JSON):",
+    "Votes from the three submodels (each limited to the eight fixed subjects) (JSON):",
     JSON.stringify(votes, null, 2),
     "",
     "Notes:",
@@ -205,15 +186,7 @@ export async function orchestrateWithGptOss(rawText, votes, customSubjects = [])
   const latencyMs = Date.now() - started;
 
   const parsed = extractJsonObject(result.content) || {};
-  let subject = normalizeSubjectLabel(parsed.subject) || OTHER_SUBJECT;
-  if (
-    subject !== OTHER_SUBJECT &&
-    !FIXED_SUBJECTS.includes(subject) &&
-    !customSubjects.some((c) => c.toLowerCase() === subject.toLowerCase())
-  ) {
-    parsed.customSuggestion = parsed.customSuggestion || subject;
-    subject = OTHER_SUBJECT;
-  }
+  const subject = clampToAllowedSubject(parsed.subject, customs);
 
   let confidence = Number(parsed.confidence);
   if (!Number.isFinite(confidence)) confidence = 0.5;
@@ -223,10 +196,6 @@ export async function orchestrateWithGptOss(rawText, votes, customSubjects = [])
     subject,
     confidence,
     rationale: typeof parsed.rationale === "string" ? parsed.rationale : "",
-    customSuggestion:
-      typeof parsed.customSuggestion === "string" && parsed.customSuggestion.trim()
-        ? parsed.customSuggestion.trim()
-        : null,
     model: result.model,
     latencyMs,
     usage: result.usage,
@@ -321,29 +290,39 @@ export async function formatNotesWithGptOss(rawText, subject) {
 
 /**
  * Resolve final subject from orchestrator/classification + custom subjects.
+ * Never invents or auto-creates custom subjects.
  */
 export function resolveSubject(classification, customSubjects = []) {
   if (!classification) {
     return { subject: OTHER_SUBJECT, createdCustom: null };
   }
 
-  if (classification.subject !== OTHER_SUBJECT) {
-    return { subject: classification.subject, createdCustom: null };
-  }
+  const customs = Array.isArray(customSubjects) ? customSubjects : [];
+  const subject = clampToAllowedSubject(classification.subject, customs);
+  return { subject, createdCustom: null };
+}
 
-  const suggestion = classification.customSuggestion;
-  if (!suggestion) {
-    return { subject: OTHER_SUBJECT, createdCustom: null };
-  }
+/** Clamp a label to one of the eight fixed subjects. */
+function clampToFixedSubject(raw) {
+  const normalized = normalizeSubjectLabel(raw);
+  if (normalized && FIXED_SUBJECTS.includes(normalized)) return normalized;
+  return FIXED_SUBJECTS[0];
+}
 
+/**
+ * Clamp to fixed subjects, an existing user custom, or Other.
+ * Invented labels are refused (mapped to Other).
+ */
+function clampToAllowedSubject(raw, customSubjects = []) {
+  const normalized = normalizeSubjectLabel(raw);
+  if (!normalized) return OTHER_SUBJECT;
+  if (FIXED_SUBJECTS.includes(normalized)) return normalized;
   const match = customSubjects.find(
-    (c) => c.toLowerCase() === suggestion.toLowerCase()
+    (c) => typeof c === "string" && c.toLowerCase() === normalized.toLowerCase()
   );
-  if (match) {
-    return { subject: match, createdCustom: null };
-  }
-
-  return { subject: suggestion, createdCustom: suggestion };
+  if (match) return match;
+  if (normalized === OTHER_SUBJECT) return OTHER_SUBJECT;
+  return OTHER_SUBJECT;
 }
 
 function slugify(label) {

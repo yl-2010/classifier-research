@@ -49,21 +49,24 @@ describe("resolveSubject", () => {
     assert.equal(r.createdCustom, null);
   });
 
-  it("creates custom from Other suggestion", () => {
+  it("matches existing custom case-insensitively", () => {
+    const r = resolveSubject({ subject: "apush" }, ["APUSH"]);
+    assert.equal(r.subject, "APUSH");
+    assert.equal(r.createdCustom, null);
+  });
+
+  it("does not invent or auto-create custom subjects", () => {
     const r = resolveSubject(
       { subject: OTHER_SUBJECT, customSuggestion: "APUSH" },
       []
     );
-    assert.equal(r.subject, "APUSH");
-    assert.equal(r.createdCustom, "APUSH");
+    assert.equal(r.subject, OTHER_SUBJECT);
+    assert.equal(r.createdCustom, null);
   });
 
-  it("matches existing custom case-insensitively", () => {
-    const r = resolveSubject(
-      { subject: OTHER_SUBJECT, customSuggestion: "apush" },
-      ["APUSH"]
-    );
-    assert.equal(r.subject, "APUSH");
+  it("maps unknown labels to Other", () => {
+    const r = resolveSubject({ subject: "APUSH" }, []);
+    assert.equal(r.subject, OTHER_SUBJECT);
     assert.equal(r.createdCustom, null);
   });
 });
