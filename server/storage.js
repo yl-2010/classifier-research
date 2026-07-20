@@ -558,8 +558,17 @@ export async function updateResearchEvent(email, eventId, patch = {}) {
 }
 
 /**
+ * Accounts whose classify/research events must never enter shared research
+ * metrics (e.g. personal smoke-test accounts that inject random notes).
+ */
+const RESEARCH_METRICS_EXCLUDED_FOLDERS = new Set(
+  ["yanylevin@gmail.com"].map((email) => emailToFolderName(email))
+);
+
+/**
  * All research events across every user folder under the data root.
  * Used for shared research charts (frozen eval + live user tests).
+ * Skips RESEARCH_METRICS_EXCLUDED_FOLDERS so test noise never pools in.
  */
 export async function listAllResearchEvents({ limit = 10000 } = {}) {
   await assertDataRootReady();
@@ -575,6 +584,7 @@ export async function listAllResearchEvents({ limit = 10000 } = {}) {
   const events = [];
   for (const folder of userFolders) {
     if (!folder.includes("@")) continue;
+    if (RESEARCH_METRICS_EXCLUDED_FOLDERS.has(folder)) continue;
     const dir = path.join(root, folder, "research");
     let names = [];
     try {

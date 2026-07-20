@@ -518,7 +518,7 @@ app.get("/api/research", requireAuth, async (req, res) => {
 /**
  * Shared research chart metrics (public).
  * ?includeUser=1 pools frozen eval with every user's classify_ingest events
- * on this Mac — not scoped to the caller.
+ * on this Mac — not scoped to the caller. Test accounts excluded in storage.
  */
 app.get("/api/research/metrics", async (req, res) => {
   try {

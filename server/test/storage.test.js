@@ -223,4 +223,37 @@ describe("storage", () => {
     assert.equal(updated.userGoldSubject, "Chemistry");
     assert.equal(updated.corrected, true);
   });
+
+  it("excludes yanylevin@gmail.com from shared research metrics pools", async () => {
+    const tester = "yanylevin@gmail.com";
+    const real = "real-user@example.com";
+    await ensureUser(tester);
+    await ensureUser(real);
+
+    await writeResearchEvent(tester, {
+      id: "evt-test-noise",
+      kind: "classify_ingest",
+      finalSubject: "Biology",
+      votes: {
+        gptOss: { subject: "Biology" },
+        baseBert: { subject: "Biology" },
+        fineTunedBert: { subject: "Biology" },
+      },
+    });
+    await writeResearchEvent(real, {
+      id: "evt-real",
+      kind: "classify_ingest",
+      finalSubject: "Physics",
+      votes: {
+        gptOss: { subject: "Physics" },
+        baseBert: { subject: "Physics" },
+        fineTunedBert: { subject: "Physics" },
+      },
+    });
+
+    const all = await listAllResearchEvents();
+    assert.ok(all.some((e) => e.id === "evt-real"));
+    assert.ok(!all.some((e) => e.id === "evt-test-noise"));
+    assert.ok(!all.some((e) => e._userFolder === "yanylevin@gmail.com"));
+  });
 });
