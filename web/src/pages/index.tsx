@@ -812,6 +812,11 @@ export default function HomePage() {
                           key={n.id}
                           type="button"
                           className="note-item"
+                          style={
+                            {
+                              "--subj": subjectColor(n.subject),
+                            } as CSSProperties
+                          }
                           onClick={() => setOpenNoteId(n.id)}
                         >
                           {n.title}
@@ -1282,10 +1287,11 @@ export default function HomePage() {
           padding: 0.85rem 1rem;
           border-radius: var(--radius);
           cursor: pointer;
+          box-shadow: inset 3px 0 0 var(--subj);
         }
 
         .note-item:hover {
-          background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+          background: color-mix(in srgb, var(--subj, var(--accent)) 8%, var(--surface));
         }
 
         .page-title {
