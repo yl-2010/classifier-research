@@ -185,10 +185,6 @@ export default function VoicePage() {
         />
 
         <h1 className="section-label">Voice</h1>
-        <p className="lede">
-          Paste text and hear it spoken by Orpheus on your Mac. Nothing here is
-          saved to your notes library.
-        </p>
 
         {!ui.lyricsVisible && (
           <textarea
@@ -324,17 +320,10 @@ export default function VoicePage() {
         }
 
         .section-label {
-          margin: 0 0 0.35rem;
+          margin: 0 0 1.25rem;
           font-family: var(--display);
           font-size: 1.35rem;
           font-weight: 500;
-        }
-
-        .lede {
-          margin: 0 0 1.25rem;
-          color: var(--mute);
-          font-size: 0.95rem;
-          line-height: 1.5;
         }
 
         textarea {
