@@ -58,16 +58,16 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
                 Library
               </button>
               <Link
+                href="/voice"
+                className={`nav-tab${active === "voice" ? " active" : ""}`}
+              >
+                Voice
+              </Link>
+              <Link
                 href="/research"
                 className={`nav-pill${active === "research" ? " active" : ""}`}
               >
                 Research
-              </Link>
-              <Link
-                href="/voice"
-                className={`nav-pill${active === "voice" ? " active" : ""}`}
-              >
-                Voice
               </Link>
               <button
                 type="button"
@@ -232,6 +232,17 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
 
         .nav > button:not(.btn):hover,
         .nav > button.active {
+          color: var(--ink);
+        }
+
+        :global(.nav-tab) {
+          color: var(--mute);
+          font-size: 0.9rem;
+          text-decoration: none;
+        }
+
+        :global(.nav-tab:hover),
+        :global(.nav-tab.active) {
           color: var(--ink);
         }
 
