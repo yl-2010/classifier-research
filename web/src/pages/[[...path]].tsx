@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { signIn, useSession } from "next-auth/react";
 import {
   useCallback,
@@ -28,6 +29,12 @@ import {
 } from "@/lib/invoked-subjects";
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { loadResearch, saveResearch } from "@/lib/research-store";
+import {
+  findLabelBySlug,
+  findNoteBySlug,
+  notePath,
+  subjectPath,
+} from "@/lib/slugs";
 
 type ResearchUpdater = (prev: ResearchRow[]) => ResearchRow[];
 
@@ -109,9 +116,19 @@ function mapApiNote(meta: ApiNoteMeta): NoteItem {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
+
+  const pathParts = useMemo(() => {
+    const raw = router.query.path;
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === "string" && raw) return [raw];
+    return [] as string[];
+  }, [router.query.path]);
+  const subjectSlug = pathParts[0] || null;
+  const noteSlug = pathParts[1] || null;
 
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
@@ -133,6 +150,7 @@ export default function HomePage() {
   const [sending, setSending] = useState(false);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
 
   const persistScroll = useCallback(() => {
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
@@ -163,8 +181,13 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!signedIn || !apiBase) return;
+    if (!signedIn) return;
+    if (!apiBase) {
+      setLibraryLoaded(true);
+      return;
+    }
     let cancelled = false;
+    setLibraryLoaded(false);
     (async () => {
       try {
         const res = await notelmsFetch(apiBase, "/api/notes");
@@ -177,6 +200,7 @@ export default function HomePage() {
         if (!res.ok || !data.ok) {
           setLibraryError(data.error || "Could not load library");
           setNotes([]);
+          setLibraryLoaded(true);
           return;
         }
         const mapped = (data.notes || []).map(mapApiNote);
@@ -188,10 +212,12 @@ export default function HomePage() {
             sortLibrarySubjects([...loadInvokedSubjects(), ...subjects])
           );
         }
+        setLibraryLoaded(true);
       } catch {
         if (!cancelled) {
           setLibraryError("Could not reach the note API");
           setNotes([]);
+          setLibraryLoaded(true);
         }
       }
     })();
@@ -262,6 +288,76 @@ export default function HomePage() {
     return sortLibrarySubjects([...FIXED_SUBJECTS, ...custom]);
   }, [librarySubjects]);
 
+  const goLibraryHome = useCallback(() => {
+    void router.push("/");
+  }, [router]);
+
+  const openSubject = useCallback(
+    (name: string) => {
+      void router.push(subjectPath(name));
+    },
+    [router]
+  );
+
+  const openNoteAt = useCallback(
+    (subject: string, title: string) => {
+      void router.push(notePath(subject, title));
+    },
+    [router]
+  );
+
+  // Sync folder / open note from the URL once the library is ready.
+  useEffect(() => {
+    if (!router.isReady || !signedIn) return;
+
+    if (!subjectSlug) {
+      setFolder(null);
+      setOpenNoteId(null);
+      return;
+    }
+
+    // Wait for notes fetch (and invoked subjects) before rejecting unknown slugs.
+    if (!libraryLoaded) return;
+
+    const subject = findLabelBySlug(librarySubjects, subjectSlug);
+    if (!subject) {
+      void router.replace("/");
+      return;
+    }
+
+    setFolder(subject);
+
+    if (!noteSlug) {
+      setOpenNoteId(null);
+      return;
+    }
+
+    const inSubject = notes.filter(
+      (n) => n.status === "ready" && n.subject === subject
+    );
+    const match = findNoteBySlug(inSubject, noteSlug);
+    if (!match) {
+      void router.replace(subjectPath(subject));
+      return;
+    }
+    setOpenNoteId(match.id);
+  }, [
+    router,
+    router.isReady,
+    signedIn,
+    subjectSlug,
+    noteSlug,
+    libraryLoaded,
+    librarySubjects,
+    notes,
+  ]);
+
+  // Deep links into a subject/note should land in the library section.
+  useEffect(() => {
+    if (!signedIn || !subjectSlug) return;
+    window.requestAnimationFrame(() => scrollToSection("library", "auto"));
+  }, [signedIn, subjectSlug, noteSlug, scrollToSection]);
+
   const addSubjectToLibrary = useCallback(
     (label: string, open = true) => {
       const name = label.trim();
@@ -269,12 +365,9 @@ export default function HomePage() {
       persistInvoked([...invokedSubjects, name]);
       setAddingSubject(false);
       setCustomDraft("");
-      if (open) {
-        setFolder(name);
-        setOpenNoteId(null);
-      }
+      if (open) openSubject(name);
     },
-    [invokedSubjects, persistInvoked]
+    [invokedSubjects, openSubject, persistInvoked]
   );
 
   const deleteSubjectFromLibrary = useCallback(
@@ -312,14 +405,13 @@ export default function HomePage() {
         persistInvoked(
           invokedSubjects.filter((s) => s.toLowerCase() !== name.toLowerCase())
         );
-        setFolder(null);
-        setOpenNoteId(null);
+        goLibraryHome();
         setAddingSubject(false);
       } finally {
         setDeletingSubject(false);
       }
     },
-    [apiBase, invokedSubjects, notes, persistInvoked, updateResearch]
+    [apiBase, goLibraryHome, invokedSubjects, notes, persistInvoked, updateResearch]
   );
 
   const deleteOpenNote = useCallback(async () => {
@@ -345,8 +437,7 @@ export default function HomePage() {
       }
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
       updateResearch((prev) => prev.filter((r) => r.id !== noteId));
-      setOpenNoteId(null);
-      setFolder(subject);
+      openSubject(subject);
     } catch (err) {
       window.alert(
         err instanceof Error ? err.message : "Could not delete note"
@@ -354,7 +445,7 @@ export default function HomePage() {
     } finally {
       setDeletingNote(false);
     }
-  }, [apiBase, deletingNote, notes, openNoteId, updateResearch]);
+  }, [apiBase, deletingNote, notes, openNoteId, openSubject, updateResearch]);
 
   const submitCustomSubject = (e: FormEvent) => {
     e.preventDefault();
@@ -370,7 +461,7 @@ export default function HomePage() {
         name;
       setAddingSubject(false);
       setCustomDraft("");
-      setFolder(match);
+      openSubject(match);
       return;
     }
     addSubjectToLibrary(name);
@@ -523,7 +614,7 @@ export default function HomePage() {
       )
     );
     persistInvoked([...invokedSubjects, next]);
-    setFolder(next);
+    openNoteAt(next, openNote.title);
     updateResearch((prev) => {
       const existing = prev.find((r) => r.id === noteId);
       if (!existing) {
@@ -593,7 +684,13 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>NoteLMs</title>
+        <title>
+          {openNote
+            ? `${openNote.title} · NoteLMs`
+            : folder
+              ? `${folder} · NoteLMs`
+              : "NoteLMs"}
+        </title>
         <meta
           name="description"
           content="NoteLMs classifies and organizes student notes."
@@ -604,7 +701,15 @@ export default function HomePage() {
         {signedIn && (
           <AppNav
             active="notebook"
-            onNotebook={() => scrollToSection("new")}
+            onNotebook={() => {
+              if (subjectSlug) {
+                void router.push("/").then(() => {
+                  scrollToSection("new");
+                });
+                return;
+              }
+              scrollToSection("new");
+            }}
           />
         )}
 
@@ -770,10 +875,7 @@ export default function HomePage() {
                     <button
                       type="button"
                       className="btn ghost"
-                      onClick={() => {
-                        setOpenNoteId(null);
-                        setFolder(openNote.subject);
-                      }}
+                      onClick={() => openSubject(openNote.subject)}
                     >
                       Back
                     </button>
@@ -828,7 +930,7 @@ export default function HomePage() {
                               "--subj": subjectColor(n.subject),
                             } as CSSProperties
                           }
-                          onClick={() => setOpenNoteId(n.id)}
+                          onClick={() => openNoteAt(folder, n.title)}
                         >
                           {n.title}
                         </button>
@@ -839,7 +941,7 @@ export default function HomePage() {
                     <button
                       type="button"
                       className="btn ghost"
-                      onClick={() => setFolder(null)}
+                      onClick={() => goLibraryHome()}
                     >
                       Back
                     </button>
@@ -936,7 +1038,7 @@ export default function HomePage() {
                                 "--subj": subjectColor(name),
                               } as CSSProperties
                             }
-                            onClick={() => setFolder(name)}
+                            onClick={() => openSubject(name)}
                           >
                             <span className="fname">{name}</span>
                             <span className="fcount">{count}</span>

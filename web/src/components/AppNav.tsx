@@ -21,15 +21,7 @@ export function AppNav({ active, onNotebook }: AppNavProps) {
         <div className="nav-solid" />
       </div>
       <div className="nav-bar">
-        <Link
-          href="/"
-          className="brand"
-          onClick={(e) => {
-            if (!onNotebook) return;
-            e.preventDefault();
-            onNotebook();
-          }}
-        >
+        <Link href="/" className="brand">
           <img
             className="brand-logo"
             src="/logo-nav.svg"
