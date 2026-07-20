@@ -26,11 +26,19 @@ NoteLMs Express listens on **3002**. Public API: `https://api.notelms.com` via t
 
 3. **NoteLMs Cloudflare Tunnel**
 
+   On this Mac, tunnels are kept alive by LaunchAgents:
+
+   - `~/Library/LaunchAgents/com.notelms.cloudflared.plist`
+   - `~/Library/LaunchAgents/com.sockethr.cloudflared.plist`
+
+   Manual start (if needed):
+
    ```bash
    cloudflared tunnel --config ~/.cloudflared/config-notelms.yml run
+   # or: ./scripts/start-notelms-tunnel.sh
    ```
 
-   SocketHR (if needed) uses a **different** process:
+   SocketHR uses a **different** process / config:
 
    ```bash
    cloudflared tunnel --config ~/.cloudflared/config.yml run
