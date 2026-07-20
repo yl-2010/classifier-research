@@ -89,10 +89,6 @@ export default function ResearchPage() {
         <header className="hero">
           <p className="kicker">Shared results · frozen test</p>
           <h1>Research</h1>
-          <p className="lede">
-            Same page for everyone. Offline metrics on the locked 8-subject proxy test set
-            {data?.test_n ? ` (n=${data.test_n})` : ""}. Live user traffic is not shown here.
-          </p>
         </header>
 
         {error ? <p className="error">{error}</p> : null}
@@ -101,10 +97,6 @@ export default function ResearchPage() {
         {arms.length > 0 ? (
           <section className="panel" aria-labelledby="headline-metrics">
             <h2 id="headline-metrics">Classifier comparison</h2>
-            <p className="muted tight">
-              Each cluster is one system. Within a cluster, accuracy, micro-F1, and macro-F1 sit
-              flush against each other (no gaps).
-            </p>
             <ClusteredMetricsChart arms={arms} order={[...ARM_ORDER]} />
 
             <div className="table-scroll">
@@ -138,7 +130,6 @@ export default function ResearchPage() {
         {data?.arms && Object.keys(data.arms).length > 0 ? (
           <section className="panel" aria-labelledby="per-class">
             <h2 id="per-class">Per-class F1</h2>
-            <p className="muted tight">Macro view broken out by subject for each arm.</p>
             <div className="table-scroll">
               <table className="metrics dense">
                 <thead>
