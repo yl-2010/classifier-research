@@ -4,13 +4,15 @@ Student notes subject classifier research: prompted LLM vs base BERT vs fine-tun
 
 **Product name:** NoteLMs (not NoteLMS). Domain: [notelms.com](https://notelms.com).
 
-See [`AGENT_PLAN.html`](AGENT_PLAN.html) for the full research and product brief.
+Agent HTML plans live in [`agent-plans/`](agent-plans/). See [`agent-plans/AGENT_PLAN.html`](agent-plans/AGENT_PLAN.html) for the full research and product brief.
 
-When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tunnel), model after SocketHR using [`SOCKETHR_STACK_REFERENCE.html`](SOCKETHR_STACK_REFERENCE.html).
+When scaffolding a website (Vercel + Mac Studio API + LM Studio + Cloudflare Tunnel), model after SocketHR using [`agent-plans/SOCKETHR_STACK_REFERENCE.html`](agent-plans/SOCKETHR_STACK_REFERENCE.html).
 
-For creating the Vercel project, connecting this repo, and attaching `notelms.com`, follow [`VERCEL_SETUP_PLAN.html`](VERCEL_SETUP_PLAN.html) (desktop-agent handoff).
+For creating the Vercel project, connecting this repo, and attaching `notelms.com`, follow [`agent-plans/VERCEL_SETUP_PLAN.html`](agent-plans/VERCEL_SETUP_PLAN.html) (desktop-agent handoff).
 
-To share SocketHR’s existing Cloudflare Tunnel with `api.notelms.com` (one `cloudflared` process, two hostnames), copy [`SHARED_CLOUDFLARE_TUNNEL_PLAN.html`](SHARED_CLOUDFLARE_TUNNEL_PLAN.html) into the sockethr repo and run a SocketHR agent against it.
+To share SocketHR’s existing Cloudflare Tunnel with `api.notelms.com` (one `cloudflared` process, two hostnames), copy [`agent-plans/SHARED_CLOUDFLARE_TUNNEL_PLAN.html`](agent-plans/SHARED_CLOUDFLARE_TUNNEL_PLAN.html) into the sockethr repo and run a SocketHR agent against it.
+
+If `https://api.notelms.com` does not resolve to public Cloudflare edge IPs, run [`agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html`](agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html) on the Mac Studio (authoritative DNS/tunnel fix).
 
 The production UI lives in [`web/`](web/) (Next.js on Vercel at [notelms.com](https://notelms.com)). Root Directory on Vercel is `web`.
 

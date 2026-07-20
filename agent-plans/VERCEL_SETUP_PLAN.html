@@ -187,7 +187,7 @@
     <tr><td>Also attach</td><td><code>www.notelms.com</code> → redirect or alias to apex</td></tr>
     <tr><td>Application / Framework Preset</td><td><strong>Next.js</strong> (not Other, not static, not Python)</td></tr>
     <tr><td>Stack model</td><td>Mirror SocketHR: Vercel = Next.js UI; Mac/home lab = API + models later</td></tr>
-    <tr><td>Reference docs in this repo</td><td><code>SOCKETHR_STACK_REFERENCE.html</code>, <code>AGENT_PLAN.html</code>, <code>README.md</code></td></tr>
+    <tr><td>Reference docs in this repo</td><td><code>agent-plans/SOCKETHR_STACK_REFERENCE.html</code>, <code>agent-plans/AGENT_PLAN.html</code>, <code>README.md</code></td></tr>
   </table>
 
   <div class="callout warn-border">
@@ -209,8 +209,8 @@
         <li><code>scripts/</code> — download + prepare corpus</li>
         <li><code>data/processed/</code> — frozen train/val/test artifacts</li>
         <li><code>requirements.txt</code> — Python deps</li>
-        <li><code>AGENT_PLAN.html</code> — product / research brief</li>
-        <li><code>SOCKETHR_STACK_REFERENCE.html</code> — architecture to copy</li>
+        <li><code>agent-plans/AGENT_PLAN.html</code> — product / research brief</li>
+        <li><code>agent-plans/SOCKETHR_STACK_REFERENCE.html</code> — architecture to copy</li>
         <li>This file — Vercel handoff plan</li>
       </ul>
     </div>
@@ -318,9 +318,12 @@ Keep heavy / private model inference off Vercel (home lab), same split as Socket
 │   └── ...
 ├── scripts/             # existing Python research (leave alone)
 ├── data/
-├── AGENT_PLAN.html
-├── SOCKETHR_STACK_REFERENCE.html
-└── VERCEL_SETUP_PLAN.html</code></pre>
+└── agent-plans/
+    ├── AGENT_PLAN.html
+    ├── SOCKETHR_STACK_REFERENCE.html
+    ├── VERCEL_SETUP_PLAN.html
+    ├── SHARED_CLOUDFLARE_TUNNEL_PLAN.html
+    └── NOTELMS_API_TUNNEL_DNS_FIX.html</code></pre>
 
   <div class="callout">
     Minimal placeholder is fine for this task: brand/product name <strong>NoteLMs</strong> / domain
@@ -406,7 +409,7 @@ Use authenticated Vercel MCP. Report project URL, domain status, and deployment 
     <p>
       Related: <a href="./AGENT_PLAN.html">AGENT_PLAN.html</a> ·
       <a href="./SOCKETHR_STACK_REFERENCE.html">SOCKETHR_STACK_REFERENCE.html</a> ·
-      <a href="./README.md">README.md</a>
+      <a href="../README.md">README.md</a>
     </p>
     <p class="muted">
       Written as a cloud→desktop handoff after Vercel MCP auth could not complete in the cloud agent environment.

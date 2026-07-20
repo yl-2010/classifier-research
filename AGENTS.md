@@ -37,8 +37,10 @@ Browser
 
 ## Key docs
 
-- [`SOCKETHR_STACK_REFERENCE.html`](SOCKETHR_STACK_REFERENCE.html)
+- [`agent-plans/`](agent-plans/) — all agent HTML plans
+- [`agent-plans/SOCKETHR_STACK_REFERENCE.html`](agent-plans/SOCKETHR_STACK_REFERENCE.html)
+- [`agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html`](agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html) — fix `api.notelms.com` DNS/tunnel
 - [`docs/STARTUP.md`](docs/STARTUP.md)
 - [`docs/LOCAL_BACKEND.md`](docs/LOCAL_BACKEND.md)
 - [`docs/PUBLIC_TUNNEL.md`](docs/PUBLIC_TUNNEL.md)
-- [`AGENT_PLAN.html`](AGENT_PLAN.html)
+- [`agent-plans/AGENT_PLAN.html`](agent-plans/AGENT_PLAN.html)

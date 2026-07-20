@@ -298,44 +298,46 @@ ingress:
 
   <!-- ========== 5 ========== -->
   <h2 id="dns">5. DNS for api.notelms.com</h2>
+  <div class="callout danger-border">
+    <strong>Superseded:</strong> A Vercel-only CNAME to <code>*.cfargotunnel.com</code> does
+    <em>not</em> publish public Cloudflare edge IPs. Live <code>sockethr.com</code> is on
+    Cloudflare NS; that is why <code>api.sockethr.com</code> works.
+    For the full Mac-side fix, execute
+    <a href="./NOTELMS_API_TUNNEL_DNS_FIX.html">NOTELMS_API_TUNNEL_DNS_FIX.html</a>.
+  </div>
   <p>
-    Same Path A pattern as SocketHR: authoritative DNS for <code>notelms.com</code> is on
-    <strong>Vercel</strong>; Cloudflare is only the tunnel connector.
+    Required shape: a <strong>proxied</strong> CNAME for <code>api.notelms.com</code> in the
+    <strong>same Cloudflare account</strong> as the tunnel:
   </p>
+  <table>
+    <thead><tr><th>Type</th><th>Name</th><th>Value</th><th>Proxy</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>CNAME</td>
+        <td><code>api</code></td>
+        <td><code>&lt;SAME_TUNNEL_UUID&gt;.cfargotunnel.com</code></td>
+        <td><strong>Proxied (orange cloud)</strong></td>
+      </tr>
+    </tbody>
+  </table>
   <ol class="steps">
     <li>
       Find the existing tunnel UUID from <code>~/.cloudflared/config.yml</code>
       (the same one already used by <code>api.sockethr.com</code>).
     </li>
     <li>
-      In the <strong>Vercel DNS</strong> for the <code>notelms.com</code> project/domain, add:
-      <table>
-        <thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>CNAME</td>
-            <td><code>api</code></td>
-            <td><code>&lt;SAME_TUNNEL_UUID&gt;.cfargotunnel.com</code></td>
-          </tr>
-        </tbody>
-      </table>
+      Place the proxied CNAME in the tunnel’s Cloudflare account (recommended: put
+      <code>notelms.com</code> on Cloudflare NS like <code>sockethr.com</code>, keep Vercel for the UI via apex/<code>www</code> records).
     </li>
     <li>
       <span class="dont">Do not</span> add <code>api.notelms.com</code> as a domain on the Vercel
       <em>project</em> (that makes Vercel try to serve it → <code>DEPLOYMENT_NOT_FOUND</code>).
-      DNS record only.
     </li>
     <li>
-      Wait for DNS/SSL. Confirm the CNAME target matches SocketHR’s tunnel UUID exactly
-      (compare to the <code>api.sockethr.com</code> CNAME on <code>sockethr.com</code>).
+      Success check: <code>dig +short api.notelms.com A</code> returns public CF edge IPs
+      (same pattern as <code>api.sockethr.com</code>), not only a bare CNAME.
     </li>
   </ol>
-  <div class="callout warn-border">
-    <strong>If you cannot access the notelms.com Vercel DNS from the sockethr agent environment:</strong>
-    still complete the tunnel config + sockethr docs, and leave a short
-    <code>docs/NOTELMS_TUNNEL_DNS.md</code> (or section in <code>PUBLIC_TUNNEL.md</code>) with the
-    exact CNAME the human/desktop agent must add. Do not invent a second tunnel as a workaround.
-  </div>
 
   <!-- ========== 6 ========== -->
   <h2 id="docs">6. Docs / examples to update in sockethr</h2>
@@ -463,7 +465,7 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
     <li><code>~/.cloudflared/config.yml</code> (or documented equivalent) includes both hostnames on the <em>existing</em> tunnel.</li>
     <li>sockethr repo examples/docs describe the shared tunnel and ports <code>3000</code> / <code>3002</code>.</li>
     <li><code>https://api.sockethr.com/health</code> still works with the usual startup.</li>
-    <li>DNS instructions for <code>api.notelms.com</code> → same <code>&lt;uuid&gt;.cfargotunnel.com</code> are written and applied if DNS access is available.</li>
+    <li>DNS for <code>api.notelms.com</code> is a <strong>proxied</strong> CNAME in the tunnel’s Cloudflare account (see <a href="./NOTELMS_API_TUNNEL_DNS_FIX.html">NOTELMS_API_TUNNEL_DNS_FIX.html</a>); <code>dig</code> returns public CF edge IPs.</li>
     <li>STARTUP docs clearly show <strong>one</strong> cloudflared command for both products.</li>
   </ul>
 
@@ -472,8 +474,9 @@ cloudflared tunnel --config ~/.cloudflared/config.yml run
     <ol>
       <li>Copy this file into the sockethr repo (suggested path: <code>docs/SHARED_CLOUDFLARE_TUNNEL_NOTELMS.html</code> or repo root).</li>
       <li>Open a SocketHR agent on that repo and point it at this file as the task brief.</li>
-      <li>After the sockethr agent finishes, the NoteLMs / classifier-research agent can assume
-        <code>api.notelms.com</code> will hit <code>127.0.0.1:3002</code> once its Express server exists.</li>
+      <li>After tunnel ingress is shared, if <code>api.notelms.com</code> still has no public CF edge IPs,
+        run <a href="./NOTELMS_API_TUNNEL_DNS_FIX.html">NOTELMS_API_TUNNEL_DNS_FIX.html</a> on the Mac.</li>
+      <li>Then NoteLMs Express on <code>127.0.0.1:3002</code> is reachable at <code>https://api.notelms.com</code>.</li>
     </ol>
   </div>
 

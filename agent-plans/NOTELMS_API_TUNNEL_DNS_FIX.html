@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NoteLMs API Tunnel DNS Fix — Mac Studio agent plan</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --border: #2a3648;
+      --code: #121820;
+      --danger: #f07178;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 2rem 1.25rem 4rem;
+    }
+    main { max-width: 980px; margin: 0 auto; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    h2 {
+      margin-top: 2.25rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.25rem;
+    }
+    h3 { margin-top: 1.4rem; font-size: 1.05rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .lead { font-size: 1.05rem; color: var(--muted); margin-top: 0; }
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #243044;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #152030; color: var(--muted); font-weight: 600; }
+    code, kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+    }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    pre code {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+    .toc a { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin: 0.25rem 0; }
+    .flow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 3px solid var(--accent);
+      padding: 0.75rem 1rem;
+      margin: 1rem 0;
+      background: var(--panel);
+      border-radius: 0 8px 8px 0;
+    }
+    .callout.warn-border { border-left-color: var(--warn); }
+    .callout.ok-border { border-left-color: var(--ok); }
+    .callout.danger-border { border-left-color: var(--danger); }
+    .do { color: var(--ok); font-weight: 700; }
+    .dont { color: var(--danger); font-weight: 700; }
+    ul.compact { padding-left: 1.2rem; }
+    ul.compact li { margin: 0.35rem 0; }
+    .checklist li { margin: 0.45rem 0; }
+    ol.steps > li { margin: 0.85rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="badge">Mac Studio agent handoff · classifier-research / NoteLMs</div>
+  <h1>Fix <code>api.notelms.com</code> — Cloudflare Tunnel DNS</h1>
+  <p class="lead">
+    Execute this plan on the Mac Studio that already runs SocketHR’s
+    <code>cloudflared</code> tunnel. Goal: make
+    <code>https://api.notelms.com/health</code> reach NoteLMs Express on
+    <code>127.0.0.1:3002</code> through the <strong>existing</strong> shared tunnel
+    (same process as <code>api.sockethr.com</code>).
+  </p>
+
+  <div class="card toc">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#diagnosis">Live diagnosis (why HTTPS fails)</a></li>
+      <li><a href="#goal">Goal &amp; non-goals</a></li>
+      <li><a href="#contract">Hostname / port contract</a></li>
+      <li><a href="#mac-tunnel">Step A — Mac tunnel config</a></li>
+      <li><a href="#dns">Step B — DNS (the real fix)</a></li>
+      <li><a href="#server">Step C — NoteLMs Express on :3002</a></li>
+      <li><a href="#verify">Verification</a></li>
+      <li><a href="#startup">Everyday startup after fix</a></li>
+      <li><a href="#out-of-scope">Out of scope</a></li>
+      <li><a href="#done">Done when</a></li>
+      <li><a href="#related">Related plans in this folder</a></li>
+    </ol>
+  </div>
+
+  <!-- ========== 1 ========== -->
+  <h2 id="diagnosis">1. Live diagnosis (why HTTPS fails)</h2>
+  <p>
+    A cloud agent probed production on 2026-07-20. Summary:
+  </p>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>https://notelms.com</code></td>
+        <td><span class="ok">Up</span> (Vercel UI)</td>
+      </tr>
+      <tr>
+        <td><code>https://api.sockethr.com/health</code></td>
+        <td><span class="ok">Up</span> — Mac + shared tunnel are alive</td>
+      </tr>
+      <tr>
+        <td><code>https://api.notelms.com/health</code></td>
+        <td><span class="danger">Down</span> — TCP connect fails (no public edge IPs)</td>
+      </tr>
+      <tr>
+        <td><code>notelms.com</code> NS</td>
+        <td>Vercel: <code>ns1.vercel-dns.com</code> / <code>ns2.vercel-dns.com</code></td>
+      </tr>
+      <tr>
+        <td><code>sockethr.com</code> NS</td>
+        <td>Cloudflare: <code>tia.ns.cloudflare.com</code> / <code>gerardo.ns.cloudflare.com</code></td>
+      </tr>
+      <tr>
+        <td>Vercel DNS <code>api</code> CNAME</td>
+        <td>
+          Exists → <code>4e5d6603-3e11-4a87-a878-97c0b2a10afb.cfargotunnel.com</code>
+          (confirm this UUID matches the live SocketHR tunnel)
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger-border">
+    <strong>Root cause:</strong> Cloudflare Tunnel only publishes reachable edge IPs when the
+    hostname’s DNS record lives in the <strong>same Cloudflare account as the tunnel</strong>
+    and is <strong>proxied</strong> (orange cloud). A bare CNAME on Vercel DNS to
+    <code>*.cfargotunnel.com</code> is not enough — clients never get public A/AAAA records,
+    so HTTPS never connects.
+  </div>
+
+  <p>That is why resolution looks different today:</p>
+  <table>
+    <thead>
+      <tr><th>Host</th><th>Nameservers</th><th>What dig returns</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>api.sockethr.com</code></td>
+        <td>Cloudflare zone</td>
+        <td>Public CF edge IPs (<code>104.21…</code>, <code>172.67…</code>)</td>
+      </tr>
+      <tr>
+        <td><code>api.notelms.com</code></td>
+        <td>Vercel DNS</td>
+        <td>CNAME to <code>*.cfargotunnel.com</code>, <strong>no public A/AAAA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn-border">
+    Older “Path A = Vercel DNS CNAME only” notes in
+    <a href="./SHARED_CLOUDFLARE_TUNNEL_PLAN.html">SHARED_CLOUDFLARE_TUNNEL_PLAN.html</a>
+    and <code>docs/PUBLIC_TUNNEL.md</code> are incomplete for the live setup.
+    <strong>This file is the authoritative fix plan.</strong> After you succeed, update those
+    docs so they match what actually works (Cloudflare-proxied DNS for <code>api</code>).
+  </div>
+
+  <!-- ========== 2 ========== -->
+  <h2 id="goal">2. Goal &amp; non-goals</h2>
+  <div class="card">
+    <h3 style="margin-top:0">Goal</h3>
+    <ul class="compact">
+      <li><code>dig +short api.notelms.com A</code> returns public Cloudflare edge IPs (same pattern as SocketHR).</li>
+      <li><code>curl -fsS https://api.notelms.com/health</code> returns JSON from NoteLMs Express.</li>
+      <li>Reuse the <strong>existing</strong> SocketHR tunnel UUID / credentials / one <code>cloudflared</code> process.</li>
+      <li>Ingress: <code>api.notelms.com</code> → <code>http://127.0.0.1:3002</code>.</li>
+    </ul>
+    <h3>Non-goals</h3>
+    <ul class="compact">
+      <li><span class="dont">Do not</span> create a second Cloudflare Tunnel.</li>
+      <li><span class="dont">Do not</span> expose LM Studio (<code>127.0.0.1:1234</code>) on the tunnel.</li>
+      <li><span class="dont">Do not</span> attach <code>api.notelms.com</code> as a Vercel <em>project domain</em> (causes <code>DEPLOYMENT_NOT_FOUND</code>).</li>
+      <li><span class="dont">Do not</span> merge SocketHR and NoteLMs into one Express process.</li>
+      <li><span class="dont">Do not</span> commit <code>server/.env</code>, <code>server/.auth-secret</code>, or USB user data.</li>
+    </ul>
+  </div>
+
+  <!-- ========== 3 ========== -->
+  <h2 id="contract">3. Hostname / port contract</h2>
+  <table>
+    <thead>
+      <tr><th>Public hostname</th><th>Local service</th><th>Port</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>api.sockethr.com</code></td>
+        <td>SocketHR Express</td>
+        <td>3000</td>
+      </tr>
+      <tr>
+        <td><code>api.notelms.com</code></td>
+        <td>NoteLMs Express (<code>classifier-research/server</code>)</td>
+        <td><strong>3002</strong></td>
+      </tr>
+      <tr>
+        <td>—</td>
+        <td>LM Studio (localhost only)</td>
+        <td>1234 — never tunnel</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="flow">Browser → https://notelms.com (Vercel)
+       → runtime-config.json apiBase = https://api.notelms.com
+       → Cloudflare Tunnel (shared w/ SocketHR)
+       → http://127.0.0.1:3002 (NoteLMs Express)
+       → USB notes + LM Studio :1234</div>
+
+  <!-- ========== 4 ========== -->
+  <h2 id="mac-tunnel">4. Step A — Mac tunnel config</h2>
+  <ol class="steps">
+    <li>
+      <strong>Confirm the live tunnel UUID</strong> (must match SocketHR):
+      <pre><code>cat ~/.cloudflared/config.yml
+cloudflared tunnel list
+ls ~/.cloudflared/</code></pre>
+      Compare to the current Vercel CNAME target
+      <code>4e5d6603-3e11-4a87-a878-97c0b2a10afb</code>. If they differ, the DNS target is wrong — use the UUID from the live config.
+    </li>
+    <li>
+      <strong>Edit</strong> <code>~/.cloudflared/config.yml</code> so ingress has <strong>both</strong> hostnames.
+      Keep SocketHR first; keep the catch-all 404 last. Do not change tunnel UUID or credentials-file.
+      <pre><code>tunnel: &lt;EXISTING_TUNNEL_UUID&gt;
+credentials-file: /Users/&lt;YOU&gt;/.cloudflared/&lt;EXISTING_TUNNEL_UUID&gt;.json
+
+ingress:
+  - hostname: api.sockethr.com
+    service: http://127.0.0.1:3000
+  - hostname: api.notelms.com
+    service: http://127.0.0.1:3002
+  - service: http_status:404</code></pre>
+    </li>
+    <li>
+      <strong>If Zero Trust dashboard also manages public hostnames</strong> for this tunnel, add
+      <code>api.notelms.com</code> → <code>http://127.0.0.1:3002</code> there too so dashboard and
+      local config do not fight. Prefer one source of truth.
+    </li>
+    <li>
+      <strong>Restart the single tunnel process</strong> (do not start a second one):
+      <pre><code>cloudflared tunnel --config ~/.cloudflared/config.yml run
+# or: cloudflared tunnel run &lt;existing-tunnel-name&gt;</code></pre>
+      Confirm <code>api.sockethr.com/health</code> still works after restart.
+    </li>
+  </ol>
+
+  <!-- ========== 5 ========== -->
+  <h2 id="dns">5. Step B — DNS (the real fix)</h2>
+  <p>
+    <code>api.notelms.com</code> must resolve like <code>api.sockethr.com</code>: public Cloudflare
+    edge IPs from a <strong>proxied</strong> record in the tunnel’s Cloudflare account.
+  </p>
+
+  <h3>Recommended path (matches live SocketHR)</h3>
+  <ol class="steps">
+    <li>
+      In the <strong>same Cloudflare account</strong> that owns the SocketHR tunnel, ensure
+      <code>notelms.com</code> can hold a proxied DNS record for <code>api</code>.
+      Practical options:
+      <ul class="compact">
+        <li>
+          <strong>A — Move nameservers:</strong> point <code>notelms.com</code> NS to Cloudflare
+          (same pattern as <code>sockethr.com</code>). Keep the Vercel site via Cloudflare DNS
+          records for apex / <code>www</code> (CNAME/flattened to Vercel). Add the tunnel CNAME below.
+        </li>
+        <li>
+          <strong>B — Partial / SaaS:</strong> only if you already have Cloudflare for SaaS or a
+          partial-zone setup that can place a proxied <code>api.notelms.com</code> into this account
+          without full NS cutover. Harder; do not invent a second tunnel as a workaround.
+        </li>
+      </ul>
+    </li>
+    <li>
+      Add (or correct) this DNS record in Cloudflare:
+      <table>
+        <thead><tr><th>Type</th><th>Name</th><th>Target</th><th>Proxy</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>CNAME</td>
+            <td><code>api</code></td>
+            <td><code>&lt;SAME_TUNNEL_UUID&gt;.cfargotunnel.com</code></td>
+            <td><strong>Proxied (orange cloud)</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </li>
+    <li>
+      If Vercel DNS still has an <code>api</code> CNAME after a nameserver move, remove it so it
+      cannot fight Cloudflare. While NS remain on Vercel, a Vercel-only CNAME to
+      <code>*.cfargotunnel.com</code> will <strong>not</strong> publish public edge IPs — that is
+      the current failure mode.
+    </li>
+    <li>
+      <span class="dont">Do not</span> add <code>api.notelms.com</code> as a domain on the Vercel
+      <em>project</em>. DNS / tunnel hostname only.
+    </li>
+    <li>
+      Wait for DNS. Success looks like:
+      <pre><code>dig +short api.notelms.com A
+# expect Cloudflare anycast IPs (e.g. 104.21… / 172.67…), not only a bare CNAME
+# and not an unusable fd10:… ULA</code></pre>
+    </li>
+  </ol>
+
+  <div class="callout ok-border">
+    Cloudflare docs: the <code>*.cfargotunnel.com</code> target only proxies traffic for DNS
+    records in the <strong>same Cloudflare account</strong> as the tunnel. External DNS alone
+    cannot “borrow” the tunnel.
+  </div>
+
+  <!-- ========== 6 ========== -->
+  <h2 id="server">6. Step C — NoteLMs Express on :3002</h2>
+  <ol class="steps">
+    <li>
+      On the Mac Studio:
+      <pre><code>cd ~/github/classifier-research   # or wherever this repo lives
+git pull
+npm install --prefix server
+npm run server</code></pre>
+      Listens on <code>http://127.0.0.1:3002</code>. Defaults: USB data dir, LM Studio GPT-OSS.
+      Auth secret auto-loads from <code>web/.env.local</code> or <code>server/.auth-secret</code>.
+    </li>
+    <li>
+      Local health (must work before blaming tunnel/DNS):
+      <pre><code>curl -sS http://127.0.0.1:3002/health</code></pre>
+    </li>
+    <li>
+      Optional for classify/chat: LM Studio GUI with <code>openai/gpt-oss-20b</code> on port
+      <strong>1234</strong>. Never put 1234 in tunnel ingress.
+    </li>
+  </ol>
+
+  <!-- ========== 7 ========== -->
+  <h2 id="verify">7. Verification</h2>
+  <pre><code># 1) Local API
+curl -sS http://127.0.0.1:3002/health
+
+# 2) DNS looks like SocketHR (public CF IPs)
+dig +short api.notelms.com A
+dig +short api.sockethr.com A
+
+# 3) Public NoteLMs API
+curl -fsS https://api.notelms.com/health
+
+# 4) Shared tunnel still serves SocketHR
+curl -fsS https://api.sockethr.com/health
+
+# 5) From repo (optional)
+npm run verify:public-api</code></pre>
+  <ul class="compact">
+    <li><strong>502</strong> on public URL + local health OK = DNS/tunnel OK, Express down — start <code>npm run server</code>.</li>
+    <li><strong>502</strong> on public URL + nothing on :3002 = same (tunnel up, app down).</li>
+    <li><strong>Connect fail / no public A records</strong> = DNS still not Cloudflare-proxied in the tunnel account.</li>
+    <li><strong>525 / SSL weirdness</strong> = wrong hostname registration or propagating DNS.</li>
+  </ul>
+
+  <!-- ========== 8 ========== -->
+  <h2 id="startup">8. Everyday startup after fix</h2>
+  <pre><code># Terminal A — SocketHR Express (:3000)
+# (as you already do)
+
+# Terminal B — NoteLMs Express (:3002)
+cd ~/github/classifier-research && npm run server
+
+# Terminal C — ONE shared tunnel
+cloudflared tunnel --config ~/.cloudflared/config.yml run
+
+# LM Studio GUI — model loaded, server on :1234</code></pre>
+  <p class="muted">
+    Still exactly one <code>cloudflared … run</code>. Not acceptable: a second long tunnel start
+    command for NoteLMs.
+  </p>
+
+  <!-- ========== 9 ========== -->
+  <h2 id="out-of-scope">9. Out of scope</h2>
+  <ul class="compact">
+    <li>Implementing BERT routes (stubs only).</li>
+    <li>Creating a second Cloudflare Tunnel or second <code>cloudflared</code> process.</li>
+    <li>Moving notes off the Mac USB path onto Vercel / a cloud DB.</li>
+    <li>Changing SocketHR product APIs.</li>
+    <li>Asking the human to hand-edit <code>.env</code> for everyday startup.</li>
+  </ul>
+
+  <!-- ========== 10 ========== -->
+  <h2 id="done">10. Done when</h2>
+  <ul class="checklist">
+    <li><code>~/.cloudflared/config.yml</code> includes both hostnames on the existing tunnel UUID.</li>
+    <li><code>dig +short api.notelms.com A</code> returns public Cloudflare edge IPs.</li>
+    <li><code>curl -fsS https://api.notelms.com/health</code> returns NoteLMs health JSON.</li>
+    <li><code>curl -fsS https://api.sockethr.com/health</code> still works.</li>
+    <li>Only one <code>cloudflared</code> process is required.</li>
+    <li>
+      Update <code>docs/PUBLIC_TUNNEL.md</code> (and the shared-tunnel plan if needed) so they
+      document Cloudflare-proxied DNS for <code>api.notelms.com</code>, not “Vercel CNAME alone.”
+    </li>
+  </ul>
+
+  <!-- ========== 11 ========== -->
+  <h2 id="related">11. Related plans in this folder</h2>
+  <ul class="compact">
+    <li><a href="./SHARED_CLOUDFLARE_TUNNEL_PLAN.html">SHARED_CLOUDFLARE_TUNNEL_PLAN.html</a> — original shared-tunnel handoff (DNS section superseded by this file)</li>
+    <li><a href="./SOCKETHR_STACK_REFERENCE.html">SOCKETHR_STACK_REFERENCE.html</a> — architecture reference</li>
+    <li><a href="./VERCEL_SETUP_PLAN.html">VERCEL_SETUP_PLAN.html</a> — Vercel / <code>notelms.com</code> UI setup</li>
+    <li><a href="./AGENT_PLAN.html">AGENT_PLAN.html</a> — product / research brief</li>
+    <li><a href="../docs/PUBLIC_TUNNEL.md">../docs/PUBLIC_TUNNEL.md</a> — short tunnel contract (update after fix)</li>
+    <li><a href="../docs/STARTUP.md">../docs/STARTUP.md</a> — everyday Mac startup</li>
+  </ul>
+
+  <div class="callout">
+    Prompt for a Mac Desktop agent:
+    <pre><code>Read and execute agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html end-to-end on this Mac Studio.
+Do not create a second Cloudflare Tunnel. Reuse the existing SocketHR cloudflared process.
+Make https://api.notelms.com/health work; keep https://api.sockethr.com/health working.
+Update docs/PUBLIC_TUNNEL.md to match the working Cloudflare-proxied DNS setup.</code></pre>
+  </div>
+</main>
+</body>
+</html>

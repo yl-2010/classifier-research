@@ -23,15 +23,17 @@ ingress:
   - service: http_status:404
 ```
 
-## DNS (Vercel, Path A)
+## DNS (Cloudflare-proxied — required)
 
-For domain `notelms.com`, add a **DNS-only** CNAME (not a Vercel project domain):
+A bare CNAME on Vercel DNS to `*.cfargotunnel.com` is **not enough**. Cloudflare Tunnel only publishes public edge IPs when `api.notelms.com` is a **proxied** record in the **same Cloudflare account** as the tunnel (same pattern as live `api.sockethr.com` / `sockethr.com` on Cloudflare NS).
 
-| Type | Name | Value |
-|------|------|-------|
-| CNAME | `api` | `<SAME_TUNNEL_UUID>.cfargotunnel.com` |
+| Type | Name | Value | Proxy |
+|------|------|-------|-------|
+| CNAME | `api` | `<SAME_TUNNEL_UUID>.cfargotunnel.com` | **Proxied (orange cloud)** |
 
 Do **not** attach `api.notelms.com` as a domain on the Vercel project (that yields `DEPLOYMENT_NOT_FOUND`).
+
+If HTTPS to `api.notelms.com` fails with no public A records, follow [`agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html`](../agent-plans/NOTELMS_API_TUNNEL_DNS_FIX.html).
 
 ## Verify
 
