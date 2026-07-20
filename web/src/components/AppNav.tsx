@@ -45,14 +45,14 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
             <>
               <button
                 type="button"
-                className={active === "new" ? "active" : undefined}
+                className={`nav-tab${active === "new" ? " active" : ""}`}
                 onClick={onNew}
               >
                 New
               </button>
               <button
                 type="button"
-                className={active === "library" ? "active" : undefined}
+                className={`nav-tab${active === "library" ? " active" : ""}`}
                 onClick={onLibrary}
               >
                 Library
@@ -67,7 +67,7 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           ) : null}
           <Link
             href="/research"
-            className={`nav-pill${active === "research" ? " active" : ""}`}
+            className={`nav-tab${active === "research" ? " active" : ""}`}
           >
             Research
           </Link>
@@ -228,13 +228,7 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           background: none;
           padding: 0;
           cursor: pointer;
-          color: var(--mute);
-          font-size: 0.9rem;
-        }
-
-        .nav > button:not(.btn):hover,
-        .nav > button.active {
-          color: var(--ink);
+          font: inherit;
         }
 
         :global(.nav-tab) {
@@ -243,12 +237,11 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           text-decoration: none;
         }
 
-        :global(.nav-tab:hover),
-        :global(.nav-tab.active) {
+        :global(.nav-tab:hover) {
           color: var(--ink);
         }
 
-        :global(.nav-pill) {
+        :global(.nav-tab.active) {
           display: inline-flex;
           align-items: center;
           padding: 0.28rem 0.65rem;
@@ -257,11 +250,9 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           color: var(--accent);
           font-size: 0.85rem;
           font-weight: 600;
-          text-decoration: none;
         }
 
-        :global(.nav-pill:hover),
-        :global(.nav-pill.active) {
+        :global(.nav-tab.active:hover) {
           background: color-mix(in srgb, var(--accent) 20%, transparent);
           color: var(--ink);
         }
