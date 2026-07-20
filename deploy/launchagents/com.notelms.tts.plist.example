@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional LaunchAgent for the Orpheus TTS sidecar.
+  Copy to ~/Library/LaunchAgents/com.notelms.tts.plist and adjust the path,
+  then: launchctl load ~/Library/LaunchAgents/com.notelms.tts.plist
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.notelms.tts</string>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/yanlevin/github/classifier-research/scripts/start-notelms-tts.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/notelms-tts.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/notelms-tts.err</string>
+  </dict>
+</plist>

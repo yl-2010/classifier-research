@@ -9,6 +9,7 @@
     "start": "npm run start --prefix web",
     "server": "npm run start --prefix server",
     "server:dev": "npm run dev --prefix server",
+    "tts": "./scripts/start-notelms-tts.sh",
     "verify:public-api": "curl -fsS https://api.notelms.com/health",
     "test:server": "npm test --prefix server"
   },

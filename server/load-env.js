@@ -25,6 +25,8 @@ const DEFAULTS = {
   // NOTELMS_DATA_DIR intentionally unset — storage.js discovers Samsung USB.
   LM_STUDIO_BASE_URL: "http://127.0.0.1:1234/v1",
   LM_STUDIO_MODEL: "openai/gpt-oss-20b",
+  // Orpheus TTS sidecar (Python) — separate from chat/classify model above.
+  NOTELMS_TTS_URL: "http://127.0.0.1:5050",
   ALLOWED_ORIGINS:
     "https://notelms.com,https://www.notelms.com,http://localhost:3000,http://127.0.0.1:3000",
   JWT_ISSUER: "notelms-next",
@@ -79,12 +81,19 @@ function persistAuthSecret(secret) {
   }
 }
 
+function isUsableSecret(value) {
+  if (!value) return false;
+  // vercel env pull redacts Sensitive vars as literal "[SENSITIVE]"
+  if (value === "[SENSITIVE]" || value.startsWith("replace-with-")) return false;
+  return value.length >= 16;
+}
+
 function ensureAuthSecret() {
   const existing =
     process.env.AUTH_SECRET?.trim() ||
     process.env.NEXTAUTH_SECRET?.trim() ||
     "";
-  if (existing && !existing.startsWith("replace-with-")) {
+  if (isUsableSecret(existing)) {
     process.env.AUTH_SECRET = existing;
     process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || existing;
     persistAuthSecret(existing);
@@ -96,7 +105,7 @@ function ensureAuthSecret() {
     const parsed = parseEnvFile(path.join(repoRoot, rel));
     const fromWeb =
       parsed.NEXTAUTH_SECRET?.trim() || parsed.AUTH_SECRET?.trim() || "";
-    if (fromWeb && !fromWeb.startsWith("replace-with-")) {
+    if (isUsableSecret(fromWeb)) {
       process.env.AUTH_SECRET = fromWeb;
       process.env.NEXTAUTH_SECRET = fromWeb;
       persistAuthSecret(fromWeb);
@@ -106,7 +115,7 @@ function ensureAuthSecret() {
 
   const secretPath = path.join(here, ".auth-secret");
   let local = readSecretFile(secretPath);
-  if (!local) {
+  if (!isUsableSecret(local)) {
     local = crypto.randomBytes(32).toString("base64url");
     persistAuthSecret(local);
   }

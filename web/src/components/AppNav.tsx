@@ -2,7 +2,7 @@ import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 
 type AppNavProps = {
-  active?: "new" | "library" | "research";
+  active?: "new" | "library" | "research" | "voice";
   onNew?: () => void;
   onLibrary?: () => void;
 };
@@ -50,9 +50,15 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
             </button>
             <Link
               href="/research"
-              className={`nav-research${active === "research" ? " active" : ""}`}
+              className={`nav-pill${active === "research" ? " active" : ""}`}
             >
               Research
+            </Link>
+            <Link
+              href="/voice"
+              className={`nav-pill${active === "voice" ? " active" : ""}`}
+            >
+              Voice
             </Link>
             <button
               type="button"
@@ -130,7 +136,7 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           color: var(--ink);
         }
 
-        :global(.nav-research) {
+        :global(.nav-pill) {
           display: inline-flex;
           align-items: center;
           padding: 0.28rem 0.65rem;
@@ -142,8 +148,8 @@ export function AppNav({ active, onNew, onLibrary }: AppNavProps) {
           text-decoration: none;
         }
 
-        :global(.nav-research:hover),
-        :global(.nav-research.active) {
+        :global(.nav-pill:hover),
+        :global(.nav-pill.active) {
           background: color-mix(in srgb, var(--accent) 20%, transparent);
           color: var(--ink);
         }

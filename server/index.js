@@ -8,6 +8,7 @@
 import "./load-env.js";
 import express from "express";
 import cors from "cors";
+import { Readable } from "node:stream";
 import {
   authConfigured,
   requireAuth,
@@ -36,6 +37,7 @@ import {
   formatNotesWithGptOss,
   resolveSubject,
 } from "./classify.js";
+import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 
 const PORT = Number(process.env.PORT || 3002);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -449,6 +451,127 @@ app.get("/api/research", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[/api/research]", err);
     res.status(500).json({ ok: false, error: err.message || "failed" });
+  }
+});
+
+/**
+ * Voice (Orpheus TTS) — ephemeral; does not touch notes/USB storage.
+ * Proxies to the local Python sidecar; LM Studio stays on 127.0.0.1.
+ */
+app.get("/api/voice/health", requireAuth, async (_req, res) => {
+  try {
+    const upstream = await ttsFetch("/api/health", { timeoutMs: 8000 });
+    const data = await upstream.json();
+    res.status(upstream.status).json({
+      ...data,
+      ttsUrl: getTtsBaseUrl(),
+    });
+  } catch (err) {
+    console.error("[/api/voice/health]", err);
+    res.status(502).json({
+      server: "error",
+      ttsUrl: getTtsBaseUrl(),
+      error: err instanceof Error ? err.message : String(err),
+      lm_studio: {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      voices: ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"],
+      default_voice: "dan",
+    });
+  }
+});
+
+app.post("/api/voice/synthesize/stream", requireAuth, async (req, res) => {
+  const controller = new AbortController();
+  const onClose = () => controller.abort();
+  req.on("close", onClose);
+
+  try {
+    const upstream = await ttsFetch("/api/synthesize/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body || {}),
+      timeoutMs: 0,
+      signal: controller.signal,
+    });
+
+    if (!upstream.ok) {
+      const text = await upstream.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { error: text.slice(0, 240) || upstream.statusText };
+      }
+      return res.status(upstream.status).json(payload);
+    }
+
+    if (!upstream.body) {
+      return res.status(502).json({ error: "Empty TTS stream" });
+    }
+
+    res.status(upstream.status);
+    res.setHeader(
+      "Content-Type",
+      upstream.headers.get("content-type") || "application/x-ndjson"
+    );
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    const nodeStream = Readable.fromWeb(upstream.body);
+    nodeStream.on("error", (err) => {
+      console.error("[/api/voice/synthesize/stream] pipe", err);
+      if (!res.headersSent) {
+        res.status(502).json({ error: err.message || "TTS stream failed" });
+      } else {
+        res.destroy(err);
+      }
+    });
+    nodeStream.pipe(res);
+  } catch (err) {
+    if (controller.signal.aborted) return;
+    console.error("[/api/voice/synthesize/stream]", err);
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: err instanceof Error ? err.message : "TTS stream failed",
+      });
+    }
+  } finally {
+    req.off("close", onClose);
+  }
+});
+
+app.post("/api/voice/synthesize", requireAuth, async (req, res) => {
+  try {
+    const upstream = await ttsFetch("/api/synthesize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body || {}),
+      timeoutMs: 600_000,
+    });
+
+    if (!upstream.ok) {
+      const text = await upstream.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { error: text.slice(0, 240) || upstream.statusText };
+      }
+      return res.status(upstream.status).json(payload);
+    }
+
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.status(200);
+    res.setHeader("Content-Type", "audio/wav");
+    res.setHeader("Content-Disposition", "inline; filename=speech.wav");
+    res.send(buf);
+  } catch (err) {
+    console.error("[/api/voice/synthesize]", err);
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "TTS synthesize failed",
+    });
   }
 });
 
