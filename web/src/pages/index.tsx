@@ -287,7 +287,7 @@ export default function HomePage() {
       ).length;
       const message =
         noteCount > 0
-          ? `Delete “${name}” and its ${noteCount} note${noteCount === 1 ? "" : "s"} from your library? Research history is kept.`
+          ? `Delete “${name}” and its ${noteCount} note${noteCount === 1 ? "" : "s"} from your library?`
           : `Delete “${name}” from your library?`;
       if (!window.confirm(message)) return;
 
@@ -325,7 +325,7 @@ export default function HomePage() {
     if (!note) return;
 
     const label = note.title || "this note";
-    if (!window.confirm(`Delete “${label}”? Research history is kept.`)) return;
+    if (!window.confirm(`Delete “${label}”?`)) return;
 
     const subject = note.subject;
     setDeletingNote(true);
