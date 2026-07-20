@@ -130,6 +130,7 @@ export default function HomePage() {
   const [addingSubject, setAddingSubject] = useState(false);
   const [customDraft, setCustomDraft] = useState("");
   const [deletingSubject, setDeletingSubject] = useState(false);
+  const [deletingNote, setDeletingNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -324,6 +325,38 @@ export default function HomePage() {
     },
     [apiBase, invokedSubjects, notes, persistInvoked]
   );
+
+  const deleteOpenNote = useCallback(async () => {
+    if (!openNoteId || deletingNote) return;
+    const note = notes.find((n) => n.id === openNoteId);
+    if (!note) return;
+
+    const label = note.title || "this note";
+    if (!window.confirm(`Delete “${label}”? Research history is kept.`)) return;
+
+    const subject = note.subject;
+    setDeletingNote(true);
+    try {
+      if (apiBase) {
+        const res = await notelmsFetch(apiBase, `/api/notes/${openNoteId}`, {
+          method: "DELETE",
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Could not delete note");
+        }
+      }
+      setNotes((prev) => prev.filter((n) => n.id !== openNoteId));
+      setOpenNoteId(null);
+      setFolder(subject);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Could not delete note"
+      );
+    } finally {
+      setDeletingNote(false);
+    }
+  }, [apiBase, deletingNote, notes, openNoteId]);
 
   const submitCustomSubject = (e: FormEvent) => {
     e.preventDefault();
@@ -756,6 +789,14 @@ export default function HomePage() {
                         Fine-tuned: {openNote.votes.fineTunedBert || "—"}
                       </p>
                     )}
+                    <button
+                      type="button"
+                      className="btn ghost danger actions-end"
+                      disabled={deletingNote}
+                      onClick={() => void deleteOpenNote()}
+                    >
+                      {deletingNote ? "Deleting…" : "Delete"}
+                    </button>
                   </div>
                 </div>
               ) : folder ? (
@@ -1036,6 +1077,10 @@ export default function HomePage() {
           gap: 0.6rem;
           margin-top: 1rem;
           align-items: center;
+        }
+
+        .actions-end {
+          margin-left: auto;
         }
 
         .model-votes {
