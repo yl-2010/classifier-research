@@ -11,7 +11,10 @@
     "server:dev": "npm run dev --prefix server",
     "tts": "./scripts/start-notelms-tts.sh",
     "verify:public-api": "curl -fsS https://api.notelms.com/health",
-    "test:server": "npm test --prefix server"
+    "test:server": "npm test --prefix server",
+    "bert:serve": ".venv/bin/python scripts/bert_serve.py",
+    "bert:train": ".venv/bin/python scripts/train_bert.py",
+    "bert:eval": ".venv/bin/python scripts/eval_bert.py"
   },
   "engines": {
     "node": ">=20"

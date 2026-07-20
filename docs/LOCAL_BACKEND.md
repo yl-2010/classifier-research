@@ -6,6 +6,7 @@
 |-------|--------|------|
 | Next.js UI + Auth.js Google | Vercel (`notelms.com`) or `npm run dev` in `web/` | 3000 |
 | Express API | Mac Studio (`npm run server`) | **3002** |
+| BERT service (zero-shot + fine-tuned) | Mac Studio (`npm run bert:serve`) | **3003** |
 | Orpheus TTS sidecar | Mac Studio (`npm run tts`) | **5050** |
 | LM Studio (GPT-OSS + Orpheus) | Mac Studio localhost only | **1234** |
 | User data | Mac Studio filesystem | `/Volumes/Samsung USB/notelms` |
@@ -45,8 +46,8 @@ Folder name is the lowercased Google email (no duplicates across casing).
 | GET/POST | `/api/subjects` | yes | Fixed + custom subjects |
 | GET/POST | `/api/notes` | yes | List / create |
 | GET/PATCH/DELETE | `/api/notes/:id` | yes | CRUD |
-| POST | `/api/notes/ingest` | yes | Classify (GPT-OSS) → format → save |
-| POST | `/api/classify` | yes | GPT-OSS classify only |
+| POST | `/api/notes/ingest` | yes | Ensemble classify → format → save |
+| POST | `/api/classify` | yes | GPT-OSS + BERT votes → orchestrator |
 | POST | `/api/format` | yes | GPT-OSS HTML format |
 | POST | `/api/chat` | yes | Chat completions via LM Studio |
 | GET | `/api/research` | yes | Research event log |
@@ -56,7 +57,14 @@ Folder name is the lowercased Google email (no duplicates across casing).
 
 Voice is a separate product surface (`/voice`). Pasted text is never written to USB notes/library/research.
 
-**BERT is not wired yet.** Classify/ingest return `bert: { status: "deferred" }` and leave BERT vote fields null.
+## BERT arms
+
+Classify/ingest call a local Python service (`npm run bert:serve` → `:3003`):
+
+- **Zero-shot BERT** (`baseBert`): pretrained `bert-base-uncased` `[CLS]` cosine similarity to verbalized subject templates (no training on our corpus).
+- **Fine-tuned BERT** (`fineTunedBert`): checkpoint under gitignored `models/fine-tuned-bert/`.
+
+If the BERT service is down, classify continues with GPT-OSS only and returns `bert: { status: "unavailable" }`. Never put port **3003** on the Cloudflare Tunnel.
 
 ## LM Studio
 
@@ -64,12 +72,13 @@ Voice is a separate product surface (`/voice`). Pasted text is never written to 
 # server/.env
 LM_STUDIO_BASE_URL=http://127.0.0.1:1234/v1
 LM_STUDIO_MODEL=openai/gpt-oss-20b
+BERT_SERVICE_URL=http://127.0.0.1:3003
 NOTELMS_TTS_URL=http://127.0.0.1:5050
 ```
 
-The TTS sidecar uses its own Orpheus model id (`LM_STUDIO_MODEL=orpheus-3b-0.1-ft` in the `tts/` process). Confirm ids with `GET /v1/models` after loading in LM Studio. Never put port 1234 or 5050 on the Cloudflare Tunnel — only Express `:3002` via `api.notelms.com`.
+The TTS sidecar uses its own Orpheus model id (`LM_STUDIO_MODEL=orpheus-3b-0.1-ft` in the `tts/` process). Confirm ids with `GET /v1/models` after loading in LM Studio. Never put port 1234, 3003, or 5050 on the Cloudflare Tunnel — only Express `:3002` via `api.notelms.com`.
 
-## Local dual-process (laptop)
+## Local multi-process (laptop)
 
 ```bash
 # terminal A — UI
@@ -80,6 +89,9 @@ export NOTELMS_DATA_DIR=/tmp/notelms-dev
 export AUTH_SECRET=devsecret
 export PORT=3002
 npm run server
+
+# terminal C — BERT (after: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt)
+npm run bert:serve
 ```
 
 Point the UI at the local API with `NEXT_PUBLIC_NOTELMS_API_BASE=http://127.0.0.1:3002` or a local `runtime-config.json` override. Do not ship localhost `apiBase` to production.

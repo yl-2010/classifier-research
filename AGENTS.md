@@ -11,7 +11,8 @@ Browser
 └─ https://api.notelms.com      → NoteLMs Cloudflare Tunnel (own account)
       └─ http://127.0.0.1:3002  → Express (server/)
             ├─ filesystem       → /Volumes/Samsung USB/notelms/<email>/
-            └─ LM Studio        → http://127.0.0.1:1234/v1  (openai/gpt-oss-20b)
+            ├─ LM Studio        → http://127.0.0.1:1234/v1  (openai/gpt-oss-20b)
+            └─ BERT service     → http://127.0.0.1:3003     (zero-shot + fine-tuned)
 
 SocketHR uses a separate tunnel/process: api.sockethr.com → :3000
 ```
@@ -22,6 +23,9 @@ SocketHR uses a separate tunnel/process: api.sockethr.com → :3000
 |--------|---------|
 | `npm run server` | Start Mac Express API (port 3002) |
 | `npm run server:dev` | Watch mode |
+| `npm run bert:serve` | Local BERT inference (port 3003; needs `.venv`) |
+| `npm run bert:train` | Fine-tune BERT → `models/fine-tuned-bert/` |
+| `npm run bert:eval` | Frozen-test metrics → `data/processed/bert_eval.json` |
 | `npm run dev` | Next.js UI in `web/` |
 | `npm run verify:public-api` | `curl https://api.notelms.com/health` |
 | `npm run test:server` | Server unit tests |
@@ -30,11 +34,10 @@ SocketHR uses a separate tunnel/process: api.sockethr.com → :3000
 
 - User notes / profiles stay on the Mac Studio USB path — **not** on Vercel or any cloud DB.
 - New Google users → auto-create folder named by **email** under `NOTELMS_DATA_DIR`.
-- Do **not** implement BERT routes yet (stubs only).
-- Do **not** expose LM Studio publicly.
+- Do **not** expose LM Studio or the BERT service publicly (localhost only; never Cloudflare Tunnel).
 - NoteLMs and SocketHR each own a Cloudflare Tunnel (two `cloudflared` processes on the Mac). Do **not** merge them back into one shared tunnel without an explicit decision.
 - Auth secret is auto-loaded (`web/.env.local` or `server/.auth-secret`); for production JWT bridge it must match Vercel `NEXTAUTH_SECRET`.
-- Never commit `server/.env`, `server/.auth-secret`, or USB user data.
+- Never commit `server/.env`, `server/.auth-secret`, USB user data, or `models/` weight checkpoints.
 - Do not ask the human to hand-edit `.env` for everyday startup.
 
 ## Key docs

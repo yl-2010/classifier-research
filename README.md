@@ -20,11 +20,23 @@ The Mac Studio API lives in [`server/`](server/) (`npm run server` → port **30
 
 ## Setup
 
-### Python research corpus
+### Python (corpus + BERT)
 
 ```bash
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
+
+Train / evaluate / serve BERT (weights stay gitignored under `models/`):
+
+```bash
+npm run bert:train    # fine-tune → models/fine-tuned-bert/
+npm run bert:eval     # frozen test → data/processed/bert_eval.json
+npm run bert:serve    # http://127.0.0.1:3003
+```
+
+- **Zero-shot BERT:** pretrained `bert-base-uncased` only (no corpus training); `[CLS]` cosine to `"This student note is about {Subject}."`
+- **Fine-tuned BERT:** full sequence-classification fine-tune on the frozen train split @ `max_length=512`
 
 ### Mac Studio API (Express + LM Studio)
 
@@ -33,7 +45,7 @@ npm install --prefix server
 npm run server
 ```
 
-That’s it — no `.env` editing. Listens on `http://127.0.0.1:3002`. Defaults: USB data dir, LM Studio GPT-OSS, shared tunnel port 3002.
+That’s it — no `.env` editing. Listens on `http://127.0.0.1:3002`. Defaults: USB data dir, LM Studio GPT-OSS, shared tunnel port 3002. Start `npm run bert:serve` in another terminal for BERT votes.
 
 ### Vercel / Next.js UI
 
@@ -91,7 +103,9 @@ Target sizes (per subject): train 2000, val 250, test 250. Splits use seed `42`,
 ### What is not committed
 
 - `data/raw/` — large HF dumps and OpenStax page text (re-download with the script)
+- `models/` — BERT checkpoints (re-train with `npm run bert:train`)
 - `.env`, `api_key.txt`, provider keys
+- `.venv/` — local Python environment
 
 ## License note
 

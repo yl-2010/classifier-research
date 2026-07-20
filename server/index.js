@@ -33,10 +33,11 @@ import {
 } from "./storage.js";
 import { probeLmStudio, chatCompletions, getLmStudioConfig } from "./lmstudio.js";
 import {
-  classifyWithGptOss,
+  classifyEnsemble,
   formatNotesWithGptOss,
   resolveSubject,
 } from "./classify.js";
+import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 
 const PORT = Number(process.env.PORT || 3002);
@@ -75,7 +76,7 @@ app.use(
 app.use(express.json({ limit: "25mb" }));
 
 app.get("/health", async (_req, res) => {
-  const lm = await probeLmStudio();
+  const [lm, bert] = await Promise.all([probeLmStudio(), probeBertService()]);
   const { issuer, audience } = getAuthConfig();
   const data = getDataRootStatus();
   res.json({
@@ -94,6 +95,13 @@ app.get("/health", async (_req, res) => {
       baseUrl: lm.baseUrl,
       model: lm.model,
       modelLoaded: lm.modelLoaded ?? false,
+    },
+    bert: {
+      ok: bert.ok,
+      url: process.env.BERT_SERVICE_URL || "http://127.0.0.1:3003",
+      zeroShotLoaded: bert.zeroShotLoaded ?? false,
+      fineTunedLoaded: bert.fineTunedLoaded ?? false,
+      error: bert.error || bert.fineTunedError || null,
     },
     time: new Date().toISOString(),
   });
@@ -281,7 +289,7 @@ app.delete("/api/notes/:noteId", requireAuth, async (req, res) => {
   }
 });
 
-/** Classify notes with GPT-OSS only (BERT deferred). */
+/** Classify notes: GPT-OSS + BERT (zero-shot + fine-tuned) → orchestrator. */
 app.post("/api/classify", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });
@@ -291,7 +299,7 @@ app.post("/api/classify", requireAuth, async (req, res) => {
       return;
     }
     const subjects = await listSubjects(req.user.email);
-    const classification = await classifyWithGptOss(rawText, {
+    const classification = await classifyEnsemble(rawText, {
       customSubjects: subjects.custom,
     });
     const resolved = resolveSubject(classification, subjects.custom);
@@ -299,7 +307,9 @@ app.post("/api/classify", requireAuth, async (req, res) => {
       ok: true,
       classification,
       resolved,
-      bert: { status: "deferred", message: "BERT arms not enabled yet" },
+      votes: classification.votes,
+      bert: classification.bert,
+      orchestrator: classification.orchestrator,
     });
   } catch (err) {
     console.error("[/api/classify]", err);
@@ -326,8 +336,7 @@ app.post("/api/format", requireAuth, async (req, res) => {
 });
 
 /**
- * Full ingest: classify (GPT-OSS) → format → save under user's email folder.
- * BERT votes are stubbed null until those arms are wired.
+ * Full ingest: ensemble classify → format → save under user's email folder.
  */
 app.post("/api/notes/ingest", requireAuth, async (req, res) => {
   try {
@@ -339,7 +348,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
     }
 
     const subjects = await listSubjects(req.user.email);
-    const classification = await classifyWithGptOss(rawText, {
+    const classification = await classifyEnsemble(rawText, {
       customSubjects: subjects.custom,
     });
     const resolved = resolveSubject(classification, subjects.custom);
@@ -356,17 +365,25 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
       textLength: rawText.length,
       votes: classification.votes,
       gptOss: {
-        subject: classification.subject,
-        confidence: classification.confidence,
-        rationale: classification.rationale,
-        model: classification.model,
-        latencyMs: classification.latencyMs,
+        subject: classification.gptOss?.subject,
+        confidence: classification.gptOss?.confidence,
+        rationale: classification.gptOss?.rationale,
+        model: classification.gptOss?.model,
+        latencyMs: classification.gptOss?.latencyMs,
+      },
+      orchestrator: {
+        subject: classification.orchestrator?.subject,
+        confidence: classification.orchestrator?.confidence,
+        rationale: classification.orchestrator?.rationale,
+        model: classification.orchestrator?.model,
+        latencyMs: classification.orchestrator?.latencyMs,
+        degraded: classification.orchestrator?.degraded || false,
       },
       finalSubject: resolved.subject,
       createdCustom: resolved.createdCustom,
       formatLatencyMs: formatted.latencyMs,
       formatModel: formatted.model,
-      bert: { status: "deferred" },
+      bert: classification.bert,
     });
 
     const note = await createNote(req.user.email, {
@@ -381,6 +398,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
         rationale: classification.rationale,
         model: classification.model,
         resolvedSubject: resolved.subject,
+        votes: classification.votes,
       },
       researchEventId: research.id,
     });
@@ -390,8 +408,10 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
       note,
       classification,
       resolved,
+      votes: classification.votes,
       researchEventId: research.id,
-      bert: { status: "deferred" },
+      bert: classification.bert,
+      orchestrator: classification.orchestrator,
     });
   } catch (err) {
     console.error("[/api/notes/ingest]", err);

@@ -1,12 +1,12 @@
 /**
- * GPT-OSS (LM Studio) classify + format helpers.
- * BERT arms are intentionally deferred — do not call BERT from here yet.
+ * GPT-OSS classify / format / orchestrate + BERT votes via local BERT service.
  */
 
 import { chatCompletions } from "./lmstudio.js";
+import { classifyWithBert, normalizeBertVote } from "./bert.js";
 import { FIXED_SUBJECTS, OTHER_SUBJECT, normalizeSubjectLabel } from "./subjects.js";
 
-function extractJsonObject(text) {
+export function extractJsonObject(text) {
   if (typeof text !== "string") return null;
   const trimmed = text.trim();
   try {
@@ -71,7 +71,6 @@ export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) 
     !FIXED_SUBJECTS.includes(subject) &&
     !customSubjects.some((c) => c.toLowerCase() === subject.toLowerCase())
   ) {
-    // Model invented a label — treat as Other with suggestion.
     parsed.customSuggestion = parsed.customSuggestion || subject;
     subject = OTHER_SUBJECT;
   }
@@ -91,12 +90,146 @@ export async function classifyWithGptOss(rawText, { customSubjects = [] } = {}) 
     model: result.model,
     latencyMs,
     usage: result.usage,
-    // Placeholders for future BERT votes (not implemented yet).
-    votes: {
-      gptOss: { subject, confidence, rationale: parsed.rationale || "" },
-      baseBert: null,
-      fineTunedBert: null,
+  };
+}
+
+/**
+ * Run GPT-OSS + BERT arms in parallel, then orchestrate a final subject.
+ */
+export async function classifyEnsemble(rawText, { customSubjects = [] } = {}) {
+  const [gptOss, bertResult] = await Promise.all([
+    classifyWithGptOss(rawText, { customSubjects }),
+    classifyWithBert(rawText),
+  ]);
+
+  let bertStatus = { status: "ok" };
+  let baseBert = null;
+  let fineTunedBert = null;
+
+  if (!bertResult.ok) {
+    bertStatus = { status: "unavailable", error: bertResult.error };
+  } else {
+    baseBert = normalizeBertVote(bertResult.votes?.zeroShotBert);
+    fineTunedBert = normalizeBertVote(bertResult.votes?.fineTunedBert);
+    if (!fineTunedBert && bertResult.fineTunedError) {
+      bertStatus = {
+        status: "partial",
+        error: bertResult.fineTunedError,
+        zeroShotOk: Boolean(baseBert),
+        fineTunedOk: false,
+      };
+    }
+  }
+
+  const votes = {
+    gptOss: {
+      subject: gptOss.subject,
+      confidence: gptOss.confidence,
+      rationale: gptOss.rationale || "",
     },
+    baseBert,
+    fineTunedBert,
+  };
+
+  let orchestrator;
+  try {
+    orchestrator = await orchestrateWithGptOss(rawText, votes, customSubjects);
+  } catch (err) {
+    // Degraded: fall back to GPT-OSS vote alone
+    orchestrator = {
+      subject: gptOss.subject,
+      confidence: gptOss.confidence,
+      rationale: `Orchestrator failed (${err?.message || "error"}); using GPT-OSS vote.`,
+      customSuggestion: gptOss.customSuggestion,
+      model: gptOss.model,
+      latencyMs: 0,
+      degraded: true,
+    };
+  }
+
+  return {
+    subject: orchestrator.subject,
+    confidence: orchestrator.confidence,
+    rationale: orchestrator.rationale,
+    customSuggestion: orchestrator.customSuggestion,
+    model: orchestrator.model,
+    latencyMs: orchestrator.latencyMs,
+    votes,
+    gptOss,
+    orchestrator,
+    bert: bertStatus,
+  };
+}
+
+/**
+ * Orchestrator LLM: reads note + three votes; may pick one of 8 or Other/custom.
+ */
+export async function orchestrateWithGptOss(rawText, votes, customSubjects = []) {
+  const customList =
+    Array.isArray(customSubjects) && customSubjects.length
+      ? customSubjects.join(", ")
+      : "(none)";
+
+  const system = [
+    "You are an orchestrator that picks the final academic subject for student notes.",
+    `Fixed subjects: ${FIXED_SUBJECTS.join(", ")}.`,
+    `You may also choose "${OTHER_SUBJECT}" and suggest a short custom subject name.`,
+    "You receive votes from three classifiers: GPT-OSS, zero-shot BERT, and fine-tuned BERT.",
+    "Prefer agreement among models; weigh fine-tuned BERT highly when confidence is strong;",
+    "use Other when none of the eight fit (especially if GPT-OSS already suggested Other).",
+    "Respond with a single JSON object only, no markdown.",
+    'Schema: {"subject": string, "confidence": number, "rationale": string, "customSuggestion": string|null}',
+    "confidence is 0..1.",
+  ].join(" ");
+
+  const user = [
+    `User custom subjects: ${customList}`,
+    "",
+    "Votes (JSON):",
+    JSON.stringify(votes, null, 2),
+    "",
+    "Notes:",
+    rawText.slice(0, 8000),
+  ].join("\n");
+
+  const started = Date.now();
+  const result = await chatCompletions({
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0.1,
+    maxTokens: 512,
+    json: true,
+  });
+  const latencyMs = Date.now() - started;
+
+  const parsed = extractJsonObject(result.content) || {};
+  let subject = normalizeSubjectLabel(parsed.subject) || OTHER_SUBJECT;
+  if (
+    subject !== OTHER_SUBJECT &&
+    !FIXED_SUBJECTS.includes(subject) &&
+    !customSubjects.some((c) => c.toLowerCase() === subject.toLowerCase())
+  ) {
+    parsed.customSuggestion = parsed.customSuggestion || subject;
+    subject = OTHER_SUBJECT;
+  }
+
+  let confidence = Number(parsed.confidence);
+  if (!Number.isFinite(confidence)) confidence = 0.5;
+  confidence = Math.max(0, Math.min(1, confidence));
+
+  return {
+    subject,
+    confidence,
+    rationale: typeof parsed.rationale === "string" ? parsed.rationale : "",
+    customSuggestion:
+      typeof parsed.customSuggestion === "string" && parsed.customSuggestion.trim()
+        ? parsed.customSuggestion.trim()
+        : null,
+    model: result.model,
+    latencyMs,
+    usage: result.usage,
   };
 }
 
@@ -141,8 +274,7 @@ export async function formatNotesWithGptOss(rawText, subject) {
 }
 
 /**
- * Resolve final subject from GPT-OSS classification + custom subjects.
- * (Full orchestrator with BERT votes comes later.)
+ * Resolve final subject from orchestrator/classification + custom subjects.
  */
 export function resolveSubject(classification, customSubjects = []) {
   if (!classification) {

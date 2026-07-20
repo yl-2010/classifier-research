@@ -17,6 +17,7 @@ Then check:
 ```bash
 curl -sS http://127.0.0.1:3002/health
 curl -sS https://api.notelms.com/health
+curl -sS http://127.0.0.1:3003/health   # BERT zero-shot + fine-tuned
 curl -sS http://127.0.0.1:5050/api/health   # Orpheus TTS sidecar
 ```
 
@@ -30,7 +31,7 @@ curl -sS http://127.0.0.1:5050/api/health   # Orpheus TTS sidecar
 | `com.sockethr.server` | SocketHR Express `:3000` |
 | `com.sockethr.cloudflared` | SocketHR tunnel → `api.sockethr.com` |
 
-Plists live in `~/Library/LaunchAgents/`. For Voice, install a LaunchAgent that runs `~/github/classifier-research/scripts/start-notelms-tts.sh`, or start it manually with `npm run tts`.
+Plists live in `~/Library/LaunchAgents/`. For Voice, install a LaunchAgent that runs `~/github/classifier-research/scripts/start-notelms-tts.sh`, or start it manually with `npm run tts`. BERT is started manually with `npm run bert:serve` (or add a LaunchAgent later).
 
 ## Manual start (only if LaunchAgents are not installed)
 
@@ -43,7 +44,16 @@ Plists live in `~/Library/LaunchAgents/`. For Voice, install a LaunchAgent that 
    npm run server
    ```
 
-3. **Orpheus TTS sidecar** (needed for `/voice`)
+3. **BERT service** (needed for zero-shot + fine-tuned votes)
+
+   ```bash
+   cd ~/github/classifier-research
+   # first time: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+   # train once: npm run bert:train
+   npm run bert:serve
+   ```
+
+4. **Orpheus TTS sidecar** (needed for `/voice`)
 
    ```bash
    cd ~/github/classifier-research
@@ -51,7 +61,7 @@ Plists live in `~/Library/LaunchAgents/`. For Voice, install a LaunchAgent that 
    npm run tts
    ```
 
-4. **NoteLMs Cloudflare Tunnel**
+5. **NoteLMs Cloudflare Tunnel**
 
    ```bash
    cloudflared tunnel --config ~/.cloudflared/config-notelms.yml run

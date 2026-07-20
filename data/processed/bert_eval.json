@@ -1,0 +1,131 @@
+{
+  "subjects": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "History",
+    "Literature",
+    "Economics"
+  ],
+  "test_n": 2000,
+  "arms": {
+    "zero_shot": {
+      "name": "zero_shot",
+      "n": 2000,
+      "accuracy": 0.2685,
+      "macro_f1": 0.17949506313561878,
+      "per_class": {
+        "Mathematics": {
+          "precision": 0.3829787234042553,
+          "recall": 0.072,
+          "f1": 0.12121212121212122,
+          "support": 250
+        },
+        "Physics": {
+          "precision": 0.18676716917922948,
+          "recall": 0.892,
+          "f1": 0.30886426592797783,
+          "support": 250
+        },
+        "Chemistry": {
+          "precision": 0.5,
+          "recall": 0.032,
+          "f1": 0.06015037593984962,
+          "support": 250
+        },
+        "Biology": {
+          "precision": 0.041666666666666664,
+          "recall": 0.004,
+          "f1": 0.0072992700729927005,
+          "support": 250
+        },
+        "Computer Science": {
+          "precision": 0.36666666666666664,
+          "recall": 0.484,
+          "f1": 0.41724137931034483,
+          "support": 250
+        },
+        "History": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 250
+        },
+        "Literature": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 250
+        },
+        "Economics": {
+          "precision": 0.4289405684754522,
+          "recall": 0.664,
+          "f1": 0.521193092621664,
+          "support": 250
+        }
+      },
+      "protocol": "zero_shot_cls_cosine",
+      "model": "bert-base-uncased"
+    },
+    "fine_tuned": {
+      "name": "fine_tuned",
+      "n": 2000,
+      "accuracy": 0.917,
+      "macro_f1": 0.9170179190759777,
+      "per_class": {
+        "Mathematics": {
+          "precision": 0.9049586776859504,
+          "recall": 0.876,
+          "f1": 0.8902439024390244,
+          "support": 250
+        },
+        "Physics": {
+          "precision": 0.8704453441295547,
+          "recall": 0.86,
+          "f1": 0.8651911468812877,
+          "support": 250
+        },
+        "Chemistry": {
+          "precision": 0.859375,
+          "recall": 0.88,
+          "f1": 0.8695652173913043,
+          "support": 250
+        },
+        "Biology": {
+          "precision": 0.9137254901960784,
+          "recall": 0.932,
+          "f1": 0.9227722772277228,
+          "support": 250
+        },
+        "Computer Science": {
+          "precision": 0.9209486166007905,
+          "recall": 0.932,
+          "f1": 0.9264413518886679,
+          "support": 250
+        },
+        "History": {
+          "precision": 0.9598393574297188,
+          "recall": 0.956,
+          "f1": 0.9579158316633266,
+          "support": 250
+        },
+        "Literature": {
+          "precision": 0.9752066115702479,
+          "recall": 0.944,
+          "f1": 0.959349593495935,
+          "support": 250
+        },
+        "Economics": {
+          "precision": 0.93359375,
+          "recall": 0.956,
+          "f1": 0.9446640316205533,
+          "support": 250
+        }
+      },
+      "protocol": "fine_tuned",
+      "model_dir": "/Users/yanlevin/github/classifier-research/models/fine-tuned-bert"
+    }
+  }
+}
