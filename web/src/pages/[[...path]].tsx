@@ -736,8 +736,11 @@ export default function HomePage() {
               >
                 Sign in with Google
               </button>
-              <Link href="/research" className="btn gate-research">
+              <Link href="/research" className="btn gate-secondary">
                 View Research
+              </Link>
+              <Link href="/about" className="btn gate-secondary">
+                About
               </Link>
             </div>
           </section>
@@ -1109,8 +1112,8 @@ export default function HomePage() {
           animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
         }
 
-        :global(.gate-research),
-        .gate-research {
+        :global(.gate-secondary),
+        .gate-secondary {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -1121,8 +1124,8 @@ export default function HomePage() {
             color-mix(in srgb, var(--accent) 35%, transparent);
         }
 
-        :global(.gate-research:hover),
-        .gate-research:hover {
+        :global(.gate-secondary:hover),
+        .gate-secondary:hover {
           background: color-mix(in srgb, var(--accent) 12%, transparent);
           color: var(--ink);
         }
