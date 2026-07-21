@@ -181,11 +181,11 @@ export function ThemeModeSlider() {
         .theme-slider--system .theme-slider-track {
           background: linear-gradient(
             90deg,
-            var(--track-light) 0%,
-            var(--track-light) 28%,
+            var(--track-dark) 0%,
+            var(--track-dark) 28%,
             color-mix(in srgb, var(--track-light) 55%, var(--track-dark)) 50%,
-            var(--track-dark) 72%,
-            var(--track-dark) 100%
+            var(--track-light) 72%,
+            var(--track-light) 100%
           );
         }
 
