@@ -9,8 +9,8 @@ function MoonIcon() {
     <svg
       className="theme-icon"
       viewBox="0 0 24 24"
-      width="16"
-      height="16"
+      width="15"
+      height="15"
       aria-hidden="true"
       focusable="false"
     >
@@ -27,15 +27,15 @@ function SunIcon() {
     <svg
       className="theme-icon"
       viewBox="0 0 24 24"
-      width="16"
-      height="16"
+      width="15"
+      height="15"
       aria-hidden="true"
       focusable="false"
     >
-      <circle cx="12" cy="12" r="4" fill="currentColor" />
+      <circle cx="12" cy="12" r="3.75" fill="currentColor" />
       <path
         fill="currentColor"
-        d="M12 1.75a1 1 0 0 1 1 1V4a1 1 0 1 1-2 0V2.75a1 1 0 0 1 1-1Zm0 16.25a1 1 0 0 1 1 1v1.25a1 1 0 1 1-2 0V19a1 1 0 0 1 1-1ZM22.25 12a1 1 0 0 1-1 1H20a1 1 0 1 1 0-2h1.25a1 1 0 0 1 1 1ZM5 12a1 1 0 0 1-1 1H2.75a1 1 0 1 1 0-2H4a1 1 0 0 1 1 1Zm12.95-6.95a1 1 0 0 1 0 1.41l-.88.88a1 1 0 1 1-1.42-1.41l.88-.88a1 1 0 0 1 1.42 0ZM8.35 15.65a1 1 0 0 1 0 1.41l-.88.88a1 1 0 1 1-1.41-1.41l.88-.88a1 1 0 0 1 1.41 0ZM19.66 17.06a1 1 0 0 1-1.41 0l-.88-.88a1 1 0 0 1 1.41-1.41l.88.88a1 1 0 0 1 0 1.41ZM7.47 6.47a1 1 0 0 1-1.41 0l-.88-.88A1 1 0 0 1 6.6 3.76l.88.88a1 1 0 0 1 0 1.41Z"
+        d="M12 1.9a.85.85 0 0 1 .85.85V4a.85.85 0 1 1-1.7 0V2.75A.85.85 0 0 1 12 1.9Zm0 16.2a.85.85 0 0 1 .85.85v1.25a.85.85 0 1 1-1.7 0V19a.85.85 0 0 1 .85-.9ZM22.1 12a.85.85 0 0 1-.85.85H19.95a.85.85 0 1 1 0-1.7H21.25A.85.85 0 0 1 22.1 12ZM5.05 12a.85.85 0 0 1-.85.85H2.95a.85.85 0 1 1 0-1.7H4.2A.85.85 0 0 1 5.05 12Zm12.72-6.72a.85.85 0 0 1 0 1.2l-.88.88a.85.85 0 1 1-1.2-1.2l.88-.88a.85.85 0 0 1 1.2 0ZM8.31 15.69a.85.85 0 0 1 0 1.2l-.88.88a.85.85 0 1 1-1.2-1.2l.88-.88a.85.85 0 0 1 1.2 0Zm10.58 1.2a.85.85 0 0 1-1.2 0l-.88-.88a.85.85 0 0 1 1.2-1.2l.88.88a.85.85 0 0 1 0 1.2ZM7.51 6.51a.85.85 0 0 1-1.2 0l-.88-.88a.85.85 0 1 1 1.2-1.2l.88.88a.85.85 0 0 1 0 1.2Z"
       />
     </svg>
   );
@@ -61,7 +61,7 @@ export function ThemeModeSlider() {
     const target = event.currentTarget;
     const pick = (clientX: number) => {
       const rect = target.getBoundingClientRect();
-      const ratio = (clientX - rect.left) / rect.width;
+      const ratio = (clientX - rect.left) / Math.max(rect.width, 1);
       if (ratio < 1 / 3) setTheme("dark");
       else if (ratio < 2 / 3) setTheme("system");
       else setTheme("light");
@@ -74,7 +74,9 @@ export function ThemeModeSlider() {
       pick(moveEvent.clientX);
     };
     const onUp = () => {
-      target.releasePointerCapture(event.pointerId);
+      if (target.hasPointerCapture(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
       target.removeEventListener("pointermove", onMove);
       target.removeEventListener("pointerup", onUp);
       target.removeEventListener("pointercancel", onUp);
@@ -113,7 +115,8 @@ export function ThemeModeSlider() {
           }
         }}
       >
-        <span className="theme-slider-track" aria-hidden="true" />
+        <span className="theme-slider-half theme-slider-half--left" aria-hidden="true" />
+        <span className="theme-slider-half theme-slider-half--right" aria-hidden="true" />
         <span className="theme-slider-thumb" aria-hidden="true" />
       </div>
       <SunIcon />
@@ -121,79 +124,101 @@ export function ThemeModeSlider() {
         .theme-mode {
           display: inline-flex;
           align-items: center;
-          gap: 0.45rem;
+          gap: 0.5rem;
           color: var(--mute);
           flex-shrink: 0;
         }
 
         .theme-mode :global(.theme-icon) {
           display: block;
-          opacity: 0.85;
+          flex-shrink: 0;
+          opacity: 0.9;
         }
 
         .theme-slider {
+          --slider-w: 3.75rem;
+          --slider-h: 1.5rem;
+          --thumb: 1.2rem;
+          --pad: 0.15rem;
+          --track-light: #f4f7fa;
+          --track-dark: #0b1622;
+
           position: relative;
-          width: 3.65rem;
-          height: 1.45rem;
+          display: flex;
+          width: var(--slider-w);
+          height: var(--slider-h);
           border-radius: 999px;
+          overflow: hidden;
+          isolation: isolate;
           cursor: pointer;
           touch-action: none;
           outline: none;
           flex-shrink: 0;
+          /* Inset ring instead of border — avoids jagged anti-alias at the pill edge */
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
         }
 
         .theme-slider:focus-visible {
-          box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #007aff;
+          box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent),
+            0 0 0 2px var(--bg),
+            0 0 0 4px var(--accent);
         }
 
-        .theme-slider-track {
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
-          overflow: hidden;
+        .theme-slider-half {
+          flex: 1 1 50%;
+          height: 100%;
+          min-width: 0;
+          transition: background-color 0.18s ease;
         }
 
-        .theme-slider--dark .theme-slider-track {
-          background: #1c1c1e;
+        .theme-slider--dark .theme-slider-half--left,
+        .theme-slider--dark .theme-slider-half--right {
+          background: var(--track-dark);
         }
 
-        .theme-slider--light .theme-slider-track {
-          background: #f2f2f7;
+        .theme-slider--light .theme-slider-half--left,
+        .theme-slider--light .theme-slider-half--right {
+          background: var(--track-light);
         }
 
-        .theme-slider--system .theme-slider-track {
-          background: linear-gradient(
-            to right,
-            #f2f2f7 0%,
-            #f2f2f7 50%,
-            #1c1c1e 50%,
-            #1c1c1e 100%
-          );
+        .theme-slider--system .theme-slider-half--left {
+          background: var(--track-light);
+        }
+
+        .theme-slider--system .theme-slider-half--right {
+          background: var(--track-dark);
         }
 
         .theme-slider-thumb {
           position: absolute;
           top: 50%;
-          left: 0.12rem;
-          width: 1.15rem;
-          height: 1.15rem;
+          left: var(--pad);
+          z-index: 1;
+          width: var(--thumb);
+          height: var(--thumb);
           border-radius: 50%;
-          background: #007aff;
-          box-shadow:
-            0 1px 2px rgba(0, 0, 0, 0.22),
-            0 0 0 0.5px rgba(0, 122, 255, 0.35);
-          transform: translateY(-50%);
-          transition: left 0.18s ease;
+          background: var(--accent);
+          box-shadow: 0 1px 2px rgba(11, 31, 51, 0.28);
+          transform: translate3d(0, -50%, 0);
+          transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
           pointer-events: none;
         }
 
         .theme-slider--system .theme-slider-thumb {
-          left: calc(50% - 0.575rem);
+          transform: translate3d(
+            calc((var(--slider-w) - var(--thumb)) / 2 - var(--pad)),
+            -50%,
+            0
+          );
         }
 
         .theme-slider--light .theme-slider-thumb {
-          left: calc(100% - 1.15rem - 0.12rem);
+          transform: translate3d(
+            calc(var(--slider-w) - var(--thumb) - var(--pad) * 2),
+            -50%,
+            0
+          );
         }
       `}</style>
     </div>
