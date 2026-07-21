@@ -68,6 +68,8 @@ export type NoteItem = {
   orchestrator: string;
   corrected: boolean;
   votes: ModelVotes | null;
+  /** ISO upload/create time; used for list sort and date label. */
+  createdAt?: string;
 };
 
 export type ResearchRow = {

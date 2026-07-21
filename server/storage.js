@@ -392,7 +392,12 @@ export async function listNotes(email, { subject = null } = {}) {
     notes.push(meta);
   }
 
-  notes.sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+  // Newest upload first; full ISO includes time so same-day notes still order correctly.
+  notes.sort((a, b) =>
+    String(b.createdAt || b.updatedAt || "").localeCompare(
+      String(a.createdAt || a.updatedAt || "")
+    )
+  );
   return notes;
 }
 

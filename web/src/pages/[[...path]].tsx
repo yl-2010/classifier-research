@@ -77,6 +77,8 @@ type ApiNoteMeta = {
   title?: string;
   subject?: string;
   html?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   classification?: {
     subject?: string;
     resolvedSubject?: string;
@@ -87,6 +89,35 @@ type ApiNoteMeta = {
     } | null;
   } | null;
 };
+
+function dayOrdinal(day: number): string {
+  const mod100 = day % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
+/** e.g. "June 5th, 2010" — date only, no time. */
+function formatUploadedDate(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const month = d.toLocaleString("en-US", { month: "long" });
+  return `${month} ${dayOrdinal(d.getDate())}, ${d.getFullYear()}`;
+}
+
+function noteCreatedMs(n: Pick<NoteItem, "createdAt">): number {
+  const t = n.createdAt ? Date.parse(n.createdAt) : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
 
 function mapVotes(
   classification: ApiNoteMeta["classification"]
@@ -115,6 +146,7 @@ function mapApiNote(meta: ApiNoteMeta): NoteItem {
     orchestrator,
     corrected: false,
     votes: mapVotes(meta.classification),
+    createdAt: meta.createdAt || meta.updatedAt,
   };
 }
 
@@ -501,6 +533,7 @@ export default function HomePage() {
         orchestrator: "",
         corrected: false,
         votes: null,
+        createdAt: new Date().toISOString(),
       },
       ...prev,
     ]);
@@ -750,7 +783,10 @@ export default function HomePage() {
 
   const processing = notes.filter((n) => n.status === "processing");
   const folderNotes = folder
-    ? notes.filter((n) => n.status === "ready" && n.subject === folder)
+    ? notes
+        .filter((n) => n.status === "ready" && n.subject === folder)
+        .slice()
+        .sort((a, b) => noteCreatedMs(b) - noteCreatedMs(a))
     : [];
 
   return (
@@ -1066,21 +1102,27 @@ export default function HomePage() {
                     {folderNotes.length === 0 ? (
                       <p className="muted">No notes yet</p>
                     ) : (
-                      folderNotes.map((n) => (
-                        <button
-                          key={n.id}
-                          type="button"
-                          className="note-item"
-                          style={
-                            {
-                              "--subj": subjectColor(n.subject),
-                            } as CSSProperties
-                          }
-                          onClick={() => openNoteAt(folder, n.title)}
-                        >
-                          {n.title}
-                        </button>
-                      ))
+                      folderNotes.map((n) => {
+                        const uploaded = formatUploadedDate(n.createdAt);
+                        return (
+                          <button
+                            key={n.id}
+                            type="button"
+                            className="note-item"
+                            style={
+                              {
+                                "--subj": subjectColor(n.subject),
+                              } as CSSProperties
+                            }
+                            onClick={() => openNoteAt(folder, n.title)}
+                          >
+                            <span className="note-item-title">{n.title}</span>
+                            {uploaded ? (
+                              <span className="note-item-date">{uploaded}</span>
+                            ) : null}
+                          </button>
+                        );
+                      })
                     )}
                   </div>
                   <div className="actions">
@@ -1550,6 +1592,10 @@ export default function HomePage() {
         }
 
         .note-item {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.2rem;
           width: 100%;
           text-align: left;
           border: 0;
@@ -1558,6 +1604,17 @@ export default function HomePage() {
           border-radius: var(--radius);
           cursor: pointer;
           box-shadow: inset 3px 0 0 var(--subj);
+        }
+
+        .note-item-title {
+          font: inherit;
+          color: inherit;
+        }
+
+        .note-item-date {
+          font-size: 0.75rem;
+          line-height: 1.2;
+          color: var(--mute);
         }
 
         .note-item:hover {
