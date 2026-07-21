@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { AppNav } from "@/components/AppNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { useOpenAiOcrAvailable } from "@/lib/useOpenAiOcrAvailable";
 
 const JUMP_KEY = "notelms-jump";
 
@@ -10,6 +11,7 @@ export default function AboutPage() {
   const { status } = useSession();
   const router = useRouter();
   const signedIn = status === "authenticated";
+  const { available: imageOcrAvailable } = useOpenAiOcrAvailable();
 
   const jumpHome = () => {
     sessionStorage.setItem(JUMP_KEY, "notebook");
@@ -45,15 +47,17 @@ export default function AboutPage() {
             <li>
               <strong>Categorizing notes</strong>
               <span>
-                Paste a note or upload an image and NoteLMs assigns it to a
-                subject so your library stays organized.
+                {imageOcrAvailable
+                  ? "Paste a note or upload an image and NoteLMs assigns it to a subject so your library stays organized."
+                  : "Paste a note and NoteLMs assigns it to a subject so your library stays organized."}
               </span>
             </li>
             <li>
               <strong>Formatting notes</strong>
               <span>
-                Raw text from paste or image is turned into clean, structured
-                HTML that’s easier to skim and study from.
+                {imageOcrAvailable
+                  ? "Raw text from paste or image is turned into clean, structured HTML that’s easier to skim and study from."
+                  : "Raw pasted text is turned into clean, structured HTML that’s easier to skim and study from."}
               </span>
             </li>
             <li>
@@ -100,7 +104,8 @@ export default function AboutPage() {
               <span>
                 Uploaded or dragged note photos are sent to OpenAI vision, which
                 extracts the raw text; that text then goes through the same
-                classify → format → save pipeline as pasted notes.
+                classify → format → save pipeline as pasted notes. This is a
+                temporary feature that will be removed soon.
               </span>
             </li>
             <li>

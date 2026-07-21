@@ -45,7 +45,7 @@ import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 import { buildResearchMetrics } from "./research-metrics.js";
 import { normalizeSubjectLabel } from "./subjects.js";
-import { extractTextFromImage, getOpenAiConfig } from "./ocr.js";
+import { extractTextFromImage, probeOpenAiOcr } from "./ocr.js";
 
 const PORT = Number(process.env.PORT || 3002);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -83,7 +83,11 @@ app.use(
 app.use(express.json({ limit: "25mb" }));
 
 app.get("/health", async (_req, res) => {
-  const [lm, bert] = await Promise.all([probeLmStudio(), probeBertService()]);
+  const [lm, bert, openaiOcr] = await Promise.all([
+    probeLmStudio(),
+    probeBertService(),
+    probeOpenAiOcr(),
+  ]);
   const { issuer, audience } = getAuthConfig();
   const data = getDataRootStatus();
   res.json({
@@ -110,10 +114,12 @@ app.get("/health", async (_req, res) => {
       fineTunedLoaded: bert.fineTunedLoaded ?? false,
       error: bert.error || bert.fineTunedError || null,
     },
-    openaiOcr: (() => {
-      const oai = getOpenAiConfig();
-      return { configured: oai.configured, model: oai.model };
-    })(),
+    openaiOcr: {
+      configured: openaiOcr.configured,
+      ok: openaiOcr.ok,
+      model: openaiOcr.model,
+      error: openaiOcr.error,
+    },
     time: new Date().toISOString(),
   });
 });

@@ -5,6 +5,8 @@
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODELS_URL = "https://api.openai.com/v1/models";
+const PROBE_TTL_MS = 60_000;
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -14,6 +16,9 @@ const ALLOWED_MIME = new Set([
   "image/gif",
 ]);
 
+/** @type {{ key: string, at: number, ok: boolean, error: string|null } | null} */
+let probeCache = null;
+
 export function getOpenAiConfig() {
   const apiKey = (process.env.OPENAI_API_KEY || "").trim();
   return {
@@ -21,6 +26,61 @@ export function getOpenAiConfig() {
     configured: Boolean(apiKey),
     model: process.env.OPENAI_OCR_MODEL || DEFAULT_MODEL,
   };
+}
+
+/**
+ * Lightweight check that the OpenAI key is present and accepted.
+ * Cached briefly so /health stays cheap when OCR is temporarily down.
+ * @returns {Promise<{ configured: boolean, ok: boolean, model: string, error: string|null }>}
+ */
+export async function probeOpenAiOcr() {
+  const { apiKey, configured, model } = getOpenAiConfig();
+  if (!configured) {
+    probeCache = null;
+    return {
+      configured: false,
+      ok: false,
+      model,
+      error: "OPENAI_API_KEY is not set",
+    };
+  }
+
+  const now = Date.now();
+  if (
+    probeCache &&
+    probeCache.key === apiKey &&
+    now - probeCache.at < PROBE_TTL_MS
+  ) {
+    return {
+      configured: true,
+      ok: probeCache.ok,
+      model,
+      error: probeCache.error,
+    };
+  }
+
+  try {
+    const res = await fetch(OPENAI_MODELS_URL, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      const error =
+        `OpenAI key check failed (${res.status})${
+          body ? `: ${body.slice(0, 160)}` : ""
+        }`;
+      probeCache = { key: apiKey, at: now, ok: false, error };
+      return { configured: true, ok: false, model, error };
+    }
+    probeCache = { key: apiKey, at: now, ok: true, error: null };
+    return { configured: true, ok: true, model, error: null };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "OpenAI unreachable";
+    probeCache = { key: apiKey, at: now, ok: false, error };
+    return { configured: true, ok: false, model, error };
+  }
 }
 
 /**

@@ -31,6 +31,7 @@ import {
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { renderNoteMath } from "@/lib/renderNoteMath";
 import { loadResearch, saveResearch } from "@/lib/research-store";
+import { useOpenAiOcrAvailable } from "@/lib/useOpenAiOcrAvailable";
 import {
   findLabelBySlug,
   findNoteBySlug,
@@ -122,6 +123,7 @@ export default function HomePage() {
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
+  const { available: imageOcrAvailable } = useOpenAiOcrAvailable();
 
   const pathParts = useMemo(() => {
     const raw = router.query.path;
@@ -837,77 +839,110 @@ export default function HomePage() {
               ) : (
                 <>
                   <textarea
-                    className={dragOver ? "drag-over" : undefined}
+                    className={
+                      imageOcrAvailable && dragOver ? "drag-over" : undefined
+                    }
                     value={text}
                     onChange={(e) => {
                       setText(e.target.value);
                       if (ingestError) setIngestError(null);
                     }}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      dragDepthRef.current += 1;
-                      setDragOver(true);
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.dataTransfer.dropEffect = "copy";
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      dragDepthRef.current = Math.max(
-                        0,
-                        dragDepthRef.current - 1
-                      );
-                      if (dragDepthRef.current === 0) setDragOver(false);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      dragDepthRef.current = 0;
-                      setDragOver(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) void processImageFile(file);
-                    }}
-                    onPaste={(e) => {
-                      const items = e.clipboardData?.items;
-                      if (!items) return;
-                      for (const item of items) {
-                        if (item.kind === "file" && item.type.startsWith("image/")) {
-                          e.preventDefault();
-                          const file = item.getAsFile();
-                          if (file) void processImageFile(file);
-                          return;
-                        }
-                      }
-                    }}
-                    placeholder="Paste notes or drag image…"
+                    onDragEnter={
+                      imageOcrAvailable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dragDepthRef.current += 1;
+                            setDragOver(true);
+                          }
+                        : undefined
+                    }
+                    onDragOver={
+                      imageOcrAvailable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.dataTransfer.dropEffect = "copy";
+                          }
+                        : undefined
+                    }
+                    onDragLeave={
+                      imageOcrAvailable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dragDepthRef.current = Math.max(
+                              0,
+                              dragDepthRef.current - 1
+                            );
+                            if (dragDepthRef.current === 0) setDragOver(false);
+                          }
+                        : undefined
+                    }
+                    onDrop={
+                      imageOcrAvailable
+                        ? (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            dragDepthRef.current = 0;
+                            setDragOver(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) void processImageFile(file);
+                          }
+                        : undefined
+                    }
+                    onPaste={
+                      imageOcrAvailable
+                        ? (e) => {
+                            const items = e.clipboardData?.items;
+                            if (!items) return;
+                            for (const item of items) {
+                              if (
+                                item.kind === "file" &&
+                                item.type.startsWith("image/")
+                              ) {
+                                e.preventDefault();
+                                const file = item.getAsFile();
+                                if (file) void processImageFile(file);
+                                return;
+                              }
+                            }
+                          }
+                        : undefined
+                    }
+                    placeholder={
+                      imageOcrAvailable
+                        ? "Paste notes or drag image…"
+                        : "Paste notes…"
+                    }
                     rows={12}
                     disabled={sending || extracting}
                   />
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = "";
-                      if (file) void processImageFile(file);
-                    }}
-                  />
+                  {imageOcrAvailable && (
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (file) void processImageFile(file);
+                      }}
+                    />
+                  )}
                   {ingestError && <p className="form-error">{ingestError}</p>}
                   <div className="actions">
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      disabled={sending || extracting}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {extracting ? "Extracting…" : "Upload image"}
-                    </button>
+                    {imageOcrAvailable && (
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        disabled={sending || extracting}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {extracting ? "Extracting…" : "Upload image"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn"
