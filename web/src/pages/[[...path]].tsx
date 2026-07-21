@@ -29,6 +29,7 @@ import {
   saveInvokedSubjects,
 } from "@/lib/invoked-subjects";
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
+import { renderNoteMath } from "@/lib/renderNoteMath";
 import { loadResearch, saveResearch } from "@/lib/research-store";
 import {
   findLabelBySlug,
@@ -137,6 +138,7 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
   const htmlFetchRef = useRef<Set<string>>(new Set());
+  const mathHostRef = useRef<HTMLDivElement>(null);
   const dragDepthRef = useRef(0);
 
   const [notes, setNotes] = useState<NoteItem[]>([]);
@@ -658,6 +660,10 @@ export default function HomePage() {
     };
   }, [openNoteId, apiBase, signedIn, openNoteNeedsHtml]);
 
+  useLayoutEffect(() => {
+    renderNoteMath(mathHostRef.current);
+  }, [openNoteId, openNote?.html]);
+
   const changeSubject = async (next: string) => {
     if (!openNote) return;
     if (next === openNote.subject) return;
@@ -959,21 +965,23 @@ export default function HomePage() {
                       {subjectSaved && <span className="saved">Updated</span>}
                     </div>
                   </div>
-                  <div
-                    className="note-shell"
-                    style={
-                      {
-                        "--subj": subjectColor(openNote.subject),
-                      } as CSSProperties
-                    }
-                  >
                     <div
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          openNote.html || placeholderHtml(openNote.title),
-                      }}
-                    />
-                  </div>
+                      className="note-shell"
+                      style={
+                        {
+                          "--subj": subjectColor(openNote.subject),
+                        } as CSSProperties
+                      }
+                    >
+                      <div
+                        key={`${openNote.id}:${openNote.html ? "html" : "ph"}`}
+                        ref={mathHostRef}
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            openNote.html || placeholderHtml(openNote.title),
+                        }}
+                      />
+                    </div>
                   <div className="actions">
                     <button
                       type="button"
@@ -1584,7 +1592,6 @@ export default function HomePage() {
         }
 
         .note-shell :global(.eq) {
-          font-family: ui-monospace, monospace;
           padding: 0.5rem 0.7rem;
           background: color-mix(
             in srgb,
@@ -1592,6 +1599,16 @@ export default function HomePage() {
             var(--surface)
           );
           border-radius: calc(var(--radius) - 2px);
+        }
+
+        .note-shell :global(.eq:not(:has(.katex))) {
+          font-family: ui-monospace, monospace;
+        }
+
+        .note-shell :global(.katex-display) {
+          margin: 0.65rem 0;
+          overflow-x: auto;
+          overflow-y: hidden;
         }
       `}</style>
     </>

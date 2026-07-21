@@ -103,6 +103,7 @@ export async function extractTextFromImage({ imageBase64, mimeType } = {}) {
               text: [
                 "Extract all readable text from this study-note image.",
                 "Return only the raw transcribed text, preserving line breaks where helpful.",
+                "For mathematical equations, use LaTeX with \\[ \\] for display math and \\( \\) for inline math (preserve symbols, subscripts, integrals, Greek letters).",
                 "Do not summarize, translate, categorize, or add commentary.",
                 "If the image has no readable text, return an empty string.",
               ].join(" "),

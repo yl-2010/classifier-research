@@ -264,6 +264,7 @@ export async function formatNotesWithGptOss(rawText, subject) {
     "5. Every claim in the output must be traceable to words or clear shorthand in the input. When unsure whether something was in the notes, omit it.",
     "Output ONLY HTML (no markdown fences, no surrounding explanation).",
     "Use semantic tags: h2/h3, p, ul/ol/li, strong, em, code, pre, blockquote when useful.",
+    "MATH: When notes contain LaTeX (delimited by \\[ \\], \\( \\), $$ or $), keep those delimiters and every backslash/command exactly as plain text inside <p> or <div class=\"eq\">. Do not strip backslashes, convert formulas to Unicode, wrap math in <code>, or invent MathML/HTML equation markup. Put each display equation (\\[...\\] or $$...$$) in its own block element.",
     `Subject is only for the CSS class / data attribute — do not use subject knowledge to invent content: ${subject}.`,
     `Root element must be: <article class="note note--${slugify(subject)}" data-subject="${escapeAttr(subject)}">…</article>`,
   ].join(" ");

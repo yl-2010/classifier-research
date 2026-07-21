@@ -1,6 +1,7 @@
 import type { AppProps } from "next/app";
 import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
+import "katex/dist/katex.min.css";
 import "../styles/globals.css";
 
 /** When a session is present, make sure the Mac Studio email folder exists. */
