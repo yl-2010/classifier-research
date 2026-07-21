@@ -911,10 +911,6 @@ export default function HomePage() {
                       {sending ? "Sending…" : "Send"}
                     </button>
                   </div>
-                  <p className="muted upload-hint">
-                    Images are OCR’d with OpenAI, then classified like pasted
-                    notes.
-                  </p>
                 </>
               )}
             </section>
@@ -1361,11 +1357,6 @@ export default function HomePage() {
         .muted {
           color: var(--mute);
           font-size: 0.95rem;
-        }
-
-        .upload-hint {
-          margin: 0.35rem 0 0;
-          font-size: 0.85rem;
         }
 
         .form-error {
