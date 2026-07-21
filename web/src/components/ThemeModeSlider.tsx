@@ -22,6 +22,9 @@ export function ThemeModeSlider() {
 
   const onTrackPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startPreference = preference;
     const thumb = target.querySelector(".theme-slider-thumb");
     const thumbRect = thumb?.getBoundingClientRect();
     const hitThumb =
@@ -31,11 +34,8 @@ export function ThemeModeSlider() {
       event.clientY >= thumbRect.top &&
       event.clientY <= thumbRect.bottom;
 
-    // Clicking the thumb: light ↔ dark, system → light.
-    if (hitThumb) {
-      setTheme(preference === "light" ? "dark" : "light");
-      return;
-    }
+    let dragged = false;
+    const dragThreshold = 5;
 
     const pick = (clientX: number) => {
       const rect = target.getBoundingClientRect();
@@ -45,13 +45,32 @@ export function ThemeModeSlider() {
       else setTheme("light");
     };
 
-    pick(event.clientX);
+    // Empty-track press snaps immediately; thumb waits for drag or release.
+    if (!hitThumb) {
+      pick(event.clientX);
+    }
+
     target.setPointerCapture(event.pointerId);
 
     const onMove = (moveEvent: PointerEvent) => {
-      pick(moveEvent.clientX);
+      if (
+        !dragged &&
+        Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) >=
+          dragThreshold
+      ) {
+        dragged = true;
+      }
+      // Track presses follow immediately; thumb waits until a real drag starts.
+      if (!hitThumb || dragged) {
+        pick(moveEvent.clientX);
+      }
     };
+
     const onUp = () => {
+      // Thumb click with no drag: light ↔ dark, system → light.
+      if (hitThumb && !dragged) {
+        setTheme(startPreference === "light" ? "dark" : "light");
+      }
       if (target.hasPointerCapture(event.pointerId)) {
         target.releasePointerCapture(event.pointerId);
       }
@@ -59,6 +78,7 @@ export function ThemeModeSlider() {
       target.removeEventListener("pointerup", onUp);
       target.removeEventListener("pointercancel", onUp);
     };
+
     target.addEventListener("pointermove", onMove);
     target.addEventListener("pointerup", onUp);
     target.addEventListener("pointercancel", onUp);
