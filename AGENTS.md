@@ -30,6 +30,10 @@ SocketHR uses a separate tunnel/process: api.sockethr.com → :3000
 | `npm run verify:public-api` | `curl https://api.notelms.com/health` |
 | `npm run test:server` | Server unit tests |
 
+## Git workflow (cloud agents)
+
+- **ALWAYS commit and push directly to `main` immediately — do NOT open a pull request — unless the human explicitly says otherwise.** Skip feature branches and the PR flow by default; push each logical change straight to `main` as soon as it is ready. Only branch/PR when the human explicitly requests it for a given task.
+
 ## Hard rules
 
 - User notes / profiles stay on the Mac Studio USB path — **not** on Vercel or any cloud DB.
