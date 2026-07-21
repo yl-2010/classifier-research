@@ -115,8 +115,7 @@ export function ThemeModeSlider() {
           }
         }}
       >
-        <span className="theme-slider-half theme-slider-half--left" aria-hidden="true" />
-        <span className="theme-slider-half theme-slider-half--right" aria-hidden="true" />
+        <span className="theme-slider-track" aria-hidden="true" />
         <span className="theme-slider-thumb" aria-hidden="true" />
       </div>
       <SunIcon />
@@ -144,7 +143,6 @@ export function ThemeModeSlider() {
           --track-dark: #0b1622;
 
           position: relative;
-          display: flex;
           width: var(--slider-w);
           height: var(--slider-h);
           border-radius: 999px;
@@ -165,29 +163,30 @@ export function ThemeModeSlider() {
             0 0 0 4px var(--accent);
         }
 
-        .theme-slider-half {
-          flex: 1 1 50%;
-          height: 100%;
-          min-width: 0;
-          transition: background-color 0.18s ease;
+        .theme-slider-track {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          transition: background 0.18s ease;
         }
 
-        .theme-slider--dark .theme-slider-half--left,
-        .theme-slider--dark .theme-slider-half--right {
+        .theme-slider--dark .theme-slider-track {
           background: var(--track-dark);
         }
 
-        .theme-slider--light .theme-slider-half--left,
-        .theme-slider--light .theme-slider-half--right {
+        .theme-slider--light .theme-slider-track {
           background: var(--track-light);
         }
 
-        .theme-slider--system .theme-slider-half--left {
-          background: var(--track-light);
-        }
-
-        .theme-slider--system .theme-slider-half--right {
-          background: var(--track-dark);
+        .theme-slider--system .theme-slider-track {
+          background: linear-gradient(
+            90deg,
+            var(--track-light) 0%,
+            var(--track-light) 28%,
+            color-mix(in srgb, var(--track-light) 55%, var(--track-dark)) 50%,
+            var(--track-dark) 72%,
+            var(--track-dark) 100%
+          );
         }
 
         .theme-slider-thumb {
