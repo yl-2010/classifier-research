@@ -20,12 +20,12 @@
       }
 
       .ft-2 {
-        fill: #101f32;
+        fill: #ffffff;
         stroke-width: 3px;
       }
 
       .ft-2, .ft-3, .ft-4 {
-        stroke: #101f32;
+        stroke: #ffffff;
       }
 
       .ft-4 {
@@ -33,17 +33,17 @@
       }
 
       .ft-5 {
-        stroke: #356a88;
+        stroke: #9ec9de;
       }
 
       .ink-stop {
-        stop-color: #101f32;
+        stop-color: #ffffff;
       }
 
     </style>
     <linearGradient id="footer-logo-grad" x1="558.97" y1="254.84" x2="630.61" y2="254.84" gradientUnits="userSpaceOnUse">
-      <stop class="ink-stop" offset="0" stop-color="#101f32" stop-opacity="0"/>
-      <stop class="ink-stop" offset=".68" stop-color="#101f32"/>
+      <stop class="ink-stop" offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop class="ink-stop" offset=".68" stop-color="#ffffff"/>
     </linearGradient>
   </defs>
   <g id="Layer_2_copy" data-name="Layer 2 copy">

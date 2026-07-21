@@ -1,4 +1,5 @@
 import { Head, Html, Main, NextScript } from "next/document";
+import { THEME_BOOTSTRAP_SCRIPT } from "../lib/theme";
 
 export default function Document() {
   return (
@@ -22,6 +23,7 @@ export default function Document() {
           href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </Head>
       <body>
         <Main />

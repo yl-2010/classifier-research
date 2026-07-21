@@ -1,4 +1,6 @@
-:root {
+:root,
+html[data-theme="light"],
+html[data-resolved-theme="light"] {
   color-scheme: light;
   --ink: #0b1f33;
   --mute: #5a7186;
@@ -13,8 +15,22 @@
   --display: "Fraunces", Georgia, serif;
 }
 
+html[data-theme="dark"],
+html[data-resolved-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e4eef6;
+  --mute: #8aa0b5;
+  --line: #2a3f55;
+  --bg: #0b1622;
+  --surface: #132333;
+  --accent: #3d8fad;
+  --on-accent: #061018;
+  --glow: #1a3348;
+}
+
+/* System preference when no explicit resolved theme yet (noscript / first paint). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme="light"]):not([data-resolved-theme="light"]) {
     color-scheme: dark;
     --ink: #e4eef6;
     --mute: #8aa0b5;
@@ -57,4 +73,39 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+/* Theme-aware logos: prefer resolved theme from bootstrap script. */
+.theme-logo-wrap {
+  display: block;
+}
+
+.theme-logo-wrap > .theme-logo-light {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.theme-logo-wrap > .theme-logo-dark {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+html[data-resolved-theme="dark"] .theme-logo-wrap > .theme-logo-light {
+  display: none;
+}
+
+html[data-resolved-theme="dark"] .theme-logo-wrap > .theme-logo-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-resolved-theme]) .theme-logo-wrap > .theme-logo-light {
+    display: none;
+  }
+
+  html:not([data-resolved-theme]) .theme-logo-wrap > .theme-logo-dark {
+    display: block;
+  }
 }

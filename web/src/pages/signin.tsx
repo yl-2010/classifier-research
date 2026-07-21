@@ -4,6 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ThemeLogo } from "@/components/ThemeLogo";
 
 export default function SignInPage() {
   const { status } = useSession();
@@ -22,13 +23,11 @@ export default function SignInPage() {
       </Head>
       <main className="shell">
         <div className="panel">
-          <img
+          <ThemeLogo
             className="brand-logo"
-            src="/logo-plain.svg"
             alt="NoteLMs"
             width={600}
             height={211}
-            decoding="async"
           />
           <p className="lead">
             Classify and organize your notes, and help build research along the
@@ -73,8 +72,6 @@ export default function SignInPage() {
         .brand-logo {
           display: block;
           width: min(420px, 88vw);
-          height: auto;
-          opacity: 1;
           margin: 0;
         }
 

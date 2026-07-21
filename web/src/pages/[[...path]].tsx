@@ -14,6 +14,7 @@ import {
 } from "react";
 import { AppNav } from "@/components/AppNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ThemeLogo } from "@/components/ThemeLogo";
 import {
   FIXED_SUBJECTS,
   sortLibrarySubjects,
@@ -715,13 +716,11 @@ export default function HomePage() {
 
         {!signedIn && (
           <section className="gate">
-            <img
+            <ThemeLogo
               className="gate-logo"
-              src="/logo-plain.svg"
               alt="NoteLMs"
               width={600}
               height={211}
-              decoding="async"
             />
             <p className="gate-lead">
               Classify and organize your notes, and help build research along
@@ -1087,8 +1086,6 @@ export default function HomePage() {
         .gate-logo {
           display: block;
           width: min(420px, 88vw);
-          height: auto;
-          opacity: 1;
           /* Cropped SVG: ink starts at the left edge of the box */
           margin: 0;
           animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
