@@ -250,14 +250,21 @@ function deriveTitleFallback(text) {
 
 /**
  * Format raw notes into clean, readable HTML for the given subject.
+ * Faithful to source only: expand shorthand + HTML layout — never invent content.
  */
 export async function formatNotesWithGptOss(rawText, subject) {
   const system = [
-    "You turn messy student notes into clean, readable HTML fragments.",
+    "You are a faithful note formatter, not a tutor or encyclopedia.",
+    "Convert the student's raw notes into clean, readable HTML. Preserve meaning exactly.",
+    "HARD RULES — never violate:",
+    "1. Do NOT add any information, data, facts, examples, definitions, lists of models/tools, background, or explanations that are not already present in the notes.",
+    "2. Do NOT elaborate, teach, fill gaps, or expand a short phrase into a full lesson.",
+    "3. You MAY only: (a) expand unambiguous abbreviations/shorthand already implied by the notes (e.g. 'NLP' → 'Natural Language Processing (NLP)' when that expansion is the clear intended meaning of the note text itself), (b) fix obvious typos, (c) reorganize structure (headings, bullets, paragraphs) for readability, (d) apply HTML formatting.",
+    "4. If the notes are short or sparse, the HTML must stay short and sparse. Output roughly the same amount of content as the input.",
+    "5. Every claim in the output must be traceable to words or clear shorthand in the input. When unsure whether something was in the notes, omit it.",
     "Output ONLY HTML (no markdown fences, no surrounding explanation).",
     "Use semantic tags: h2/h3, p, ul/ol/li, strong, em, code, pre, blockquote when useful.",
-    "Do not invent facts that are not in the notes; you may lightly reorganize and clarify.",
-    `Subject context for subtle styling class: ${subject}.`,
+    `Subject is only for the CSS class / data attribute — do not use subject knowledge to invent content: ${subject}.`,
     `Root element must be: <article class="note note--${slugify(subject)}" data-subject="${escapeAttr(subject)}">…</article>`,
   ].join(" ");
 
@@ -265,9 +272,18 @@ export async function formatNotesWithGptOss(rawText, subject) {
   const result = await chatCompletions({
     messages: [
       { role: "system", content: system },
-      { role: "user", content: rawText.slice(0, 14000) },
+      {
+        role: "user",
+        content: [
+          "Format these notes into HTML. Do not add anything that is not in the notes below.",
+          "",
+          "--- NOTES START ---",
+          rawText.slice(0, 14000),
+          "--- NOTES END ---",
+        ].join("\n"),
+      },
     ],
-    temperature: 0.3,
+    temperature: 0,
     maxTokens: 4096,
   });
   const latencyMs = Date.now() - started;
