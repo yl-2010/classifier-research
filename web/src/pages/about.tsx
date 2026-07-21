@@ -45,15 +45,15 @@ export default function AboutPage() {
             <li>
               <strong>Categorizing notes</strong>
               <span>
-                Paste a note and NoteLMs assigns it to a subject so your library
-                stays organized.
+                Paste a note or upload an image and NoteLMs assigns it to a
+                subject so your library stays organized.
               </span>
             </li>
             <li>
               <strong>Formatting notes</strong>
               <span>
-                Raw text is turned into clean, structured HTML that’s easier to
-                skim and study from.
+                Raw text from paste or image is turned into clean, structured
+                HTML that’s easier to skim and study from.
               </span>
             </li>
             <li>
@@ -93,6 +93,14 @@ export default function AboutPage() {
                 Three models vote in parallel: zero-shot BERT, fine-tuned BERT,
                 and GPT-OSS 20B. An orchestrator (also GPT-OSS 20B) reviews those
                 votes and chooses the final subject.
+              </span>
+            </li>
+            <li>
+              <strong>How image notes work</strong>
+              <span>
+                Uploaded or dragged note photos are sent to OpenAI vision, which
+                extracts the raw text; that text then goes through the same
+                classify → format → save pipeline as pasted notes.
               </span>
             </li>
             <li>

@@ -45,6 +45,7 @@ import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 import { buildResearchMetrics } from "./research-metrics.js";
 import { normalizeSubjectLabel } from "./subjects.js";
+import { extractTextFromImage, getOpenAiConfig } from "./ocr.js";
 
 const PORT = Number(process.env.PORT || 3002);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -109,6 +110,10 @@ app.get("/health", async (_req, res) => {
       fineTunedLoaded: bert.fineTunedLoaded ?? false,
       error: bert.error || bert.fineTunedError || null,
     },
+    openaiOcr: (() => {
+      const oai = getOpenAiConfig();
+      return { configured: oai.configured, model: oai.model };
+    })(),
     time: new Date().toISOString(),
   });
 });
@@ -373,6 +378,40 @@ app.post("/api/format", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[/api/format]", err);
     res.status(502).json({ ok: false, error: err.message || "format failed" });
+  }
+});
+
+/**
+ * OCR a note photo/scan via OpenAI vision → raw text for the usual ingest pipeline.
+ */
+app.post("/api/notes/ocr", requireAuth, async (req, res) => {
+  try {
+    await ensureUser(req.user.email, { name: req.user.name });
+    const imageBase64 = req.body?.imageBase64 ?? req.body?.image ?? "";
+    const mimeType = req.body?.mimeType ?? req.body?.contentType ?? "";
+    const result = await extractTextFromImage({ imageBase64, mimeType });
+    if (!result.rawText) {
+      res.status(422).json({
+        ok: false,
+        error: "No readable text found in that image",
+      });
+      return;
+    }
+    res.json({
+      ok: true,
+      rawText: result.rawText,
+      model: result.model,
+      latencyMs: result.latencyMs,
+    });
+  } catch (err) {
+    console.error("[/api/notes/ocr]", err);
+    const msg = err.message || "OCR failed";
+    const status = /OPENAI_API_KEY is not set/i.test(msg)
+      ? 503
+      : /Unsupported image|too large|required|Invalid data/i.test(msg)
+        ? 400
+        : 502;
+    res.status(status).json({ ok: false, error: msg });
   }
 });
 

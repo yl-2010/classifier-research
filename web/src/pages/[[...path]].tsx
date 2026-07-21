@@ -134,8 +134,10 @@ export default function HomePage() {
   const newRef = useRef<HTMLElement>(null);
   const libraryRef = useRef<HTMLElement>(null);
   const customInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const restoredRef = useRef(false);
   const htmlFetchRef = useRef<Set<string>>(new Set());
+  const dragDepthRef = useRef(0);
 
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
@@ -149,6 +151,8 @@ export default function HomePage() {
   const [deletingSubject, setDeletingSubject] = useState(false);
   const [deletingNote, setDeletingNote] = useState(false);
   const [sending, setSending] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryLoaded, setLibraryLoaded] = useState(false);
@@ -468,9 +472,12 @@ export default function HomePage() {
     addSubjectToLibrary(name);
   };
 
-  const sendNotes = async () => {
-    const value = text.trim();
-    if (!value || sending) return;
+  const sendNotes = async (
+    rawOverride?: string,
+    source: "paste" | "image" = "paste"
+  ) => {
+    const value = (rawOverride ?? text).trim();
+    if (!value || sending || extracting) return;
     if (!apiBase) {
       setIngestError("Note API is not configured");
       return;
@@ -499,7 +506,7 @@ export default function HomePage() {
     try {
       const res = await notelmsFetch(apiBase, "/api/notes/ingest", {
         method: "POST",
-        body: JSON.stringify({ rawText: value, source: "paste" }),
+        body: JSON.stringify({ rawText: value, source }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -558,6 +565,62 @@ export default function HomePage() {
       );
     } finally {
       setSending(false);
+    }
+  };
+
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result !== "string") {
+          reject(new Error("Could not read image"));
+          return;
+        }
+        const comma = result.indexOf(",");
+        resolve(comma >= 0 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = () => reject(new Error("Could not read image"));
+      reader.readAsDataURL(file);
+    });
+
+  const processImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setIngestError("Please drop or upload an image file");
+      return;
+    }
+    if (sending || extracting) return;
+    if (!apiBase) {
+      setIngestError("Note API is not configured");
+      return;
+    }
+
+    setIngestError(null);
+    setExtracting(true);
+    try {
+      const imageBase64 = await fileToBase64(file);
+      const res = await notelmsFetch(apiBase, "/api/notes/ocr", {
+        method: "POST",
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: file.type || "image/jpeg",
+        }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        rawText?: string;
+      };
+      if (!res.ok || !data.ok || !data.rawText?.trim()) {
+        throw new Error(data.error || "Could not extract text from image");
+      }
+      setExtracting(false);
+      await sendNotes(data.rawText, "image");
+    } catch (err) {
+      setIngestError(
+        err instanceof Error ? err.message : "Could not extract text from image"
+      );
+      setExtracting(false);
     }
   };
 
@@ -768,37 +831,89 @@ export default function HomePage() {
               ) : (
                 <>
                   <textarea
+                    className={dragOver ? "drag-over" : undefined}
                     value={text}
                     onChange={(e) => {
                       setText(e.target.value);
                       if (ingestError) setIngestError(null);
                     }}
-                    placeholder="Paste notes…"
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dragDepthRef.current += 1;
+                      setDragOver(true);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "copy";
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dragDepthRef.current = Math.max(
+                        0,
+                        dragDepthRef.current - 1
+                      );
+                      if (dragDepthRef.current === 0) setDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dragDepthRef.current = 0;
+                      setDragOver(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) void processImageFile(file);
+                    }}
+                    onPaste={(e) => {
+                      const items = e.clipboardData?.items;
+                      if (!items) return;
+                      for (const item of items) {
+                        if (item.kind === "file" && item.type.startsWith("image/")) {
+                          e.preventDefault();
+                          const file = item.getAsFile();
+                          if (file) void processImageFile(file);
+                          return;
+                        }
+                      }
+                    }}
+                    placeholder="Paste notes or drag image…"
                     rows={12}
-                    disabled={sending}
+                    disabled={sending || extracting}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (file) void processImageFile(file);
+                    }}
                   />
                   {ingestError && <p className="form-error">{ingestError}</p>}
                   <div className="actions">
                     <button
                       type="button"
-                      className="btn ghost is-disabled"
-                      disabled
-                      aria-disabled="true"
-                      title="Image upload unavailable — paste text only."
+                      className="btn ghost"
+                      disabled={sending || extracting}
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      Upload image
+                      {extracting ? "Extracting…" : "Upload image"}
                     </button>
                     <button
                       type="button"
                       className="btn"
                       onClick={() => void sendNotes()}
-                      disabled={!text.trim() || sending}
+                      disabled={!text.trim() || sending || extracting}
                     >
                       {sending ? "Sending…" : "Send"}
                     </button>
                   </div>
                   <p className="muted upload-hint">
-                    Image upload unavailable — paste text only.
+                    Images are OCR’d with OpenAI, then classified like pasted
+                    notes.
                   </p>
                 </>
               )}
@@ -1169,6 +1284,12 @@ export default function HomePage() {
           outline: none;
           box-shadow: 0 0 0 2px
             color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+
+        textarea.drag-over {
+          box-shadow: 0 0 0 2px
+            color-mix(in srgb, var(--accent) 45%, transparent);
+          background: color-mix(in srgb, var(--accent) 8%, var(--surface));
         }
 
         .actions {
