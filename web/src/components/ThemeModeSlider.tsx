@@ -130,13 +130,19 @@ export function ThemeModeSlider() {
           touch-action: none;
           outline: none;
           flex-shrink: 0;
-          /* Inset ring instead of border — avoids jagged anti-alias at the pill edge */
-          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
+          /* Inset ring + outer glow so the pill reads on both page themes.
+             --ink is dark in light mode and light in dark mode. */
+          box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent),
+            0 0 7px color-mix(in srgb, var(--ink) 22%, transparent);
         }
 
         .theme-slider:focus-visible {
           box-shadow:
             inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent),
+            0 0 7px color-mix(in srgb, var(--ink) 22%, transparent),
             0 0 0 2px var(--bg),
             0 0 0 4px var(--accent);
         }
