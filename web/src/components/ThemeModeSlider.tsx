@@ -4,43 +4,6 @@ import { useTheme } from "../lib/useTheme";
 
 const PREFS: ThemePreference[] = THEME_PREFERENCES;
 
-function MoonIcon() {
-  return (
-    <svg
-      className="theme-icon"
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        fill="currentColor"
-        d="M12.1 2.2a1 1 0 0 1 .96 1.28 7.5 7.5 0 1 0 7.46 7.46 1 1 0 0 1 1.28.96A9.5 9.5 0 1 1 12.1 2.2Z"
-      />
-    </svg>
-  );
-}
-
-function SunIcon() {
-  return (
-    <svg
-      className="theme-icon"
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="12" cy="12" r="3.75" fill="currentColor" />
-      <path
-        fill="currentColor"
-        d="M12 1.9a.85.85 0 0 1 .85.85V4a.85.85 0 1 1-1.7 0V2.75A.85.85 0 0 1 12 1.9Zm0 16.2a.85.85 0 0 1 .85.85v1.25a.85.85 0 1 1-1.7 0V19a.85.85 0 0 1 .85-.9ZM22.1 12a.85.85 0 0 1-.85.85H19.95a.85.85 0 1 1 0-1.7H21.25A.85.85 0 0 1 22.1 12ZM5.05 12a.85.85 0 0 1-.85.85H2.95a.85.85 0 1 1 0-1.7H4.2A.85.85 0 0 1 5.05 12Zm12.72-6.72a.85.85 0 0 1 0 1.2l-.88.88a.85.85 0 1 1-1.2-1.2l.88-.88a.85.85 0 0 1 1.2 0ZM8.31 15.69a.85.85 0 0 1 0 1.2l-.88.88a.85.85 0 1 1-1.2-1.2l.88-.88a.85.85 0 0 1 1.2 0Zm10.58 1.2a.85.85 0 0 1-1.2 0l-.88-.88a.85.85 0 0 1 1.2-1.2l.88.88a.85.85 0 0 1 0 1.2ZM7.51 6.51a.85.85 0 0 1-1.2 0l-.88-.88a.85.85 0 1 1 1.2-1.2l.88.88a.85.85 0 0 1 0 1.2Z"
-      />
-    </svg>
-  );
-}
-
 export function ThemeModeSlider() {
   const { preference, setTheme } = useTheme();
   const index = Math.max(0, PREFS.indexOf(preference));
@@ -88,7 +51,7 @@ export function ThemeModeSlider() {
 
   return (
     <div className="theme-mode">
-      <MoonIcon />
+      <span className="theme-label">Theme</span>
       <div
         className={`theme-slider theme-slider--${preference}`}
         role="slider"
@@ -118,20 +81,20 @@ export function ThemeModeSlider() {
         <span className="theme-slider-track" aria-hidden="true" />
         <span className="theme-slider-thumb" aria-hidden="true" />
       </div>
-      <SunIcon />
       <style jsx>{`
         .theme-mode {
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.55rem;
           color: var(--mute);
           flex-shrink: 0;
         }
 
-        .theme-mode :global(.theme-icon) {
-          display: block;
-          flex-shrink: 0;
-          opacity: 0.9;
+        .theme-label {
+          font-size: 0.8rem;
+          letter-spacing: 0.01em;
+          line-height: 1;
+          user-select: none;
         }
 
         .theme-slider {
