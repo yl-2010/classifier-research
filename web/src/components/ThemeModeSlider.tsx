@@ -22,6 +22,21 @@ export function ThemeModeSlider() {
 
   const onTrackPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
+    const thumb = target.querySelector(".theme-slider-thumb");
+    const thumbRect = thumb?.getBoundingClientRect();
+    const hitThumb =
+      !!thumbRect &&
+      event.clientX >= thumbRect.left &&
+      event.clientX <= thumbRect.right &&
+      event.clientY >= thumbRect.top &&
+      event.clientY <= thumbRect.bottom;
+
+    // Clicking the thumb: light ↔ dark, system → light.
+    if (hitThumb) {
+      setTheme(preference === "light" ? "dark" : "light");
+      return;
+    }
+
     const pick = (clientX: number) => {
       const rect = target.getBoundingClientRect();
       const ratio = (clientX - rect.left) / Math.max(rect.width, 1);
