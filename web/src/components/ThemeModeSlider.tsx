@@ -182,9 +182,9 @@ export function ThemeModeSlider() {
           background: linear-gradient(
             90deg,
             var(--track-dark) 0%,
-            var(--track-dark) 28%,
+            var(--track-dark) 41.2%,
             color-mix(in srgb, var(--track-light) 55%, var(--track-dark)) 50%,
-            var(--track-light) 72%,
+            var(--track-light) 58.8%,
             var(--track-light) 100%
           );
         }
