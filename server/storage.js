@@ -198,6 +198,35 @@ async function writeJson(filePath, data) {
 }
 
 /**
+ * Serialize read-modify-write mutations per user folder.
+ * Without this, concurrent POST /api/subjects (and the UI's historical
+ * double-POST) clobber sibling subject colors in profile.json.
+ * @type {Map<string, Promise<unknown>>}
+ */
+const userMutationLocks = new Map();
+
+/**
+ * @template T
+ * @param {string} email
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+function withUserMutationLock(email, fn) {
+  const key = emailToFolderName(email);
+  const prev = userMutationLocks.get(key) || Promise.resolve();
+  // Chain synchronously so concurrent callers never share the same `prev`.
+  const next = prev.catch(() => {}).then(() => fn());
+  userMutationLocks.set(
+    key,
+    next.then(
+      () => undefined,
+      () => undefined
+    )
+  );
+  return next;
+}
+
+/**
  * Ensure the per-user folder exists (named by email). Idempotent.
  * - New Google account → create folder
  * - Existing account → reuse folder; recreate if missing from disk
@@ -314,7 +343,7 @@ export function normalizeThemePreference(raw) {
   return "system";
 }
 
-async function writeProfileFields(email, patch = {}) {
+async function writeProfileFieldsUnlocked(email, patch = {}) {
   const { root, profile } = await ensureUser(email);
   const next = {
     ...profile,
@@ -334,6 +363,12 @@ async function writeProfileFields(email, patch = {}) {
   if (patch.lastSeenAt) next.lastSeenAt = patch.lastSeenAt;
   await writeJson(path.join(root, "profile.json"), next);
   return next;
+}
+
+async function writeProfileFields(email, patch = {}) {
+  return withUserMutationLock(email, () =>
+    writeProfileFieldsUnlocked(email, patch)
+  );
 }
 
 export async function getProfile(email) {
@@ -381,35 +416,39 @@ export async function addCustomSubject(email, label, { color } = {}) {
   if (FIXED_SUBJECTS.includes(normalized)) {
     throw new Error("subject is already a fixed label");
   }
-  const { root, subjects, profile } = await ensureUser(email);
-  const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
-  const colors = normalizeColorsMap(profile.subjectColors);
-  const exists = custom.some((c) => c.toLowerCase() === normalized.toLowerCase());
-  if (!exists) {
-    custom.push(normalized);
-    custom.sort((a, b) => a.localeCompare(b));
-  }
-  const existingKey = Object.keys(colors).find(
-    (k) => k.toLowerCase() === normalized.toLowerCase()
-  );
-  const hex =
-    typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color.trim())
-      ? color.trim().toLowerCase()
-      : null;
-  if (hex) {
-    if (existingKey && existingKey !== normalized) {
-      delete colors[existingKey];
+  return withUserMutationLock(email, async () => {
+    const { root, subjects, profile } = await ensureUser(email);
+    const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+    const colors = normalizeColorsMap(profile.subjectColors);
+    const exists = custom.some(
+      (c) => c.toLowerCase() === normalized.toLowerCase()
+    );
+    if (!exists) {
+      custom.push(normalized);
+      custom.sort((a, b) => a.localeCompare(b));
     }
-    colors[normalized] = hex;
-  }
-  const nextSubjects = {
-    custom,
-    colors: {},
-    updatedAt: new Date().toISOString(),
-  };
-  await writeJson(path.join(root, "subjects.json"), nextSubjects);
-  await writeProfileFields(email, { subjectColors: colors });
-  return { ...nextSubjects, colors };
+    const existingKey = Object.keys(colors).find(
+      (k) => k.toLowerCase() === normalized.toLowerCase()
+    );
+    const hex =
+      typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color.trim())
+        ? color.trim().toLowerCase()
+        : null;
+    if (hex) {
+      if (existingKey && existingKey !== normalized) {
+        delete colors[existingKey];
+      }
+      colors[normalized] = hex;
+    }
+    const nextSubjects = {
+      custom,
+      colors: {},
+      updatedAt: new Date().toISOString(),
+    };
+    await writeJson(path.join(root, "subjects.json"), nextSubjects);
+    await writeProfileFieldsUnlocked(email, { subjectColors: colors });
+    return { ...nextSubjects, colors };
+  });
 }
 
 /**
@@ -438,34 +477,36 @@ export async function setSubjectColor(email, label, color) {
     throw err;
   }
 
-  const { subjects, profile } = await ensureUser(email);
-  const custom = Array.isArray(subjects.custom) ? subjects.custom : [];
-  const colors = normalizeColorsMap(profile.subjectColors);
+  return withUserMutationLock(email, async () => {
+    const { subjects, profile } = await ensureUser(email);
+    const custom = Array.isArray(subjects.custom) ? subjects.custom : [];
+    const colors = normalizeColorsMap(profile.subjectColors);
 
-  const fixedMatch = FIXED_SUBJECTS.find(
-    (s) => s.toLowerCase() === normalized.toLowerCase()
-  );
-  const customMatch = custom.find(
-    (c) => c.toLowerCase() === normalized.toLowerCase()
-  );
-  const canonical = fixedMatch || customMatch || null;
-  if (!canonical) {
-    const err = new Error("unknown subject");
-    err.status = 404;
-    throw err;
-  }
-
-  for (const key of Object.keys(colors)) {
-    if (key.toLowerCase() === canonical.toLowerCase() && key !== canonical) {
-      delete colors[key];
+    const fixedMatch = FIXED_SUBJECTS.find(
+      (s) => s.toLowerCase() === normalized.toLowerCase()
+    );
+    const customMatch = custom.find(
+      (c) => c.toLowerCase() === normalized.toLowerCase()
+    );
+    const canonical = fixedMatch || customMatch || null;
+    if (!canonical) {
+      const err = new Error("unknown subject");
+      err.status = 404;
+      throw err;
     }
-  }
-  colors[canonical] = hex;
 
-  await writeProfileFields(email, { subjectColors: colors });
+    for (const key of Object.keys(colors)) {
+      if (key.toLowerCase() === canonical.toLowerCase() && key !== canonical) {
+        delete colors[key];
+      }
+    }
+    colors[canonical] = hex;
 
-  const listed = await listSubjects(email);
-  return { label: canonical, color: hex, subjects: listed };
+    await writeProfileFieldsUnlocked(email, { subjectColors: colors });
+
+    const listed = await listSubjects(email);
+    return { label: canonical, color: hex, subjects: listed };
+  });
 }
 
 /**
@@ -501,26 +542,29 @@ export async function deleteSubject(email, label) {
     (s) => s.toLowerCase() === normalized.toLowerCase()
   );
   if (!isFixed) {
-    const { root, subjects, profile } = await ensureUser(email);
-    const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
-    const colors = normalizeColorsMap(profile.subjectColors);
-    const nextCustom = custom.filter(
-      (c) => c.toLowerCase() !== normalized.toLowerCase()
-    );
-    for (const key of Object.keys(colors)) {
-      if (key.toLowerCase() === normalized.toLowerCase()) {
-        delete colors[key];
+    removedCustom = await withUserMutationLock(email, async () => {
+      const { root, subjects, profile } = await ensureUser(email);
+      const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+      const colors = normalizeColorsMap(profile.subjectColors);
+      const nextCustom = custom.filter(
+        (c) => c.toLowerCase() !== normalized.toLowerCase()
+      );
+      for (const key of Object.keys(colors)) {
+        if (key.toLowerCase() === normalized.toLowerCase()) {
+          delete colors[key];
+        }
       }
-    }
-    removedCustom = nextCustom.length !== custom.length;
-    if (removedCustom) {
-      await writeJson(path.join(root, "subjects.json"), {
-        custom: nextCustom,
-        colors: {},
-        updatedAt: new Date().toISOString(),
-      });
-      await writeProfileFields(email, { subjectColors: colors });
-    }
+      const removed = nextCustom.length !== custom.length;
+      if (removed) {
+        await writeJson(path.join(root, "subjects.json"), {
+          custom: nextCustom,
+          colors: {},
+          updatedAt: new Date().toISOString(),
+        });
+        await writeProfileFieldsUnlocked(email, { subjectColors: colors });
+      }
+      return removed;
+    });
   }
 
   return {
@@ -594,7 +638,7 @@ export async function getNote(email, noteId, { includeContent = true } = {}) {
 }
 
 export async function createNote(email, fields = {}) {
-  const { root, profile } = await ensureUser(email);
+  const { root } = await ensureUser(email);
   const noteId = fields.id || randomUUID();
   const now = new Date().toISOString();
   const subject = normalizeSubjectLabel(fields.subject) || OTHER_SUBJECT;
@@ -631,10 +675,13 @@ export async function createNote(email, fields = {}) {
     await fsp.writeFile(paths.html, fields.html, "utf8");
   }
 
-  await writeJson(path.join(root, "profile.json"), {
-    ...profile,
-    noteCount: (profile.noteCount || 0) + 1,
-    updatedAt: now,
+  await withUserMutationLock(email, async () => {
+    const latest = await ensureUser(email);
+    await writeJson(path.join(root, "profile.json"), {
+      ...latest.profile,
+      noteCount: (latest.profile.noteCount || 0) + 1,
+      updatedAt: now,
+    });
   });
 
   return meta;

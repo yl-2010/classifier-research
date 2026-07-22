@@ -19,6 +19,7 @@ export function getLmStudioConfig() {
  * @param {number} [opts.temperature]
  * @param {number} [opts.maxTokens]
  * @param {boolean} [opts.json]
+ * @param {number} [opts.timeoutMs] Abort the LM Studio request after this many ms.
  * @returns {Promise<{ content: string, model: string, usage: object|null, raw: object }>}
  */
 export async function chatCompletions({
@@ -26,6 +27,7 @@ export async function chatCompletions({
   temperature = 0.2,
   maxTokens = 2048,
   json = false,
+  timeoutMs,
 } = {}) {
   const { baseUrl, model } = getLmStudioConfig();
   const body = {
@@ -42,6 +44,10 @@ export async function chatCompletions({
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal:
+      typeof timeoutMs === "number" && timeoutMs > 0
+        ? AbortSignal.timeout(timeoutMs)
+        : undefined,
   });
 
   const text = await res.text();

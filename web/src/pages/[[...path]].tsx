@@ -467,7 +467,11 @@ export default function HomePage() {
   }, [signedIn, subjectSlug, noteSlug, scrollToSection]);
 
   const addSubjectToLibrary = useCallback(
-    (label: string, open = true) => {
+    (
+      label: string,
+      open = true,
+      opts: { skipApi?: boolean } = {}
+    ) => {
       const name = label.trim();
       if (!name || name.toLowerCase() === "other") return;
       persistInvoked([...invokedSubjects, name]);
@@ -475,7 +479,9 @@ export default function HomePage() {
       setCustomDraft("");
 
       // Ensure Mac profile has the accent (fixed → canonical default, no GPT).
-      if (apiBase) {
+      // Custom creates already POSTed in submitCustomSubject — skipApi avoids a
+      // second concurrent profile write that used to clobber sibling colors.
+      if (apiBase && !opts.skipApi) {
         void (async () => {
           try {
             const res = await notelmsFetch(apiBase, "/api/subjects", {
@@ -628,7 +634,7 @@ export default function HomePage() {
             data.subjects?.custom?.find(
               (s) => s.toLowerCase() === name.toLowerCase()
             ) || name;
-          addSubjectToLibrary(saved);
+          addSubjectToLibrary(saved, true, { skipApi: true });
           return;
         }
       } catch {

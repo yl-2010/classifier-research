@@ -136,6 +136,33 @@ describe("storage", () => {
     assert.equal(subjects.colors.Latin, "#7c3aed");
   });
 
+  it("preserves sibling subject colors under concurrent adds", async () => {
+    const email = "race-colors@example.com";
+    await ensureUser(email);
+    const labels = Array.from({ length: 12 }, (_, i) => `RaceSub${i}`);
+    const colors = labels.map(
+      (_, i) =>
+        `#${(0x204080 + i * 0x0a1b05).toString(16).padStart(6, "0").slice(-6)}`
+    );
+    await Promise.all(
+      labels.map((label, i) =>
+        addCustomSubject(email, label, { color: colors[i] })
+      )
+    );
+    const subjects = await listSubjects(email);
+    for (let i = 0; i < labels.length; i += 1) {
+      assert.ok(
+        subjects.custom.includes(labels[i]),
+        `missing custom label ${labels[i]}`
+      );
+      assert.equal(
+        subjects.colors[labels[i]],
+        colors[i],
+        `clobbered color for ${labels[i]}`
+      );
+    }
+  });
+
   it("setSubjectColor updates custom and fixed accents", async () => {
     const email = "recolor@example.com";
     await ensureUser(email);

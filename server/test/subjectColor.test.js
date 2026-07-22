@@ -7,6 +7,8 @@ import {
   mergeExistingSubjectColors,
   formatExistingColorsContext,
   defaultFixedSubjectColor,
+  isUsableAccentColor,
+  hashSubjectAccent,
 } from "../subjectColor.js";
 
 describe("subjectColor", () => {
@@ -32,6 +34,31 @@ describe("subjectColor", () => {
 
   it("exports gray fallback", () => {
     assert.equal(CUSTOM_SUBJECT_COLOR_FALLBACK, "#64748b");
+  });
+
+  it("rejects washed slate/gray accents", () => {
+    assert.equal(isUsableAccentColor("#64748b"), false);
+    assert.equal(isUsableAccentColor("#6474b0"), false);
+    assert.equal(isUsableAccentColor("#6f748b"), false);
+    assert.equal(isUsableAccentColor("#cccccc"), false);
+    assert.equal(isUsableAccentColor("not-hex"), false);
+  });
+
+  it("accepts saturated mid accents", () => {
+    assert.equal(isUsableAccentColor("#c45c26"), true);
+    assert.equal(isUsableAccentColor("#ff1493"), true);
+    assert.equal(isUsableAccentColor("#2563eb"), true);
+    assert.equal(isUsableAccentColor("#059669"), true);
+  });
+
+  it("hashSubjectAccent is deterministic and vibrant", () => {
+    const a = hashSubjectAccent("Art");
+    const b = hashSubjectAccent("Art");
+    const c = hashSubjectAccent("Astronomy");
+    assert.equal(a, b);
+    assert.notEqual(a, c);
+    assert.equal(isUsableAccentColor(a), true);
+    assert.equal(isUsableAccentColor(c), true);
   });
 
   it("merges fixed + custom subject colors for LLM context", () => {
