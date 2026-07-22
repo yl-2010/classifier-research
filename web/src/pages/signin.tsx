@@ -105,8 +105,8 @@ export default function SignInPage() {
           cursor: wait;
         }
 
-        :global(.research),
-        .research {
+        :global(.btn.research),
+        .btn.research {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -117,9 +117,10 @@ export default function SignInPage() {
             color-mix(in srgb, var(--accent) 35%, transparent);
         }
 
-        :global(.research:hover),
-        .research:hover {
+        :global(.btn.research:hover),
+        .btn.research:hover {
           background: color-mix(in srgb, var(--accent) 12%, transparent);
+          color: var(--ink);
         }
       `}</style>
     </>

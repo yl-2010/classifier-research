@@ -249,6 +249,54 @@ function deriveTitleFallback(text) {
 }
 
 /**
+ * 1–2 sentence summary of study notes via openai/gpt-oss-20b.
+ * Falls back to a truncated first-paragraph heuristic.
+ */
+export async function generateSummaryWithGptOss(rawText) {
+  const fallback = deriveSummaryFallback(rawText);
+  if (!String(rawText || "").trim()) return fallback;
+
+  try {
+    const system = [
+      "You write brief summaries of student study notes.",
+      "Respond with a single JSON object only, no markdown.",
+      'Schema: {"summary": string}',
+      "Summary: exactly 1 or 2 sentences, plain text, no title prefix,",
+      "capture the main topic and key points without inventing content.",
+    ].join(" ");
+
+    const result = await chatCompletions({
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: String(rawText).slice(0, 8000) },
+      ],
+      temperature: 0.2,
+      maxTokens: 160,
+      json: true,
+    });
+
+    const parsed = extractJsonObject(result.content) || {};
+    let summary =
+      typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+    summary = summary.replace(/^["'“”]+|["'“”]+$/g, "").trim();
+    if (!summary) return fallback;
+    if (summary.length > 400) summary = `${summary.slice(0, 397)}…`;
+    return summary;
+  } catch {
+    return fallback;
+  }
+}
+
+function deriveSummaryFallback(text) {
+  const compact = String(text || "").replace(/\s+/g, " ").trim();
+  if (!compact) return "";
+  const cut = compact.slice(0, 220);
+  if (compact.length <= 220) return cut;
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${lastSpace > 80 ? cut.slice(0, lastSpace) : cut}…`;
+}
+
+/**
  * Format raw notes into clean, readable HTML for the given subject.
  * Faithful to source only: expand shorthand + HTML layout — never invent content.
  */

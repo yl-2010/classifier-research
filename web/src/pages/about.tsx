@@ -1,9 +1,11 @@
 import Head from "next/head";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
 import { AppNav } from "@/components/AppNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useOpenAiOcrAvailable } from "@/lib/useOpenAiOcrAvailable";
+import { useUiContext } from "@/lib/uiContext";
 
 const JUMP_KEY = "notelms-jump";
 
@@ -12,6 +14,17 @@ export default function AboutPage() {
   const router = useRouter();
   const signedIn = status === "authenticated";
   const { available: imageOcrAvailable } = useOpenAiOcrAvailable();
+  const { setUiContext } = useUiContext();
+
+  useEffect(() => {
+    setUiContext({
+      page: "about",
+      subject: null,
+      noteId: null,
+      noteTitle: null,
+      noteText: null,
+    });
+  }, [setUiContext]);
 
   const jumpHome = () => {
     sessionStorage.setItem(JUMP_KEY, "notebook");

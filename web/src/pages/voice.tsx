@@ -9,6 +9,7 @@ import {
   type VoicePlayerUi,
 } from "@/lib/orpheusVoicePlayer";
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
+import { useUiContext } from "@/lib/uiContext";
 
 const DEFAULT_VOICES = [
   "tara",
@@ -47,6 +48,7 @@ export default function VoicePage() {
   const router = useRouter();
   const signedIn = status === "authenticated";
   const { apiBase, loading: configLoading } = useNotelmsRuntimeConfig();
+  const { setUiContext } = useUiContext();
 
   const [text, setText] = useState("");
   const [voices, setVoices] = useState(DEFAULT_VOICES);
@@ -57,6 +59,16 @@ export default function VoicePage() {
   );
   const playerRef = useRef<OrpheusVoicePlayer | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    setUiContext({
+      page: "voice",
+      subject: null,
+      noteId: null,
+      noteTitle: null,
+      noteText: null,
+    });
+  }, [setUiContext]);
 
   useEffect(() => {
     if (status === "unauthenticated") {

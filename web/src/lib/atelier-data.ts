@@ -70,6 +70,8 @@ export type NoteItem = {
   votes: ModelVotes | null;
   /** ISO upload/create time; used for list sort and date label. */
   createdAt?: string;
+  /** 1–2 sentence GPT-OSS summary from ingest. */
+  summary?: string;
 };
 
 export type ResearchRow = {

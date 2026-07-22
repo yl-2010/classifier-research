@@ -23,6 +23,7 @@ import {
   type NoteItem,
   type ResearchRow,
 } from "@/lib/atelier-data";
+import { exportNotePdf } from "@/lib/exportNotePdf";
 import {
   availableFixedToAdd,
   loadInvokedSubjects,
@@ -32,6 +33,7 @@ import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { renderNoteMath } from "@/lib/renderNoteMath";
 import { loadResearch, saveResearch } from "@/lib/research-store";
 import { useOpenAiOcrAvailable } from "@/lib/useOpenAiOcrAvailable";
+import { useUiContext } from "@/lib/uiContext";
 import {
   findLabelBySlug,
   findNoteBySlug,
@@ -77,6 +79,7 @@ type ApiNoteMeta = {
   title?: string;
   subject?: string;
   html?: string | null;
+  summary?: string | null;
   createdAt?: string;
   updatedAt?: string;
   classification?: {
@@ -147,7 +150,20 @@ function mapApiNote(meta: ApiNoteMeta): NoteItem {
     corrected: false,
     votes: mapVotes(meta.classification),
     createdAt: meta.createdAt || meta.updatedAt,
+    summary:
+      typeof meta.summary === "string" && meta.summary.trim()
+        ? meta.summary.trim()
+        : undefined,
   };
+}
+
+function stripHtmlToText(html: string): string {
+  return String(html || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export default function HomePage() {
@@ -156,6 +172,7 @@ export default function HomePage() {
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
   const { available: imageOcrAvailable } = useOpenAiOcrAvailable();
+  const { setUiContext } = useUiContext();
 
   const pathParts = useMemo(() => {
     const raw = router.query.path;
@@ -173,6 +190,7 @@ export default function HomePage() {
   const restoredRef = useRef(false);
   const htmlFetchRef = useRef<Set<string>>(new Set());
   const mathHostRef = useRef<HTMLDivElement>(null);
+  const noteShellRef = useRef<HTMLDivElement>(null);
   const dragDepthRef = useRef(0);
 
   const [notes, setNotes] = useState<NoteItem[]>([]);
@@ -186,6 +204,7 @@ export default function HomePage() {
   const [customDraft, setCustomDraft] = useState("");
   const [deletingSubject, setDeletingSubject] = useState(false);
   const [deletingNote, setDeletingNote] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [sending, setSending] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -663,6 +682,50 @@ export default function HomePage() {
 
   const openNote = notes.find((n) => n.id === openNoteId && n.status === "ready");
 
+  useEffect(() => {
+    if (!signedIn) {
+      setUiContext({ page: "home" });
+      return;
+    }
+    if (openNoteId && openNote) {
+      setUiContext({
+        page: "note",
+        subject: openNote.subject,
+        noteId: openNote.id,
+        noteTitle: openNote.title,
+        noteText: stripHtmlToText(openNote.html) || openNote.summary || "",
+      });
+      return;
+    }
+    if (folder) {
+      setUiContext({
+        page: "library",
+        subject: folder,
+        noteId: null,
+        noteTitle: null,
+        noteText: null,
+      });
+      return;
+    }
+    setUiContext({
+      page: "home",
+      subject: null,
+      noteId: null,
+      noteTitle: null,
+      noteText: null,
+    });
+  }, [
+    signedIn,
+    openNoteId,
+    openNote?.id,
+    openNote?.subject,
+    openNote?.title,
+    openNote?.html,
+    openNote?.summary,
+    folder,
+    setUiContext,
+  ]);
+
   const openNoteNeedsHtml = Boolean(
     openNote && openNote.status === "ready" && !openNote.html
   );
@@ -683,8 +746,16 @@ export default function HomePage() {
         if (!res.ok || !data.ok || !data.note) return;
         const html =
           typeof data.note.html === "string" ? data.note.html : "";
+        const summary =
+          typeof data.note.summary === "string" && data.note.summary.trim()
+            ? data.note.summary.trim()
+            : undefined;
         setNotes((prev) =>
-          prev.map((n) => (n.id === openNoteId ? { ...n, html } : n))
+          prev.map((n) =>
+            n.id === openNoteId
+              ? { ...n, html, summary: summary ?? n.summary }
+              : n
+          )
         );
       } catch {
         /* keep placeholder; ref stays set so we do not retry spam */
@@ -699,6 +770,19 @@ export default function HomePage() {
     renderNoteMath(mathHostRef.current);
   }, [openNoteId, openNote?.html]);
 
+  const exportOpenNotePdf = async () => {
+    if (!openNote || !noteShellRef.current || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await exportNotePdf(noteShellRef.current, openNote.title);
+    } catch (err) {
+      setLibraryError(
+        err instanceof Error ? err.message : "Could not export PDF"
+      );
+    } finally {
+      setExportingPdf(false);
+    }
+  };
   const changeSubject = async (next: string) => {
     if (!openNote) return;
     if (next === openNote.subject) return;
@@ -1036,8 +1120,12 @@ export default function HomePage() {
                       {subjectSaved && <span className="saved">Updated</span>}
                     </div>
                   </div>
+                  {openNote.summary ? (
+                    <p className="note-summary">{openNote.summary}</p>
+                  ) : null}
                     <div
                       className="note-shell"
+                      ref={noteShellRef}
                       style={
                         {
                           "--subj": subjectColor(openNote.subject),
@@ -1060,6 +1148,14 @@ export default function HomePage() {
                       onClick={() => openSubject(openNote.subject)}
                     >
                       Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={exportingPdf || !openNote.html}
+                      onClick={() => void exportOpenNotePdf()}
+                    >
+                      {exportingPdf ? "Exporting…" : "Export PDF"}
                     </button>
                     {openNote.votes && (
                       <p className="model-votes muted">
@@ -1305,8 +1401,8 @@ export default function HomePage() {
           animation: gate-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.16s both;
         }
 
-        :global(.gate-secondary),
-        .gate-secondary {
+        :global(.btn.gate-secondary),
+        .btn.gate-secondary {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -1317,8 +1413,8 @@ export default function HomePage() {
             color-mix(in srgb, var(--accent) 35%, transparent);
         }
 
-        :global(.gate-secondary:hover),
-        .gate-secondary:hover {
+        :global(.btn.gate-secondary:hover),
+        .btn.gate-secondary:hover {
           background: color-mix(in srgb, var(--accent) 12%, transparent);
           color: var(--ink);
         }
@@ -1662,6 +1758,14 @@ export default function HomePage() {
           color: var(--accent);
           font-size: 0.85rem;
           font-weight: 600;
+        }
+
+        .note-summary {
+          margin: 0 0 1rem;
+          color: var(--mute);
+          font-size: 0.95rem;
+          line-height: 1.5;
+          max-width: 42rem;
         }
 
         .note-shell {

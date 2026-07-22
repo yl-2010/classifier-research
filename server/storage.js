@@ -448,6 +448,10 @@ export async function createNote(email, fields = {}) {
     source: fields.source || "paste",
     classification: fields.classification || null,
     researchEventId: fields.researchEventId || null,
+    summary:
+      typeof fields.summary === "string" && fields.summary.trim()
+        ? fields.summary.trim()
+        : null,
   };
 
   await writeJson(paths.meta, meta);

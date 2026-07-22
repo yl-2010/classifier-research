@@ -6,6 +6,7 @@ import { AppNav } from "@/components/AppNav";
 import { ClusteredMetricsChart, type ArmMetrics } from "@/components/ClusteredMetricsChart";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
+import { useUiContext } from "@/lib/uiContext";
 
 const JUMP_KEY = "notelms-jump";
 const INCLUDE_USER_KEY = "notelms-research-include-user";
@@ -102,12 +103,23 @@ export default function ResearchPage() {
   const router = useRouter();
   const signedIn = status === "authenticated";
   const { apiBase, loading: configLoading } = useNotelmsRuntimeConfig();
+  const { setUiContext } = useUiContext();
   const [includeUserTests, setIncludeUserTests] = useState(false);
   const [includeEvalTests, setIncludeEvalTests] = useState(true);
   const [prefsReady, setPrefsReady] = useState(false);
   const [data, setData] = useState<EvalPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setUiContext({
+      page: "research",
+      subject: null,
+      noteId: null,
+      noteTitle: null,
+      noteText: null,
+    });
+  }, [setUiContext]);
 
   useEffect(() => {
     let user = readIncludeUserPref();

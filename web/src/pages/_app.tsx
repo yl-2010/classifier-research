@@ -3,6 +3,8 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect, useRef } from "react";
 import "katex/dist/katex.min.css";
 import "../styles/globals.css";
+import { NotesChat } from "@/components/NotesChat";
+import { UiContextProvider } from "@/lib/uiContext";
 
 /** When a session is present, make sure the Mac Studio email folder exists. */
 function EnsureMacUserFolder() {
@@ -26,8 +28,11 @@ export default function App({
 }: AppProps) {
   return (
     <SessionProvider session={session}>
-      <EnsureMacUserFolder />
-      <Component {...pageProps} />
+      <UiContextProvider>
+        <EnsureMacUserFolder />
+        <Component {...pageProps} />
+        <NotesChat />
+      </UiContextProvider>
     </SessionProvider>
   );
 }

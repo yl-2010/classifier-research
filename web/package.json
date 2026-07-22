@@ -8,7 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
+    "html2canvas": "^1.4.1",
     "jose": "^5.10.0",
+    "jspdf": "^4.2.1",
     "katex": "^0.18.1",
     "next": "^15.3.5",
     "next-auth": "^4.24.14",

@@ -39,8 +39,10 @@ import {
   classifyEnsemble,
   formatNotesWithGptOss,
   generateTitleWithGptOss,
+  generateSummaryWithGptOss,
   resolveSubject,
 } from "./classify.js";
+import { assembleNotesChatContext } from "./noteChatContext.js";
 import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 import { buildResearchMetrics } from "./research-metrics.js";
@@ -439,9 +441,10 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
     });
     const resolved = resolveSubject(classification, subjects.custom);
 
-    const [formatted, title] = await Promise.all([
+    const [formatted, title, summary] = await Promise.all([
       formatNotesWithGptOss(rawText, resolved.subject),
       generateTitleWithGptOss(rawText),
+      generateSummaryWithGptOss(rawText),
     ]);
 
     const research = await writeResearchEvent(req.user.email, {
@@ -476,6 +479,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
       rawText,
       html: formatted.html,
       title,
+      summary,
       subject: resolved.subject,
       source: req.body?.source || "paste",
       classification: {
@@ -491,7 +495,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
 
     res.status(201).json({
       ok: true,
-      note: { ...note, html: formatted.html },
+      note: { ...note, html: formatted.html, summary },
       classification,
       resolved,
       votes: classification.votes,
@@ -505,7 +509,7 @@ app.post("/api/notes/ingest", requireAuth, async (req, res) => {
   }
 });
 
-/** Free-form chat against GPT-OSS (optional helper for the product UI). */
+/** Free-form chat against GPT-OSS with note/site context (SocketHR-style). */
 app.post("/api/chat", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });
@@ -520,7 +524,7 @@ app.post("/api/chat", requireAuth, async (req, res) => {
           m &&
           typeof m.role === "string" &&
           typeof m.content === "string" &&
-          ["system", "user", "assistant"].includes(m.role)
+          ["user", "assistant"].includes(m.role)
       )
       .slice(-40)
       .map((m) => ({ role: m.role, content: m.content.slice(0, 16000) }));
@@ -530,16 +534,29 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       return;
     }
 
+    const uiContext =
+      req.body?.uiContext && typeof req.body.uiContext === "object"
+        ? req.body.uiContext
+        : {};
+
+    const { system, retrievedNotes } = await assembleNotesChatContext(
+      req.user.email,
+      { messages: safe, uiContext }
+    );
+
     const result = await chatCompletions({
-      messages: safe,
-      temperature: typeof req.body?.temperature === "number" ? req.body.temperature : 0.4,
-      maxTokens: typeof req.body?.maxTokens === "number" ? req.body.maxTokens : 2048,
+      messages: [{ role: "system", content: system }, ...safe],
+      temperature:
+        typeof req.body?.temperature === "number" ? req.body.temperature : 0.4,
+      maxTokens:
+        typeof req.body?.maxTokens === "number" ? req.body.maxTokens : 2048,
     });
     res.json({
       ok: true,
       content: result.content,
       model: result.model,
       usage: result.usage,
+      retrievedNoteIds: retrievedNotes.map((n) => n.id),
       lmStudio: getLmStudioConfig(),
     });
   } catch (err) {
