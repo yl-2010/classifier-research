@@ -13,7 +13,6 @@ import {
   emailToFolderName,
   addCustomSubject,
   setSubjectColor,
-  setThemePreference,
   listSubjects,
   getProfile,
   deleteSubject,
@@ -192,25 +191,11 @@ describe("storage", () => {
     );
   });
 
-  it("stores theme on the profile", async () => {
+  it("defaults profile theme to system (session theme is browser-only)", async () => {
     const email = "theme@example.com";
     await ensureUser(email);
-    let profile = await getProfile(email);
+    const profile = await getProfile(email);
     assert.equal(profile.theme, "system");
-
-    const dark = await setThemePreference(email, "dark");
-    assert.equal(dark.theme, "dark");
-    profile = await getProfile(email);
-    assert.equal(profile.theme, "dark");
-
-    await setThemePreference(email, "light");
-    profile = await getProfile(email);
-    assert.equal(profile.theme, "light");
-
-    await assert.rejects(
-      () => setThemePreference(email, "blue"),
-      /invalid theme/
-    );
   });
 
   it("seeds the eight core subject colors onto the profile", async () => {

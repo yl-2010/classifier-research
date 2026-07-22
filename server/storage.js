@@ -380,6 +380,10 @@ export async function updateProfile(email, patch = {}) {
   return writeProfileFields(email, patch);
 }
 
+/**
+ * @deprecated Theme is session-only in the browser. Prefer returning themeUpdate
+ * from chat without writing the USB profile. Kept for legacy profile tooling.
+ */
 export async function setThemePreference(email, theme) {
   if (
     theme !== "light" &&

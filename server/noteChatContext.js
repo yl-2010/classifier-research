@@ -10,7 +10,6 @@ import {
   listResearchEvents,
   listAllResearchEvents,
   setSubjectColor,
-  setThemePreference,
 } from "./storage.js";
 import { buildResearchMetrics } from "./research-metrics.js";
 import { extractJsonObject } from "./classify.js";
@@ -349,10 +348,70 @@ export function parseSetSubjectColorAction(parsed) {
   return { subject, color };
 }
 
+/** @typedef {"light"|"dark"|"system"} ThemePreference */
+
+const THEME_MARKER_RE =
+  /\[\[\s*set_theme\s*:\s*(light|dark|system)\s*\]\]/gi;
+
 /**
- * Parse a set_theme action from model JSON.
+ * @param {unknown} raw
+ * @returns {ThemePreference | null}
+ */
+function normalizeTheme(raw) {
+  const t = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (t === "light" || t === "dark" || t === "system") return t;
+  return null;
+}
+
+/**
+ * Strip gpt-oss / Harmony control tokens from model text.
+ * @param {string} text
+ */
+export function stripHarmonyTokens(text) {
+  let s = String(text || "").replace(/<\|[^|>]{1,120}\|>/g, "");
+  s = s.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (
+    /^(?:final|analysis|commentary|json|message)(?:\s+(?:final|analysis|commentary|json|message))*$/i.test(
+      s
+    )
+  ) {
+    return "";
+  }
+  return s;
+}
+
+/**
+ * Parse [[set_theme:dark]] (last marker wins). Session-only — no USB write.
+ * @param {string} text
+ * @returns {ThemePreference | null}
+ */
+export function extractThemeMarker(text) {
+  let found = null;
+  const re = new RegExp(THEME_MARKER_RE.source, "gi");
+  let match;
+  while ((match = re.exec(String(text || ""))) !== null) {
+    found = normalizeTheme(match[1]);
+  }
+  return found;
+}
+
+/**
+ * @param {string} text
+ */
+export function stripThemeMarkers(text) {
+  return String(text || "")
+    .replace(new RegExp(THEME_MARKER_RE.source, "gi"), "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Parse a set_theme action from model JSON (legacy fallback).
  * @param {unknown} parsed
- * @returns {{ theme: "light" | "dark" | "system" } | null}
+ * @returns {{ theme: ThemePreference } | null}
  */
 export function parseSetThemeAction(parsed) {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -367,44 +426,38 @@ export function parseSetThemeAction(parsed) {
         : typeof parsed.mode === "string"
           ? parsed.mode.trim().toLowerCase()
           : "";
-  if (raw === "light" || raw === "dark" || raw === "system") {
-    return { theme: raw };
-  }
-  return null;
+  const theme = normalizeTheme(raw);
+  return theme ? { theme } : null;
 }
 
 /**
- * Apply chat side-effects from a trailing JSON action (subject color and/or theme).
- * Theme is returned for the client to persist; subject color is written server-side.
+ * Apply chat side-effects from model actions.
+ * Theme: [[set_theme:…]] marker (or legacy JSON) → themeUpdate for the client only (session; no USB).
+ * Subject color: trailing set_subject_color JSON → written server-side (unchanged).
  * @param {string} email
  * @param {string} rawContent
  */
 export async function applyChatSubjectColorAction(email, rawContent) {
-  const raw = String(rawContent || "");
-  const parsed = extractJsonObject(raw);
+  const cleaned = stripHarmonyTokens(String(rawContent || ""));
+  const fromMarker = extractThemeMarker(cleaned);
+  const withoutMarkers = stripThemeMarkers(cleaned);
+  const parsed = extractJsonObject(withoutMarkers);
   const colorAction = parseSetSubjectColorAction(parsed);
-  const themeAction = parseSetThemeAction(parsed);
-  const stripped = stripTrailingJsonObject(raw);
-  const baseContent = stripped.trim() || raw.trim() || "…";
+  const themeFromJson = colorAction ? null : parseSetThemeAction(parsed);
+  const stripped = stripTrailingJsonObject(withoutMarkers);
+  const baseContent = stripped.trim() || withoutMarkers.trim() || "…";
+  const theme = fromMarker || themeFromJson?.theme || null;
 
-  if (!colorAction && !themeAction) {
+  if (!colorAction && !theme) {
     return { content: baseContent };
   }
 
-  /** @type {{ content: string, subjectColorUpdate?: { label: string, color: string }, subjects?: unknown, themeUpdate?: { theme: string } }} */
+  /** @type {{ content: string, subjectColorUpdate?: { label: string, color: string }, subjects?: unknown, themeUpdate?: { theme: ThemePreference } }} */
   const out = { content: baseContent };
 
-  if (themeAction) {
-    try {
-      const result = await setThemePreference(email, themeAction.theme);
-      out.themeUpdate = { theme: result.theme };
-    } catch (err) {
-      const msg = err?.message || "failed to update theme";
-      out.content = [
-        baseContent === "…" ? "I couldn't update the theme." : baseContent,
-        `(${msg})`,
-      ].join("\n\n");
-    }
+  if (theme) {
+    // Session-only: do not persist theme to the USB profile.
+    out.themeUpdate = { theme };
   }
 
   if (colorAction) {
@@ -486,7 +539,7 @@ Rules:
 - When NAVIGATION says the user moved to a different page/note, answer about the new CURRENT OPEN NOTE / CURRENT SCREEN, not the note discussed earlier in the chat.
 - When NAVIGATION says the user is still on the same page/note, treat follow-ups as continuing that same context.
 - Subject accent colors: the user may ask you to change any listed subject's color to a specific color (a color name or #RRGGBB). When they do, reply briefly confirming the change, resolve the requested color to a #RRGGBB hex (use a saturated mid-brightness accent for vague names like "red"), and append a single JSON object on its own at the end of your reply with this exact schema: {"action":"set_subject_color","subject":"<exact subject label from SUBJECT COLORS>","color":"#rrggbb"}. Use the exact subject label from SUBJECT COLORS. Only recolor subjects that appear in SUBJECT COLORS; do not invent subjects. Do not emit that JSON unless the user asked to change a subject's color.
-- Site theme: the user may ask you to switch the overall site theme. Allowed values are exactly light, dark, or system (follow the OS). Use SITE THEME in CURRENT SCREEN for the current preference. When they ask to change it, reply briefly confirming and append a single JSON object at the end: {"action":"set_theme","theme":"light"|"dark"|"system"}. Do not emit that JSON unless they asked to change the theme. Emit only one action JSON object per reply (either set_subject_color or set_theme, not both).
+- Site theme: the user may ask you to switch the overall site theme. Allowed values are exactly light, dark, or system (follow the OS). Use SITE THEME in CURRENT SCREEN for the current preference. When they ask to change it, reply with a brief confirmation and end your reply with this exact marker on its own line: [[set_theme:dark]] (replace dark with light, dark, or system). Example reply:\nSite theme set to dark\n[[set_theme:dark]]\nThe website only changes theme when that marker is present. Never claim a theme change succeeded unless you include the marker. Do not use JSON or Harmony/channel tokens for theme — only the [[set_theme:…]] marker. Do not combine a theme marker with a set_subject_color JSON in the same reply.
 
 ${uiBlock}
 

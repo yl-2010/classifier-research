@@ -9,6 +9,8 @@ import {
   formatSubjectColorsForChat,
   parseSetSubjectColorAction,
   parseSetThemeAction,
+  extractThemeMarker,
+  applyChatSubjectColorAction,
   sameUiLocation,
   scoreHaystack,
   stripTrailingJsonObject,
@@ -148,8 +150,9 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
     assert.match(system, /SUBJECT COLORS/);
     assert.match(system, /APUSH: #c45c26/);
     assert.match(system, /set_subject_color/);
-    assert.match(system, /set_theme/);
+    assert.match(system, /\[\[set_theme:/);
     assert.match(system, /SITE THEME preference: system/);
+    assert.doesNotMatch(system, /"action":"set_theme"/);
     assert.match(system, /User moved from/);
     assert.match(system, /still on the same page\/note/);
   });
@@ -190,8 +193,8 @@ describe("parseSetSubjectColorAction / stripTrailingJsonObject", () => {
   });
 });
 
-describe("parseSetThemeAction", () => {
-  it("parses light/dark/system theme actions", () => {
+describe("parseSetThemeAction / extractThemeMarker / applyChatSubjectColorAction", () => {
+  it("parses light/dark/system theme actions from JSON", () => {
     assert.deepEqual(parseSetThemeAction({ action: "set_theme", theme: "Dark" }), {
       theme: "dark",
     });
@@ -204,6 +207,38 @@ describe("parseSetThemeAction", () => {
       null
     );
     assert.equal(parseSetThemeAction({ action: "set_subject_color" }), null);
+  });
+
+  it("parses [[set_theme:…]] markers", () => {
+    assert.equal(extractThemeMarker("Done\n[[set_theme:dark]]"), "dark");
+    assert.equal(extractThemeMarker("nope"), null);
+  });
+
+  it("returns session themeUpdate from marker without requiring USB write", async () => {
+    const result = await applyChatSubjectColorAction(
+      "theme-chat@example.com",
+      "Site theme set to dark\n[[set_theme:dark]]"
+    );
+    assert.deepEqual(result.themeUpdate, { theme: "dark" });
+    assert.equal(result.content, "Site theme set to dark");
+    assert.equal(result.subjectColorUpdate, undefined);
+  });
+
+  it("still applies set_subject_color JSON to storage", async () => {
+    // This test only checks parsing path when color JSON is present;
+    // full USB write is covered in storage tests.
+    const stripped = stripTrailingJsonObject(
+      'Done — Biology is now red.\n{"action":"set_subject_color","subject":"Biology","color":"#dc2626"}'
+    );
+    assert.equal(stripped, "Done — Biology is now red.");
+    assert.deepEqual(
+      parseSetSubjectColorAction({
+        action: "set_subject_color",
+        subject: "Biology",
+        color: "#dc2626",
+      }),
+      { subject: "Biology", color: "#dc2626" }
+    );
   });
 });
 

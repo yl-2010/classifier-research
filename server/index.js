@@ -21,7 +21,6 @@ import {
   listSubjects,
   addCustomSubject,
   setSubjectColor,
-  setThemePreference,
   deleteSubject,
   listNotes,
   getNote,
@@ -205,13 +204,7 @@ app.patch("/api/me", requireAuth, async (req, res) => {
     await ensureUser(req.user.email, { name: req.user.name });
     const allowed = {};
     if (typeof req.body?.name === "string") allowed.name = req.body.name;
-    if (
-      req.body?.theme === "light" ||
-      req.body?.theme === "dark" ||
-      req.body?.theme === "system"
-    ) {
-      allowed.theme = req.body.theme;
-    }
+    // Theme is session-only in the browser — do not persist to USB profile.
     const profile = await updateProfile(req.user.email, allowed);
     res.json({ ok: true, user: profile });
   } catch (err) {
