@@ -12,7 +12,7 @@
     "tts": "./scripts/start-notelms-tts.sh",
     "verify:public-api": "curl -fsS https://api.notelms.com/health",
     "test:server": "npm test --prefix server",
-    "bert:serve": ".venv/bin/python scripts/bert_serve.py",
+    "bert:serve": "./scripts/start-notelms-bert.sh",
     "bert:train": ".venv/bin/python scripts/train_bert.py",
     "bert:eval": ".venv/bin/python scripts/eval_bert.py",
     "bert:eval:gptoss": ".venv/bin/python scripts/eval_bert.py --only-gpt-oss"
