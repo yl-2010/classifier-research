@@ -67,6 +67,22 @@ describe("storage", () => {
     assert.ok(st.isDirectory());
   });
 
+  it("handles concurrent ensureUser writes without ENOENT", async () => {
+    const email = "concurrent@example.com";
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => ensureUser(email, { name: "Concurrent" }))
+    );
+    assert.equal(results.length, 20);
+    for (const result of results) {
+      assert.equal(result.profile.email, email);
+    }
+    const profilePath = path.join(tmpRoot, email, "profile.json");
+    const raw = await fs.readFile(profilePath, "utf8");
+    const profile = JSON.parse(raw);
+    assert.equal(profile.email, email);
+    assert.equal(profile.name, "Concurrent");
+  });
+
   it("stores notes under the user folder", async () => {
     const email = "notes@example.com";
     await ensureUser(email);
