@@ -89,9 +89,72 @@ export function scoreHaystack(tokens, haystack) {
 }
 
 /**
+ * Compact label for the user's screen location (page + note).
  * @param {Record<string, unknown> | null | undefined} uiContext
  */
-export function formatUiContext(uiContext) {
+export function describeUiLocation(uiContext) {
+  const ui = uiContext && typeof uiContext === "object" ? uiContext : {};
+  const page = String(ui.page || "unknown");
+  const noteId =
+    typeof ui.noteId === "string" && ui.noteId.trim() ? ui.noteId.trim() : null;
+  const noteTitle =
+    typeof ui.noteTitle === "string" && ui.noteTitle.trim()
+      ? ui.noteTitle.trim()
+      : null;
+  const subject =
+    typeof ui.subject === "string" && ui.subject.trim()
+      ? ui.subject.trim()
+      : null;
+
+  if (page === "note" || noteId) {
+    const titlePart = noteTitle ? `"${noteTitle}"` : "untitled note";
+    const idPart = noteId ? ` id=${noteId}` : "";
+    const subjectPart = subject ? ` [${subject}]` : "";
+    return `note ${titlePart}${subjectPart}${idPart}`;
+  }
+  if (subject) return `${page} (subject: ${subject})`;
+  return page;
+}
+
+/**
+ * True when page + open note id match (theme ignored).
+ * @param {Record<string, unknown> | null | undefined} a
+ * @param {Record<string, unknown> | null | undefined} b
+ */
+export function sameUiLocation(a, b) {
+  if (!a || typeof a !== "object" || !b || typeof b !== "object") return false;
+  const pageA = String(a.page || "");
+  const pageB = String(b.page || "");
+  if (pageA !== pageB) return false;
+  const noteA =
+    typeof a.noteId === "string" && a.noteId.trim() ? a.noteId.trim() : "";
+  const noteB =
+    typeof b.noteId === "string" && b.noteId.trim() ? b.noteId.trim() : "";
+  return noteA === noteB;
+}
+
+/**
+ * Tell the model whether the user stayed put or navigated since last turn.
+ * @param {Record<string, unknown> | null | undefined} uiContext
+ * @param {Record<string, unknown> | null | undefined} previousUiContext
+ */
+export function formatNavigationHint(uiContext, previousUiContext) {
+  if (!previousUiContext || typeof previousUiContext !== "object") {
+    return "NAVIGATION: First message in this chat (or previous screen unknown). Use CURRENT SCREEN / OPEN NOTE below.";
+  }
+  if (sameUiLocation(uiContext, previousUiContext)) {
+    return "NAVIGATION: User is still on the same page/note as the previous message. Continue with that same context.";
+  }
+  const from = describeUiLocation(previousUiContext);
+  const to = describeUiLocation(uiContext);
+  return `NAVIGATION: User moved from ${from} to ${to}. Prior chat turns may refer to the previous screen/note — answer this message using the CURRENT OPEN NOTE / CURRENT SCREEN below.`;
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} uiContext
+ * @param {Record<string, unknown> | null | undefined} [previousUiContext]
+ */
+export function formatUiContext(uiContext, previousUiContext) {
   const ui = uiContext && typeof uiContext === "object" ? uiContext : {};
   const page = String(ui.page || "unknown");
   const lines = [`CURRENT SCREEN: ${page}`];
@@ -116,6 +179,7 @@ export function formatUiContext(uiContext) {
         : `SITE THEME preference: ${themePref}`
     );
   }
+  lines.push(formatNavigationHint(uiContext, previousUiContext));
   return lines.join("\n");
 }
 
@@ -370,6 +434,7 @@ export async function applyChatSubjectColorAction(email, rawContent) {
  * Build the full system prompt for NoteLMs chat.
  * @param {{
  *   uiContext?: Record<string, unknown>,
+ *   previousUiContext?: Record<string, unknown>,
  *   openNoteText?: string,
  *   retrievedNotes?: Array<Record<string, unknown>>,
  *   researchMetricsText?: string,
@@ -377,7 +442,7 @@ export async function applyChatSubjectColorAction(email, rawContent) {
  * }} parts
  */
 export function buildNotesChatSystemPrompt(parts = {}) {
-  const uiBlock = formatUiContext(parts.uiContext);
+  const uiBlock = formatUiContext(parts.uiContext, parts.previousUiContext);
   const openTitle = parts.uiContext?.noteTitle
     ? String(parts.uiContext.noteTitle)
     : "";
@@ -417,7 +482,9 @@ Rules:
 - Prefer evidence from OPEN NOTE, RETRIEVED NOTES, research metrics, and site facts.
 - If something is not in the materials, say you do not see it. Do not invent note content.
 - You may use light Markdown: **bold**, *italic*, bullet or numbered lists.
-- You know which screen the user is on from CURRENT SCREEN.
+- You know which screen the user is on from CURRENT SCREEN. Every turn includes fresh CURRENT SCREEN / OPEN NOTE / NAVIGATION — trust those over older chat turns when they disagree.
+- When NAVIGATION says the user moved to a different page/note, answer about the new CURRENT OPEN NOTE / CURRENT SCREEN, not the note discussed earlier in the chat.
+- When NAVIGATION says the user is still on the same page/note, treat follow-ups as continuing that same context.
 - Subject accent colors: the user may ask you to change any listed subject's color to a specific color (a color name or #RRGGBB). When they do, reply briefly confirming the change, resolve the requested color to a #RRGGBB hex (use a saturated mid-brightness accent for vague names like "red"), and append a single JSON object on its own at the end of your reply with this exact schema: {"action":"set_subject_color","subject":"<exact subject label from SUBJECT COLORS>","color":"#rrggbb"}. Use the exact subject label from SUBJECT COLORS. Only recolor subjects that appear in SUBJECT COLORS; do not invent subjects. Do not emit that JSON unless the user asked to change a subject's color.
 - Site theme: the user may ask you to switch the overall site theme. Allowed values are exactly light, dark, or system (follow the OS). Use SITE THEME in CURRENT SCREEN for the current preference. When they ask to change it, reply briefly confirming and append a single JSON object at the end: {"action":"set_theme","theme":"light"|"dark"|"system"}. Do not emit that JSON unless they asked to change the theme. Emit only one action JSON object per reply (either set_subject_color or set_theme, not both).
 
@@ -443,14 +510,19 @@ ${retrievedBlock}`;
  * @param {{
  *   messages: Array<{role: string, content: string}>,
  *   uiContext?: Record<string, unknown>,
+ *   previousUiContext?: Record<string, unknown>,
  * }} input
  */
 export async function assembleNotesChatContext(email, input) {
   const messages = Array.isArray(input.messages) ? input.messages : [];
   const uiContext =
     input.uiContext && typeof input.uiContext === "object"
-      ? input.uiContext
+      ? { ...input.uiContext }
       : {};
+  const previousUiContext =
+    input.previousUiContext && typeof input.previousUiContext === "object"
+      ? input.previousUiContext
+      : null;
 
   const lastUser = [...messages]
     .reverse()
@@ -509,13 +581,14 @@ export async function assembleNotesChatContext(email, input) {
 
   const system = buildNotesChatSystemPrompt({
     uiContext,
+    previousUiContext,
     openNoteText,
     retrievedNotes,
     researchMetricsText,
     subjectColorsText,
   });
 
-  return { system, uiContext, retrievedNotes, openNoteText };
+  return { system, uiContext, previousUiContext, retrievedNotes, openNoteText };
 }
 
 function stripHtml(html) {

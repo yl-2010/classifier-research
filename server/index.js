@@ -604,10 +604,15 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       req.body?.uiContext && typeof req.body.uiContext === "object"
         ? req.body.uiContext
         : {};
+    const previousUiContext =
+      req.body?.previousUiContext &&
+      typeof req.body.previousUiContext === "object"
+        ? req.body.previousUiContext
+        : null;
 
     const { system, retrievedNotes } = await assembleNotesChatContext(
       req.user.email,
-      { messages: safe, uiContext }
+      { messages: safe, uiContext, previousUiContext }
     );
 
     const result = await chatCompletions({

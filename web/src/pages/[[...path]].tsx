@@ -157,7 +157,7 @@ function mapApiNote(meta: ApiNoteMeta): NoteItem {
   };
 }
 
-function stripHtmlToText(html: string): string {
+function stripHtmlToText(html?: string | null): string {
   return String(html || "")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -767,6 +767,10 @@ export default function HomePage() {
   };
 
   const openNote = notes.find((n) => n.id === openNoteId && n.status === "ready");
+  const pendingOpenNote =
+    openNoteId && !openNote
+      ? notes.find((n) => n.id === openNoteId)
+      : undefined;
 
   useEffect(() => {
     if (!signedIn) {
@@ -780,6 +784,21 @@ export default function HomePage() {
         noteId: openNote.id,
         noteTitle: openNote.title,
         noteText: stripHtmlToText(openNote.html) || openNote.summary || "",
+      });
+      return;
+    }
+    // Note selected but not ready in the list yet — still publish noteId so chat
+    // does not briefly fall back to library/home (or keep the previous note).
+    if (openNoteId) {
+      setUiContext({
+        page: "note",
+        subject: pendingOpenNote?.subject ?? null,
+        noteId: openNoteId,
+        noteTitle: pendingOpenNote?.title ?? null,
+        noteText:
+          stripHtmlToText(pendingOpenNote?.html || "") ||
+          pendingOpenNote?.summary ||
+          null,
       });
       return;
     }
@@ -808,6 +827,10 @@ export default function HomePage() {
     openNote?.title,
     openNote?.html,
     openNote?.summary,
+    pendingOpenNote?.subject,
+    pendingOpenNote?.title,
+    pendingOpenNote?.html,
+    pendingOpenNote?.summary,
     folder,
     setUiContext,
   ]);

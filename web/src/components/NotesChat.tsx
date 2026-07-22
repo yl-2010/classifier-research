@@ -8,6 +8,14 @@ import { isThemePreference } from "@/lib/theme";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+/** Screen location fingerprint sent with each chat turn (for NAVIGATION hint). */
+type UiLocationSnapshot = {
+  page: string;
+  subject?: string;
+  noteId?: string;
+  noteTitle?: string;
+};
+
 export function NotesChat() {
   const { status } = useSession();
   const signedIn = status === "authenticated";
@@ -21,6 +29,7 @@ export function NotesChat() {
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
+  const lastUiRef = useRef<UiLocationSnapshot | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -44,20 +53,31 @@ export function NotesChat() {
     setBusy(true);
     setError(null);
 
+    const uiContext = {
+      page: ui.page,
+      subject: ui.subject || undefined,
+      noteId: ui.noteId || undefined,
+      noteTitle: ui.noteTitle || undefined,
+      noteText: ui.noteText || undefined,
+      theme: preference,
+      resolvedTheme: resolved,
+    };
+    const previousUiContext = lastUiRef.current || undefined;
+    // Record this turn's location immediately so the next send compares correctly.
+    lastUiRef.current = {
+      page: ui.page,
+      subject: ui.subject || undefined,
+      noteId: ui.noteId || undefined,
+      noteTitle: ui.noteTitle || undefined,
+    };
+
     try {
       const res = await notelmsFetch(apiBase, "/api/chat", {
         method: "POST",
         body: JSON.stringify({
           messages: nextMessages,
-          uiContext: {
-            page: ui.page,
-            subject: ui.subject || undefined,
-            noteId: ui.noteId || undefined,
-            noteTitle: ui.noteTitle || undefined,
-            noteText: ui.noteText || undefined,
-            theme: preference,
-            resolvedTheme: resolved,
-          },
+          uiContext,
+          previousUiContext,
         }),
       });
       const data = (await res.json()) as {
