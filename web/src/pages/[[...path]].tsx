@@ -652,7 +652,6 @@ export default function HomePage() {
         mapped.orchestrator;
       const finalSubject = data.resolved?.subject || mapped.subject;
 
-      setSentTitle(mapped.title);
       setNotes((prev) =>
         prev.map((n) =>
           n.id === tempId
@@ -665,6 +664,7 @@ export default function HomePage() {
             : n
         )
       );
+      setSentTitle(null);
 
       if (data.resolved?.createdCustom) {
         persistInvoked([...invokedSubjects, data.resolved.createdCustom]);
