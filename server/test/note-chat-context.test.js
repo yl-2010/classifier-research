@@ -6,6 +6,7 @@ import {
   formatUiContext,
   formatSubjectColorsForChat,
   parseSetSubjectColorAction,
+  parseSetThemeAction,
   scoreHaystack,
   stripTrailingJsonObject,
   tokenizeQuery,
@@ -39,9 +40,13 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
       subject: "Physics",
       noteId: "abc",
       noteTitle: "Kinematics",
+      theme: "dark",
+      resolvedTheme: "dark",
     });
     assert.match(ui, /CURRENT SCREEN: note/);
     assert.match(ui, /Physics/);
+    assert.match(ui, /SITE THEME preference: dark/);
+    assert.match(ui, /resolving to dark/);
 
     const system = buildNotesChatSystemPrompt({
       uiContext: {
@@ -49,6 +54,8 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
         subject: "Physics",
         noteId: "abc",
         noteTitle: "Kinematics",
+        theme: "system",
+        resolvedTheme: "light",
       },
       openNoteText: "v = u + at",
       retrievedNotes: [
@@ -76,6 +83,8 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
     assert.match(system, /SUBJECT COLORS/);
     assert.match(system, /APUSH: #c45c26/);
     assert.match(system, /set_subject_color/);
+    assert.match(system, /set_theme/);
+    assert.match(system, /SITE THEME preference: system/);
   });
 });
 
@@ -111,6 +120,23 @@ describe("parseSetSubjectColorAction / stripTrailingJsonObject", () => {
       'Updated.\n```json\n{"action":"set_subject_color","subject":"APUSH","color":"#112233"}\n```'
     );
     assert.equal(fenced, "Updated.");
+  });
+});
+
+describe("parseSetThemeAction", () => {
+  it("parses light/dark/system theme actions", () => {
+    assert.deepEqual(parseSetThemeAction({ action: "set_theme", theme: "Dark" }), {
+      theme: "dark",
+    });
+    assert.deepEqual(
+      parseSetThemeAction({ action: "set_theme", preference: "system" }),
+      { theme: "system" }
+    );
+    assert.equal(
+      parseSetThemeAction({ action: "set_theme", theme: "blue" }),
+      null
+    );
+    assert.equal(parseSetThemeAction({ action: "set_subject_color" }), null);
   });
 });
 

@@ -628,6 +628,9 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       payload.subjectColorUpdate = applied.subjectColorUpdate;
       payload.subjects = applied.subjects;
     }
+    if (applied.themeUpdate) {
+      payload.themeUpdate = applied.themeUpdate;
+    }
 
     res.json(payload);
   } catch (err) {

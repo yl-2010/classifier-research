@@ -1,4 +1,12 @@
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   applyTheme,
   persistTheme,
@@ -8,7 +16,21 @@ import {
   type ThemePreference,
 } from "./theme";
 
-export function useTheme() {
+type ThemeContextValue = {
+  preference: ThemePreference;
+  resolved: ResolvedTheme;
+  ready: boolean;
+  setTheme: (next: ThemePreference) => void;
+};
+
+const ThemeContext = createContext<ThemeContextValue>({
+  preference: "system",
+  resolved: "light",
+  ready: false,
+  setTheme: () => {},
+});
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>("system");
   const [resolved, setResolved] = useState<ResolvedTheme>("light");
   const [ready, setReady] = useState(false);
@@ -30,15 +52,26 @@ export function useTheme() {
     return () => media.removeEventListener("change", onSystemChange);
   }, []);
 
-  const setTheme = (next: ThemePreference) => {
+  const setTheme = useCallback((next: ThemePreference) => {
     setPreference(next);
     setResolved(persistTheme(next));
-  };
+  }, []);
 
-  return {
-    preference,
-    resolved: ready ? resolved : resolveTheme(preference),
-    ready,
-    setTheme,
-  };
+  const value = useMemo(
+    () => ({
+      preference,
+      resolved: ready ? resolved : resolveTheme(preference),
+      ready,
+      setTheme,
+    }),
+    [preference, resolved, ready, setTheme]
+  );
+
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
+}
+
+export function useTheme() {
+  return useContext(ThemeContext);
 }

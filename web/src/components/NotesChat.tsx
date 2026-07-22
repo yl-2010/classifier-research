@@ -3,6 +3,8 @@ import { useSession } from "next-auth/react";
 import ReactMarkdown from "react-markdown";
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { useUiContext } from "@/lib/uiContext";
+import { useTheme } from "@/lib/useTheme";
+import { isThemePreference } from "@/lib/theme";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -11,6 +13,7 @@ export function NotesChat() {
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
   const { ui, notifySubjectColorsUpdated } = useUiContext();
+  const { preference, resolved, setTheme } = useTheme();
 
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -52,6 +55,8 @@ export function NotesChat() {
             noteId: ui.noteId || undefined,
             noteTitle: ui.noteTitle || undefined,
             noteText: ui.noteText || undefined,
+            theme: preference,
+            resolvedTheme: resolved,
           },
         }),
       });
@@ -61,6 +66,7 @@ export function NotesChat() {
         error?: string;
         subjectColorUpdate?: { label?: string; color?: string };
         subjects?: { colors?: Record<string, string> };
+        themeUpdate?: { theme?: string };
       };
       if (!res.ok || !data.ok) {
         throw new Error(data.error || `Chat failed (${res.status})`);
@@ -82,6 +88,9 @@ export function NotesChat() {
           label: data.subjectColorUpdate.label,
           color: data.subjectColorUpdate.color,
         });
+      }
+      if (isThemePreference(data.themeUpdate?.theme)) {
+        setTheme(data.themeUpdate.theme);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chat failed");

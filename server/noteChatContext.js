@@ -96,6 +96,24 @@ export function formatUiContext(uiContext) {
   if (ui.subject) lines.push(`Subject folder / filter: ${ui.subject}`);
   if (ui.noteId) lines.push(`Open note id: ${ui.noteId}`);
   if (ui.noteTitle) lines.push(`Open note title: ${ui.noteTitle}`);
+  const themePref =
+    typeof ui.theme === "string"
+      ? ui.theme
+      : typeof ui.themePreference === "string"
+        ? ui.themePreference
+        : null;
+  if (themePref === "light" || themePref === "dark" || themePref === "system") {
+    const resolved =
+      typeof ui.resolvedTheme === "string" &&
+      (ui.resolvedTheme === "light" || ui.resolvedTheme === "dark")
+        ? ui.resolvedTheme
+        : null;
+    lines.push(
+      resolved
+        ? `SITE THEME preference: ${themePref} (currently resolving to ${resolved})`
+        : `SITE THEME preference: ${themePref}`
+    );
+  }
   return lines.join("\n");
 }
 
@@ -266,39 +284,75 @@ export function parseSetSubjectColorAction(parsed) {
 }
 
 /**
- * If the assistant emitted a set_subject_color action, apply it and strip JSON.
+ * Parse a set_theme action from model JSON.
+ * @param {unknown} parsed
+ * @returns {{ theme: "light" | "dark" | "system" } | null}
+ */
+export function parseSetThemeAction(parsed) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  if (parsed.action !== "set_theme") return null;
+  const raw =
+    typeof parsed.theme === "string"
+      ? parsed.theme.trim().toLowerCase()
+      : typeof parsed.preference === "string"
+        ? parsed.preference.trim().toLowerCase()
+        : typeof parsed.mode === "string"
+          ? parsed.mode.trim().toLowerCase()
+          : "";
+  if (raw === "light" || raw === "dark" || raw === "system") {
+    return { theme: raw };
+  }
+  return null;
+}
+
+/**
+ * Apply chat side-effects from a trailing JSON action (subject color and/or theme).
+ * Theme is returned for the client to persist; subject color is written server-side.
  * @param {string} email
  * @param {string} rawContent
  */
 export async function applyChatSubjectColorAction(email, rawContent) {
   const raw = String(rawContent || "");
   const parsed = extractJsonObject(raw);
-  const action = parseSetSubjectColorAction(parsed);
+  const colorAction = parseSetSubjectColorAction(parsed);
+  const themeAction = parseSetThemeAction(parsed);
   const stripped = stripTrailingJsonObject(raw);
   const baseContent = stripped.trim() || raw.trim() || "…";
 
-  if (!action) {
+  if (!colorAction && !themeAction) {
     return { content: baseContent };
   }
 
-  try {
-    const result = await setSubjectColor(email, action.subject, action.color);
-    return {
-      content: baseContent,
-      subjectColorUpdate: { label: result.label, color: result.color },
-      subjects: result.subjects,
-    };
-  } catch (err) {
-    const msg = err?.message || "failed to update color";
-    return {
-      content: [
+  /** @type {{ content: string, subjectColorUpdate?: { label: string, color: string }, subjects?: unknown, themeUpdate?: { theme: string } }} */
+  const out = { content: baseContent };
+
+  if (themeAction) {
+    out.themeUpdate = { theme: themeAction.theme };
+  }
+
+  if (colorAction) {
+    try {
+      const result = await setSubjectColor(
+        email,
+        colorAction.subject,
+        colorAction.color
+      );
+      out.subjectColorUpdate = { label: result.label, color: result.color };
+      out.subjects = result.subjects;
+    } catch (err) {
+      const msg = err?.message || "failed to update color";
+      out.content = [
         baseContent === "…"
           ? "I couldn't update that subject color."
           : baseContent,
         `(${msg})`,
-      ].join("\n\n"),
-    };
+      ].join("\n\n");
+    }
   }
+
+  return out;
 }
 
 /**
@@ -354,6 +408,7 @@ Rules:
 - You may use light Markdown: **bold**, *italic*, bullet or numbered lists.
 - You know which screen the user is on from CURRENT SCREEN.
 - Subject accent colors: the user may ask you to change any listed subject's color to a specific color (a color name or #RRGGBB). When they do, reply briefly confirming the change, resolve the requested color to a #RRGGBB hex (use a saturated mid-brightness accent for vague names like "red"), and append a single JSON object on its own at the end of your reply with this exact schema: {"action":"set_subject_color","subject":"<exact subject label from SUBJECT COLORS>","color":"#rrggbb"}. Use the exact subject label from SUBJECT COLORS. Only recolor subjects that appear in SUBJECT COLORS; do not invent subjects. Do not emit that JSON unless the user asked to change a subject's color.
+- Site theme: the user may ask you to switch the overall site theme. Allowed values are exactly light, dark, or system (follow the OS). Use SITE THEME in CURRENT SCREEN for the current preference. When they ask to change it, reply briefly confirming and append a single JSON object at the end: {"action":"set_theme","theme":"light"|"dark"|"system"}. Do not emit that JSON unless they asked to change the theme. Emit only one action JSON object per reply (either set_subject_color or set_theme, not both).
 
 ${uiBlock}
 
