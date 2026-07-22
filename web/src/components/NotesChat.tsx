@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import ReactMarkdown from "react-markdown";
 import { notelmsFetch, useNotelmsRuntimeConfig } from "@/lib/notelmsApi";
 import { useUiContext } from "@/lib/uiContext";
 
@@ -93,7 +94,13 @@ export function NotesChat() {
                 key={`${m.role}-${i}`}
                 className={`chat-bubble ${m.role === "user" ? "user" : "bot"}`}
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <div className="chat-md">
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  m.content
+                )}
               </div>
             ))}
             {busy && <div className="chat-bubble bot muted">…</div>}
@@ -200,13 +207,13 @@ export function NotesChat() {
           border-radius: var(--radius);
           font-size: 0.9rem;
           line-height: 1.45;
-          white-space: pre-wrap;
           word-break: break-word;
         }
 
         .chat-bubble.user {
           align-self: flex-end;
           background: color-mix(in srgb, var(--accent) 18%, transparent);
+          white-space: pre-wrap;
         }
 
         .chat-bubble.bot {
@@ -216,6 +223,84 @@ export function NotesChat() {
 
         .chat-bubble.muted {
           color: var(--mute);
+        }
+
+        .chat-md :global(p) {
+          margin: 0 0 0.55em;
+        }
+
+        .chat-md :global(p:last-child) {
+          margin-bottom: 0;
+        }
+
+        .chat-md :global(strong) {
+          font-weight: 700;
+        }
+
+        .chat-md :global(em) {
+          font-style: italic;
+        }
+
+        .chat-md :global(ul),
+        .chat-md :global(ol) {
+          margin: 0.35em 0 0.55em;
+          padding-left: 1.25em;
+        }
+
+        .chat-md :global(ul:last-child),
+        .chat-md :global(ol:last-child) {
+          margin-bottom: 0;
+        }
+
+        .chat-md :global(li) {
+          margin: 0.2em 0;
+        }
+
+        .chat-md :global(li > p) {
+          margin: 0;
+        }
+
+        .chat-md :global(h1),
+        .chat-md :global(h2),
+        .chat-md :global(h3),
+        .chat-md :global(h4) {
+          margin: 0.45em 0 0.35em;
+          font-size: 1em;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+
+        .chat-md :global(h1:first-child),
+        .chat-md :global(h2:first-child),
+        .chat-md :global(h3:first-child),
+        .chat-md :global(h4:first-child) {
+          margin-top: 0;
+        }
+
+        .chat-md :global(code) {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+            monospace;
+          font-size: 0.86em;
+          padding: 0.1em 0.3em;
+          border-radius: 0.25em;
+          background: color-mix(in srgb, var(--ink) 8%, transparent);
+        }
+
+        .chat-md :global(pre) {
+          margin: 0.45em 0;
+          padding: 0.55em 0.65em;
+          overflow-x: auto;
+          border-radius: 0.35em;
+          background: color-mix(in srgb, var(--ink) 8%, transparent);
+        }
+
+        .chat-md :global(pre code) {
+          padding: 0;
+          background: transparent;
+        }
+
+        .chat-md :global(a) {
+          color: var(--accent);
         }
 
         .chat-error {
