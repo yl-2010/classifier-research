@@ -6,6 +6,7 @@ import {
   FIXED_SUBJECT_COLORS,
   mergeExistingSubjectColors,
   formatExistingColorsContext,
+  defaultFixedSubjectColor,
 } from "../subjectColor.js";
 
 describe("subjectColor", () => {
@@ -38,11 +39,16 @@ describe("subjectColor", () => {
       APUSH: "#C45C26",
       Latin: "not-a-hex",
     });
-    assert.equal(merged.Mathematics, CUSTOM_SUBJECT_COLOR_FALLBACK);
+    assert.equal(merged.Mathematics, FIXED_SUBJECT_COLORS.Mathematics);
     assert.equal(merged.APUSH, "#c45c26");
     assert.equal(merged.Latin, undefined);
     const ctx = formatExistingColorsContext(merged);
-    assert.match(ctx, /Mathematics: #64748b/);
+    assert.match(ctx, /Mathematics: #2563eb/);
     assert.match(ctx, /APUSH: #c45c26/);
+  });
+
+  it("returns canonical defaults for fixed subjects without GPT", () => {
+    assert.equal(defaultFixedSubjectColor("biology"), "#059669");
+    assert.equal(defaultFixedSubjectColor("APUSH"), null);
   });
 });

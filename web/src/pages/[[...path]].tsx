@@ -473,9 +473,35 @@ export default function HomePage() {
       persistInvoked([...invokedSubjects, name]);
       setAddingSubject(false);
       setCustomDraft("");
+
+      // Ensure Mac profile has the accent (fixed → canonical default, no GPT).
+      if (apiBase) {
+        void (async () => {
+          try {
+            const res = await notelmsFetch(apiBase, "/api/subjects", {
+              method: "POST",
+              body: JSON.stringify({ label: name }),
+            });
+            const data = (await res.json()) as {
+              ok?: boolean;
+              color?: string;
+              subjects?: { colors?: Record<string, string> };
+            };
+            if (!res.ok || !data.ok) return;
+            if (data.subjects?.colors && typeof data.subjects.colors === "object") {
+              setCustomSubjectColors(data.subjects.colors);
+            } else if (typeof data.color === "string") {
+              setCustomSubjectColors((prev) => ({ ...prev, [name]: data.color! }));
+            }
+          } catch {
+            /* Mac/tunnel may be offline */
+          }
+        })();
+      }
+
       if (open) openSubject(name);
     },
-    [invokedSubjects, openSubject, persistInvoked]
+    [apiBase, invokedSubjects, openSubject, persistInvoked]
   );
 
   const deleteSubjectFromLibrary = useCallback(

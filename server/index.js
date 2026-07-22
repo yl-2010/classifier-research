@@ -44,7 +44,7 @@ import {
   generateSummaryWithGptOss,
   resolveSubject,
 } from "./classify.js";
-import { pickCustomSubjectColor } from "./subjectColor.js";
+import { pickCustomSubjectColor, defaultFixedSubjectColor } from "./subjectColor.js";
 import {
   assembleNotesChatContext,
   applyChatSubjectColorAction,
@@ -240,15 +240,28 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
     const existingKey =
       normalized &&
       Object.keys(existing.colors || {}).find(
-        (k) => k.toLowerCase() === normalized.toLowerCase()
+        (k) => k.toLowerCase() === String(normalized).toLowerCase()
       );
     const existingColor = existingKey ? existing.colors[existingKey] : null;
-    const color =
-      existingColor ||
-      (await pickCustomSubjectColor(label, {
+    const fixedDefault = defaultFixedSubjectColor(normalized || label);
+
+    // Fixed taxonomy: use the canonical accent (no GPT). Custom: LLM pick.
+    let color = existingColor;
+    if (!color && fixedDefault) {
+      color = fixedDefault;
+    }
+    if (!color) {
+      color = await pickCustomSubjectColor(label, {
         existingColors: existing.colors || {},
-      }));
-    await addCustomSubject(req.user.email, label, { color });
+      });
+    }
+
+    if (fixedDefault) {
+      await setSubjectColor(req.user.email, normalized || label, color);
+    } else {
+      await addCustomSubject(req.user.email, label, { color });
+    }
+
     const listed = await listSubjects(req.user.email);
     const resolvedKey = Object.keys(listed.colors || {}).find(
       (k) => k.toLowerCase() === String(normalized || "").toLowerCase()
@@ -259,7 +272,9 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
       color: (resolvedKey && listed.colors[resolvedKey]) || color,
     });
   } catch (err) {
-    const status = /invalid|already/i.test(err.message || "") ? 400 : 500;
+    const status = /invalid|already|unknown/i.test(err.message || "")
+      ? 400
+      : 500;
     res.status(status).json({ ok: false, error: err.message || "failed" });
   }
 });

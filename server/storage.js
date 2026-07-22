@@ -20,6 +20,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { FIXED_SUBJECTS, OTHER_SUBJECT, normalizeSubjectLabel } from "./subjects.js";
 import { uniquifyTitle } from "./titles.js";
+import { withDefaultFixedColors } from "./subjectColor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -259,19 +260,26 @@ export async function ensureUser(email, { name = null } = {}) {
 
   // One-time migrate legacy subjects.json colors → profile.subjectColors.
   const legacyColors = normalizeColorsMap(subjects.colors);
+  let subjectColors = normalizeColorsMap(profile.subjectColors);
   if (
-    Object.keys(normalizeColorsMap(profile.subjectColors)).length === 0 &&
+    Object.keys(subjectColors).length === 0 &&
     Object.keys(legacyColors).length > 0
   ) {
+    subjectColors = legacyColors;
+  }
+  // Restore canonical accents for any of the eight core subjects that are unset.
+  const seeded = withDefaultFixedColors(subjectColors);
+  const colorsChanged =
+    JSON.stringify(seeded) !== JSON.stringify(subjectColors);
+  if (colorsChanged || Object.keys(legacyColors).length > 0) {
     profile = {
       ...profile,
-      subjectColors: legacyColors,
+      subjectColors: seeded,
       updatedAt: now,
     };
     await writeJson(profilePath, profile);
-    subjects = { ...subjects, colors: {}, updatedAt: now };
-    await writeJson(subjectsPath, subjects);
-  } else if (Object.keys(legacyColors).length > 0) {
+  }
+  if (Object.keys(legacyColors).length > 0) {
     subjects = { ...subjects, colors: {}, updatedAt: now };
     await writeJson(subjectsPath, subjects);
   }

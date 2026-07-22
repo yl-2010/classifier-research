@@ -1,5 +1,5 @@
 /**
- * GPT-OSS accent color for custom subjects.
+ * Accent colors for subjects (defaults + GPT-OSS pick for custom labels).
  */
 
 import { chatCompletions } from "./lmstudio.js";
@@ -9,10 +9,17 @@ import { FIXED_SUBJECTS } from "./subjects.js";
 /** Fallback gray when unset / LM Studio down. */
 export const CUSTOM_SUBJECT_COLOR_FALLBACK = "#64748b";
 
-/** @deprecated Fixed subjects default to gray until the user (or color LLM) sets one. */
-export const FIXED_SUBJECT_COLORS = Object.fromEntries(
-  FIXED_SUBJECTS.map((name) => [name, CUSTOM_SUBJECT_COLOR_FALLBACK])
-);
+/** Canonical accents for the eight fixed taxonomy subjects. */
+export const FIXED_SUBJECT_COLORS = {
+  Mathematics: "#2563eb",
+  Physics: "#4f46e5",
+  Chemistry: "#d97706",
+  Biology: "#059669",
+  "Computer Science": "#0891b2",
+  History: "#a16207",
+  Literature: "#be123c",
+  Economics: "#0d9488",
+};
 
 function clampChannel(n) {
   const v = Number(n);
@@ -33,18 +40,45 @@ function normalizeHex(raw) {
 }
 
 /**
- * Merge fixed taxonomy (gray by default) + stored profile colors.
+ * Fill in missing fixed-subject accents from FIXED_SUBJECT_COLORS.
+ * Does not overwrite an existing stored color (including user overrides).
+ * @param {Record<string, string>} [customColors]
  */
-export function mergeExistingSubjectColors(customColors = {}) {
-  const out = { ...FIXED_SUBJECT_COLORS };
-  if (!customColors || typeof customColors !== "object") return out;
-  for (const [label, value] of Object.entries(customColors)) {
-    if (typeof label !== "string" || !label.trim()) continue;
-    const hex = normalizeHex(value);
-    if (!hex) continue;
-    out[label.trim()] = hex;
+export function withDefaultFixedColors(customColors = {}) {
+  const out = {};
+  if (customColors && typeof customColors === "object") {
+    for (const [label, value] of Object.entries(customColors)) {
+      if (typeof label !== "string" || !label.trim()) continue;
+      const hex = normalizeHex(value);
+      if (!hex) continue;
+      out[label.trim()] = hex;
+    }
+  }
+  for (const name of FIXED_SUBJECTS) {
+    const has = Object.keys(out).some(
+      (k) => k.toLowerCase() === name.toLowerCase()
+    );
+    if (!has) out[name] = FIXED_SUBJECT_COLORS[name];
   }
   return out;
+}
+
+/**
+ * Default hex for a fixed subject label, or null if not fixed.
+ * @param {string} label
+ */
+export function defaultFixedSubjectColor(label) {
+  const name = String(label || "").trim();
+  if (!name) return null;
+  const hit = FIXED_SUBJECTS.find((s) => s.toLowerCase() === name.toLowerCase());
+  return hit ? FIXED_SUBJECT_COLORS[hit] : null;
+}
+
+/**
+ * Merge fixed taxonomy defaults + stored profile colors.
+ */
+export function mergeExistingSubjectColors(customColors = {}) {
+  return withDefaultFixedColors(customColors);
 }
 
 /**
@@ -73,12 +107,12 @@ export function parseSubjectColorResponse(parsed) {
 }
 
 /**
- * Ask GPT-OSS for a UI accent color that represents the subject label.
+ * Ask GPT-OSS for a UI accent color that represents a *custom* subject label.
  * Falls back to slate gray on any failure (does not throw).
+ * Fixed taxonomy labels should use defaultFixedSubjectColor instead.
  *
  * @param {string} label
  * @param {{ existingColors?: Record<string, string> }} [opts]
- *   `existingColors` — profile-stored accents (label → #RRGGBB).
  */
 export async function pickCustomSubjectColor(
   label,
@@ -86,6 +120,9 @@ export async function pickCustomSubjectColor(
 ) {
   const name = String(label || "").trim();
   if (!name) return CUSTOM_SUBJECT_COLOR_FALLBACK;
+
+  const fixedDefault = defaultFixedSubjectColor(name);
+  if (fixedDefault) return fixedDefault;
 
   const colorsByLabel = mergeExistingSubjectColors(existingColors);
   const existingContext = formatExistingColorsContext(colorsByLabel);

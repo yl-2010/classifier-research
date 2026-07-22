@@ -104,7 +104,9 @@ describe("storage", () => {
     await addCustomSubject(email, "APUSH");
     const subjects = await listSubjects(email);
     assert.ok(subjects.custom.includes("APUSH"));
-    assert.deepEqual(subjects.colors, {});
+    // Core taxonomy accents are seeded; custom label has no color yet.
+    assert.equal(subjects.colors.Mathematics, "#2563eb");
+    assert.equal(subjects.colors.APUSH, undefined);
   });
 
   it("persists and clears custom subject accent colors", async () => {
@@ -182,6 +184,17 @@ describe("storage", () => {
       () => setThemePreference(email, "blue"),
       /invalid theme/
     );
+  });
+
+  it("seeds the eight core subject colors onto the profile", async () => {
+    const email = "seed-colors@example.com";
+    await ensureUser(email);
+    const subjects = await listSubjects(email);
+    assert.equal(subjects.colors.Mathematics, "#2563eb");
+    assert.equal(subjects.colors.Biology, "#059669");
+    assert.equal(subjects.colors.Economics, "#0d9488");
+    const profile = await getProfile(email);
+    assert.equal(profile.subjectColors.Physics, "#4f46e5");
   });
 
   it("migrates legacy subjects.json colors into the profile", async () => {
