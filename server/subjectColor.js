@@ -8,16 +8,17 @@ import { extractJsonObject } from "./classify.js";
 /** Fallback when LM Studio is down or returns invalid RGB. */
 export const CUSTOM_SUBJECT_COLOR_FALLBACK = "#64748b";
 
-const FIXED_SUBJECT_HEXES = [
-  "#2563eb", // Mathematics
-  "#4f46e5", // Physics
-  "#d97706", // Chemistry
-  "#059669", // Biology
-  "#0891b2", // Computer Science
-  "#a16207", // History
-  "#be123c", // Literature
-  "#0d9488", // Economics
-];
+/** Fixed taxonomy accents (name → #RRGGBB), same as the UI. */
+export const FIXED_SUBJECT_COLORS = {
+  Mathematics: "#2563eb",
+  Physics: "#4f46e5",
+  Chemistry: "#d97706",
+  Biology: "#059669",
+  "Computer Science": "#0891b2",
+  History: "#a16207",
+  Literature: "#be123c",
+  Economics: "#0d9488",
+};
 
 function clampChannel(n) {
   const v = Number(n);
@@ -38,6 +39,32 @@ function normalizeHex(raw) {
 }
 
 /**
+ * Merge fixed + user custom subject colors into a label → #RRGGBB map.
+ */
+export function mergeExistingSubjectColors(customColors = {}) {
+  const out = { ...FIXED_SUBJECT_COLORS };
+  if (!customColors || typeof customColors !== "object") return out;
+  for (const [label, value] of Object.entries(customColors)) {
+    if (typeof label !== "string" || !label.trim()) continue;
+    const hex = normalizeHex(value);
+    if (!hex) continue;
+    out[label.trim()] = hex;
+  }
+  return out;
+}
+
+/**
+ * Format existing subject accents for the color-picking prompt.
+ */
+export function formatExistingColorsContext(colorsByLabel) {
+  const entries = Object.entries(colorsByLabel || {}).filter(
+    ([name, hex]) => typeof name === "string" && typeof hex === "string"
+  );
+  if (!entries.length) return "";
+  return entries.map(([name, hex]) => `${name}: ${hex}`).join("; ");
+}
+
+/**
  * Parse model JSON into a validated #RRGGBB, or null.
  */
 export function parseSubjectColorResponse(parsed) {
@@ -54,30 +81,38 @@ export function parseSubjectColorResponse(parsed) {
 /**
  * Ask GPT-OSS for a UI accent color that represents the subject label.
  * Falls back to slate gray on any failure (does not throw).
+ *
+ * @param {string} label
+ * @param {{ existingColors?: Record<string, string> }} [opts]
+ *   `existingColors` — user's custom subject accents (label → #RRGGBB).
+ *   Fixed taxonomy colors are always included in the prompt context.
  */
-export async function pickCustomSubjectColor(label, { avoidHexes = [] } = {}) {
+export async function pickCustomSubjectColor(
+  label,
+  { existingColors = {} } = {}
+) {
   const name = String(label || "").trim();
   if (!name) return CUSTOM_SUBJECT_COLOR_FALLBACK;
 
-  const avoid = [
-    ...FIXED_SUBJECT_HEXES,
-    ...avoidHexes.filter((h) => typeof h === "string"),
-  ]
-    .map((h) => h.toLowerCase())
-    .filter((h, i, arr) => arr.indexOf(h) === i);
+  const colorsByLabel = mergeExistingSubjectColors(existingColors);
+  const existingContext = formatExistingColorsContext(colorsByLabel);
 
   try {
     const system = [
       "You pick a single UI accent color for a custom academic subject folder.",
       "The color should feel thematically appropriate for the subject name.",
       "Prefer saturated, mid-brightness accents suitable as a thin UI highlight",
-      "(similar weight to Tailwind 600–700 hues). Avoid near-white, near-black,",
-      "and gray/slate neutrals.",
-      `Do not reuse these existing accents: ${avoid.join(", ")}.`,
+      "(similar weight to Tailwind 600–700 hues).",
+      "Do not choose gray or slate neutrals.",
+      existingContext
+        ? `These subjects already have colors — pick something visually distinct from all of them: ${existingContext}.`
+        : "",
       "Respond with a single JSON object only, no markdown.",
       'Schema: {"r": number, "g": number, "b": number, "hex": string}',
       "r, g, b are integers 0..255. hex is #RRGGBB matching those channels.",
-    ].join(" ");
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     const result = await chatCompletions({
       messages: [

@@ -234,7 +234,7 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
     const color =
       existingColor ||
       (await pickCustomSubjectColor(label, {
-        avoidHexes: Object.values(existing.colors || {}),
+        existingColors: existing.colors || {},
       }));
     await addCustomSubject(req.user.email, label, { color });
     const listed = await listSubjects(req.user.email);
