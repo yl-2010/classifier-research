@@ -1147,7 +1147,17 @@ export default function HomePage() {
             </section>
 
             <section id="library" ref={libraryRef} className="block library">
-              <h2 className="section-label">Library</h2>
+              {folder || openNote ? (
+                <button
+                  type="button"
+                  className="section-label section-label-btn"
+                  onClick={() => goLibraryHome()}
+                >
+                  Library
+                </button>
+              ) : (
+                <h2 className="section-label">Library</h2>
+              )}
               {libraryError && <p className="form-error">{libraryError}</p>}
 
               {processing.length > 0 && (
@@ -1514,6 +1524,20 @@ export default function HomePage() {
           font-family: var(--display);
           font-size: 1.35rem;
           font-weight: 500;
+        }
+
+        .section-label-btn {
+          display: block;
+          border: 0;
+          background: transparent;
+          color: inherit;
+          padding: 0;
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .section-label-btn:hover {
+          color: var(--accent);
         }
 
         textarea {
