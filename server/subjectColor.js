@@ -4,21 +4,15 @@
 
 import { chatCompletions } from "./lmstudio.js";
 import { extractJsonObject } from "./classify.js";
+import { FIXED_SUBJECTS } from "./subjects.js";
 
-/** Fallback when LM Studio is down or returns invalid RGB. */
+/** Fallback gray when unset / LM Studio down. */
 export const CUSTOM_SUBJECT_COLOR_FALLBACK = "#64748b";
 
-/** Fixed taxonomy accents (name → #RRGGBB), same as the UI. */
-export const FIXED_SUBJECT_COLORS = {
-  Mathematics: "#2563eb",
-  Physics: "#4f46e5",
-  Chemistry: "#d97706",
-  Biology: "#059669",
-  "Computer Science": "#0891b2",
-  History: "#a16207",
-  Literature: "#be123c",
-  Economics: "#0d9488",
-};
+/** @deprecated Fixed subjects default to gray until the user (or color LLM) sets one. */
+export const FIXED_SUBJECT_COLORS = Object.fromEntries(
+  FIXED_SUBJECTS.map((name) => [name, CUSTOM_SUBJECT_COLOR_FALLBACK])
+);
 
 function clampChannel(n) {
   const v = Number(n);
@@ -39,7 +33,7 @@ function normalizeHex(raw) {
 }
 
 /**
- * Merge fixed + user custom subject colors into a label → #RRGGBB map.
+ * Merge fixed taxonomy (gray by default) + stored profile colors.
  */
 export function mergeExistingSubjectColors(customColors = {}) {
   const out = { ...FIXED_SUBJECT_COLORS };
@@ -84,8 +78,7 @@ export function parseSubjectColorResponse(parsed) {
  *
  * @param {string} label
  * @param {{ existingColors?: Record<string, string> }} [opts]
- *   `existingColors` — user's custom subject accents (label → #RRGGBB).
- *   Fixed taxonomy colors are always included in the prompt context.
+ *   `existingColors` — profile-stored accents (label → #RRGGBB).
  */
 export async function pickCustomSubjectColor(
   label,

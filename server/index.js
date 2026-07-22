@@ -21,6 +21,7 @@ import {
   listSubjects,
   addCustomSubject,
   setSubjectColor,
+  setThemePreference,
   deleteSubject,
   listNotes,
   getNote,
@@ -156,8 +157,8 @@ app.post("/api/ensure-user", requireAuth, async (req, res) => {
       subjects: {
         custom: subjects.custom || [],
         colors:
-          subjects.colors && typeof subjects.colors === "object"
-            ? subjects.colors
+          profile.subjectColors && typeof profile.subjectColors === "object"
+            ? profile.subjectColors
             : {},
       },
     });
@@ -185,8 +186,8 @@ app.get("/api/me", requireAuth, async (req, res) => {
       subjects: {
         custom: subjects.custom || [],
         colors:
-          subjects.colors && typeof subjects.colors === "object"
-            ? subjects.colors
+          profile.subjectColors && typeof profile.subjectColors === "object"
+            ? profile.subjectColors
             : {},
       },
       folder: emailToFolderName(req.user.email),
@@ -204,6 +205,13 @@ app.patch("/api/me", requireAuth, async (req, res) => {
     await ensureUser(req.user.email, { name: req.user.name });
     const allowed = {};
     if (typeof req.body?.name === "string") allowed.name = req.body.name;
+    if (
+      req.body?.theme === "light" ||
+      req.body?.theme === "dark" ||
+      req.body?.theme === "system"
+    ) {
+      allowed.theme = req.body.theme;
+    }
     const profile = await updateProfile(req.user.email, allowed);
     res.json({ ok: true, user: profile });
   } catch (err) {

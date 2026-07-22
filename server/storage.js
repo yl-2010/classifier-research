@@ -232,6 +232,8 @@ export async function ensureUser(email, { name = null } = {}) {
       updatedAt: now,
       lastSeenAt: now,
       noteCount: 0,
+      theme: "system",
+      subjectColors: {},
     };
     await writeJson(profilePath, profile);
   } else {
@@ -240,6 +242,8 @@ export async function ensureUser(email, { name = null } = {}) {
       name: name || profile.name || null,
       lastSeenAt: now,
       updatedAt: now,
+      theme: normalizeThemePreference(profile.theme),
+      subjectColors: normalizeColorsMap(profile.subjectColors),
     };
     await writeJson(profilePath, profile);
   }
@@ -253,6 +257,25 @@ export async function ensureUser(email, { name = null } = {}) {
     subjects = { ...subjects, colors: {} };
   }
 
+  // One-time migrate legacy subjects.json colors → profile.subjectColors.
+  const legacyColors = normalizeColorsMap(subjects.colors);
+  if (
+    Object.keys(normalizeColorsMap(profile.subjectColors)).length === 0 &&
+    Object.keys(legacyColors).length > 0
+  ) {
+    profile = {
+      ...profile,
+      subjectColors: legacyColors,
+      updatedAt: now,
+    };
+    await writeJson(profilePath, profile);
+    subjects = { ...subjects, colors: {}, updatedAt: now };
+    await writeJson(subjectsPath, subjects);
+  } else if (Object.keys(legacyColors).length > 0) {
+    subjects = { ...subjects, colors: {}, updatedAt: now };
+    await writeJson(subjectsPath, subjects);
+  }
+
   return {
     email: folder,
     root,
@@ -263,7 +286,7 @@ export async function ensureUser(email, { name = null } = {}) {
   };
 }
 
-/** Normalize subjects.json colors map to Record<label, #RRGGBB>. */
+/** Normalize subjects.json / profile colors map to Record<label, #RRGGBB>. */
 function normalizeColorsMap(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const out = {};
@@ -277,35 +300,69 @@ function normalizeColorsMap(raw) {
   return out;
 }
 
+/** @param {unknown} raw */
+export function normalizeThemePreference(raw) {
+  if (raw === "light" || raw === "dark" || raw === "system") return raw;
+  return "system";
+}
+
+async function writeProfileFields(email, patch = {}) {
+  const { root, profile } = await ensureUser(email);
+  const next = {
+    ...profile,
+    email: profile.email,
+    theme: normalizeThemePreference(profile.theme),
+    subjectColors: normalizeColorsMap(profile.subjectColors),
+    updatedAt: new Date().toISOString(),
+  };
+  if (typeof patch.name === "string") next.name = patch.name;
+  if (patch.theme !== undefined) {
+    next.theme = normalizeThemePreference(patch.theme);
+  }
+  if (patch.subjectColors !== undefined) {
+    next.subjectColors = normalizeColorsMap(patch.subjectColors);
+  }
+  if (typeof patch.noteCount === "number") next.noteCount = patch.noteCount;
+  if (patch.lastSeenAt) next.lastSeenAt = patch.lastSeenAt;
+  await writeJson(path.join(root, "profile.json"), next);
+  return next;
+}
+
 export async function getProfile(email) {
   const { profile } = await ensureUser(email);
   return profile;
 }
 
 export async function updateProfile(email, patch = {}) {
-  const { root, profile } = await ensureUser(email);
-  const next = {
-    ...profile,
-    ...patch,
-    email: profile.email,
-    updatedAt: new Date().toISOString(),
-  };
-  await writeJson(path.join(root, "profile.json"), next);
-  return next;
+  return writeProfileFields(email, patch);
+}
+
+export async function setThemePreference(email, theme) {
+  if (
+    theme !== "light" &&
+    theme !== "dark" &&
+    theme !== "system"
+  ) {
+    const err = new Error("invalid theme");
+    err.status = 400;
+    throw err;
+  }
+  const profile = await writeProfileFields(email, { theme });
+  return { theme: profile.theme, profile };
 }
 
 export async function listSubjects(email) {
-  const { subjects } = await ensureUser(email);
+  const { subjects, profile } = await ensureUser(email);
   return {
     fixed: [...FIXED_SUBJECTS],
     other: OTHER_SUBJECT,
     custom: Array.isArray(subjects.custom) ? subjects.custom : [],
-    colors: normalizeColorsMap(subjects.colors),
+    colors: normalizeColorsMap(profile.subjectColors),
   };
 }
 
 /**
- * Add a custom subject label. Optional `color` is a #RRGGBB accent.
+ * Add a custom subject label. Optional `color` is a #RRGGBB accent stored on the profile.
  * If the label already exists but has no color, `color` fills it in.
  */
 export async function addCustomSubject(email, label, { color } = {}) {
@@ -316,9 +373,9 @@ export async function addCustomSubject(email, label, { color } = {}) {
   if (FIXED_SUBJECTS.includes(normalized)) {
     throw new Error("subject is already a fixed label");
   }
-  const { root, subjects } = await ensureUser(email);
+  const { root, subjects, profile } = await ensureUser(email);
   const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
-  const colors = normalizeColorsMap(subjects.colors);
+  const colors = normalizeColorsMap(profile.subjectColors);
   const exists = custom.some((c) => c.toLowerCase() === normalized.toLowerCase());
   if (!exists) {
     custom.push(normalized);
@@ -337,14 +394,19 @@ export async function addCustomSubject(email, label, { color } = {}) {
     }
     colors[normalized] = hex;
   }
-  const next = { custom, colors, updatedAt: new Date().toISOString() };
-  await writeJson(path.join(root, "subjects.json"), next);
-  return next;
+  const nextSubjects = {
+    custom,
+    colors: {},
+    updatedAt: new Date().toISOString(),
+  };
+  await writeJson(path.join(root, "subjects.json"), nextSubjects);
+  await writeProfileFields(email, { subjectColors: colors });
+  return { ...nextSubjects, colors };
 }
 
 /**
  * Set or overwrite the accent color for an existing subject (fixed or custom).
- * Fixed labels are stored as overrides in colors; they are not added to custom.
+ * Colors are stored on profile.json (not subjects.json).
  * @param {string} email
  * @param {string} label
  * @param {string} color - #RRGGBB
@@ -368,9 +430,9 @@ export async function setSubjectColor(email, label, color) {
     throw err;
   }
 
-  const { root, subjects } = await ensureUser(email);
-  const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
-  const colors = normalizeColorsMap(subjects.colors);
+  const { subjects, profile } = await ensureUser(email);
+  const custom = Array.isArray(subjects.custom) ? subjects.custom : [];
+  const colors = normalizeColorsMap(profile.subjectColors);
 
   const fixedMatch = FIXED_SUBJECTS.find(
     (s) => s.toLowerCase() === normalized.toLowerCase()
@@ -392,11 +454,7 @@ export async function setSubjectColor(email, label, color) {
   }
   colors[canonical] = hex;
 
-  await writeJson(path.join(root, "subjects.json"), {
-    custom,
-    colors,
-    updatedAt: new Date().toISOString(),
-  });
+  await writeProfileFields(email, { subjectColors: colors });
 
   const listed = await listSubjects(email);
   return { label: canonical, color: hex, subjects: listed };
@@ -435,9 +493,9 @@ export async function deleteSubject(email, label) {
     (s) => s.toLowerCase() === normalized.toLowerCase()
   );
   if (!isFixed) {
-    const { root, subjects } = await ensureUser(email);
+    const { root, subjects, profile } = await ensureUser(email);
     const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
-    const colors = normalizeColorsMap(subjects.colors);
+    const colors = normalizeColorsMap(profile.subjectColors);
     const nextCustom = custom.filter(
       (c) => c.toLowerCase() !== normalized.toLowerCase()
     );
@@ -450,9 +508,10 @@ export async function deleteSubject(email, label) {
     if (removedCustom) {
       await writeJson(path.join(root, "subjects.json"), {
         custom: nextCustom,
-        colors,
+        colors: {},
         updatedAt: new Date().toISOString(),
       });
+      await writeProfileFields(email, { subjectColors: colors });
     }
   }
 

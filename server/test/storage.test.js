@@ -13,7 +13,9 @@ import {
   emailToFolderName,
   addCustomSubject,
   setSubjectColor,
+  setThemePreference,
   listSubjects,
+  getProfile,
   deleteSubject,
   listResearchEvents,
   listAllResearchEvents,
@@ -126,6 +128,9 @@ describe("storage", () => {
     assert.equal(custom.color, "#112233");
     assert.equal(custom.subjects.colors.APUSH, "#112233");
 
+    const profile = await getProfile(email);
+    assert.equal(profile.subjectColors.APUSH, "#112233");
+
     const fixed = await setSubjectColor(email, "Biology", "#FF0000");
     assert.equal(fixed.label, "Biology");
     assert.equal(fixed.color, "#ff0000");
@@ -140,6 +145,62 @@ describe("storage", () => {
       () => setSubjectColor(email, "Biology", "red"),
       /invalid color/
     );
+  });
+
+  it("stores theme on the profile", async () => {
+    const email = "theme@example.com";
+    await ensureUser(email);
+    let profile = await getProfile(email);
+    assert.equal(profile.theme, "system");
+
+    const dark = await setThemePreference(email, "dark");
+    assert.equal(dark.theme, "dark");
+    profile = await getProfile(email);
+    assert.equal(profile.theme, "dark");
+
+    await setThemePreference(email, "light");
+    profile = await getProfile(email);
+    assert.equal(profile.theme, "light");
+
+    await assert.rejects(
+      () => setThemePreference(email, "blue"),
+      /invalid theme/
+    );
+  });
+
+  it("migrates legacy subjects.json colors into the profile", async () => {
+    const email = "migrate-colors@example.com";
+    const { root } = await ensureUser(email);
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    await fs.writeFile(
+      path.join(root, "subjects.json"),
+      JSON.stringify({
+        custom: ["Latin"],
+        colors: { Latin: "#7c3aed" },
+        updatedAt: new Date().toISOString(),
+      }),
+      "utf8"
+    );
+    await fs.writeFile(
+      path.join(root, "profile.json"),
+      JSON.stringify({
+        email,
+        theme: "system",
+        subjectColors: {},
+        noteCount: 0,
+      }),
+      "utf8"
+    );
+
+    const subjects = await listSubjects(email);
+    assert.equal(subjects.colors.Latin, "#7c3aed");
+    const profile = await getProfile(email);
+    assert.equal(profile.subjectColors.Latin, "#7c3aed");
+    const rawSubjects = JSON.parse(
+      await fs.readFile(path.join(root, "subjects.json"), "utf8")
+    );
+    assert.deepEqual(rawSubjects.colors, {});
   });
 
   it("preserves title and classification when only subject is patched", async () => {

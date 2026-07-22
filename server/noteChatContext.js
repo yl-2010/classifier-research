@@ -10,11 +10,13 @@ import {
   listResearchEvents,
   listAllResearchEvents,
   setSubjectColor,
+  setThemePreference,
 } from "./storage.js";
 import { buildResearchMetrics } from "./research-metrics.js";
 import { extractJsonObject } from "./classify.js";
 import {
   FIXED_SUBJECT_COLORS,
+  CUSTOM_SUBJECT_COLOR_FALLBACK,
   mergeExistingSubjectColors,
   formatExistingColorsContext,
 } from "./subjectColor.js";
@@ -217,7 +219,7 @@ export function formatSubjectColorsForChat(subjects) {
     if (
       !Object.keys(colors).some((k) => k.toLowerCase() === label.toLowerCase())
     ) {
-      colors[label] = "(unset)";
+      colors[label] = CUSTOM_SUBJECT_COLOR_FALLBACK;
     }
   }
   const listed = formatExistingColorsContext(colors);
@@ -329,7 +331,16 @@ export async function applyChatSubjectColorAction(email, rawContent) {
   const out = { content: baseContent };
 
   if (themeAction) {
-    out.themeUpdate = { theme: themeAction.theme };
+    try {
+      const result = await setThemePreference(email, themeAction.theme);
+      out.themeUpdate = { theme: result.theme };
+    } catch (err) {
+      const msg = err?.message || "failed to update theme";
+      out.content = [
+        baseContent === "…" ? "I couldn't update the theme." : baseContent,
+        `(${msg})`,
+      ].join("\n\n");
+    }
   }
 
   if (colorAction) {

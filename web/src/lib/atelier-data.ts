@@ -13,14 +13,14 @@ export const FIXED_SUBJECTS = [
 export type FixedSubject = (typeof FIXED_SUBJECTS)[number];
 
 export const SUBJECTS: [string, string][] = [
-  ["Mathematics", "#2563eb"],
-  ["Physics", "#4f46e5"],
-  ["Chemistry", "#d97706"],
-  ["Biology", "#059669"],
-  ["Computer Science", "#0891b2"],
-  ["History", "#a16207"],
-  ["Literature", "#be123c"],
-  ["Economics", "#0d9488"],
+  ["Mathematics", "#64748b"],
+  ["Physics", "#64748b"],
+  ["Chemistry", "#64748b"],
+  ["Biology", "#64748b"],
+  ["Computer Science", "#64748b"],
+  ["History", "#64748b"],
+  ["Literature", "#64748b"],
+  ["Economics", "#64748b"],
 ];
 
 export const SUBJECT_COLORS = Object.fromEntries(SUBJECTS) as Record<
@@ -30,7 +30,7 @@ export const SUBJECT_COLORS = Object.fromEntries(SUBJECTS) as Record<
 
 const CUSTOM_SUBJECT_COLOR = "#64748b";
 
-/** Color for a fixed or custom subject label. User overrides win over fixed defaults. */
+/** Color for a subject: profile/Mac-stored map only; otherwise gray. */
 export function subjectColor(
   name: string,
   customColors?: Record<string, string> | null
@@ -43,7 +43,6 @@ export function subjectColor(
       if (label.toLowerCase() === lower && hex) return hex;
     }
   }
-  if (SUBJECT_COLORS[name]) return SUBJECT_COLORS[name];
   return CUSTOM_SUBJECT_COLOR;
 }
 
