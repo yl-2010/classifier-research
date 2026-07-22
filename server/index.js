@@ -20,6 +20,7 @@ import {
   updateProfile,
   listSubjects,
   addCustomSubject,
+  setSubjectColor,
   deleteSubject,
   listNotes,
   getNote,
@@ -43,7 +44,10 @@ import {
   resolveSubject,
 } from "./classify.js";
 import { pickCustomSubjectColor } from "./subjectColor.js";
-import { assembleNotesChatContext } from "./noteChatContext.js";
+import {
+  assembleNotesChatContext,
+  applyChatSubjectColorAction,
+} from "./noteChatContext.js";
 import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
 import { buildResearchMetrics } from "./research-metrics.js";
@@ -248,6 +252,28 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
     });
   } catch (err) {
     const status = /invalid|already/i.test(err.message || "") ? 400 : 500;
+    res.status(status).json({ ok: false, error: err.message || "failed" });
+  }
+});
+
+/** Set or overwrite accent color for an existing subject (fixed or custom). */
+app.patch("/api/subjects", requireAuth, async (req, res) => {
+  try {
+    await ensureUser(req.user.email, { name: req.user.name });
+    const label = req.body?.label || req.body?.subject;
+    const color = req.body?.color;
+    const result = await setSubjectColor(req.user.email, label, color);
+    res.json({
+      ok: true,
+      label: result.label,
+      color: result.color,
+      subjects: result.subjects,
+    });
+  } catch (err) {
+    const status =
+      err.status ||
+      (/invalid|unknown/i.test(err.message || "") ? 400 : 500);
+    console.error("[PATCH /api/subjects]", err);
     res.status(status).json({ ok: false, error: err.message || "failed" });
   }
 });
@@ -583,14 +609,27 @@ app.post("/api/chat", requireAuth, async (req, res) => {
       maxTokens:
         typeof req.body?.maxTokens === "number" ? req.body.maxTokens : 2048,
     });
-    res.json({
+
+    const applied = await applyChatSubjectColorAction(
+      req.user.email,
+      result.content
+    );
+
+    const payload = {
       ok: true,
-      content: result.content,
+      content: applied.content,
       model: result.model,
       usage: result.usage,
       retrievedNoteIds: retrievedNotes.map((n) => n.id),
       lmStudio: getLmStudioConfig(),
-    });
+    };
+
+    if (applied.subjectColorUpdate) {
+      payload.subjectColorUpdate = applied.subjectColorUpdate;
+      payload.subjects = applied.subjects;
+    }
+
+    res.json(payload);
   } catch (err) {
     console.error("[/api/chat]", err);
     res.status(502).json({ ok: false, error: err.message || "chat failed" });

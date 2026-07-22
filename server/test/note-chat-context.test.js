@@ -4,7 +4,10 @@ import {
   buildNotesChatSystemPrompt,
   capText,
   formatUiContext,
+  formatSubjectColorsForChat,
+  parseSetSubjectColorAction,
   scoreHaystack,
+  stripTrailingJsonObject,
   tokenizeQuery,
 } from "../noteChatContext.js";
 import { generateSummaryWithGptOss } from "../classify.js";
@@ -58,6 +61,10 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
         },
       ],
       researchMetricsText: "zero_shot: n=10, accuracy=0.500, macro_f1=0.400",
+      subjectColorsText: formatSubjectColorsForChat({
+        custom: ["APUSH"],
+        colors: { APUSH: "#c45c26" },
+      }),
     });
     assert.match(system, /OPEN NOTE/);
     assert.match(system, /v = u \+ at/);
@@ -66,6 +73,44 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
     assert.match(system, /ABOUT NOTELMS/);
     assert.match(system, /RESEARCH PAGE/);
     assert.match(system, /zero_shot/);
+    assert.match(system, /SUBJECT COLORS/);
+    assert.match(system, /APUSH: #c45c26/);
+    assert.match(system, /set_subject_color/);
+  });
+});
+
+describe("parseSetSubjectColorAction / stripTrailingJsonObject", () => {
+  it("parses valid color actions and strips trailing JSON", () => {
+    assert.deepEqual(
+      parseSetSubjectColorAction({
+        action: "set_subject_color",
+        subject: "Biology",
+        color: "#FF0000",
+      }),
+      { subject: "Biology", color: "#ff0000" }
+    );
+    assert.equal(
+      parseSetSubjectColorAction({ action: "other", subject: "Biology" }),
+      null
+    );
+    assert.equal(
+      parseSetSubjectColorAction({
+        action: "set_subject_color",
+        subject: "Biology",
+        color: "red",
+      }),
+      null
+    );
+
+    const stripped = stripTrailingJsonObject(
+      'Done — Biology is now red.\n{"action":"set_subject_color","subject":"Biology","color":"#dc2626"}'
+    );
+    assert.equal(stripped, "Done — Biology is now red.");
+
+    const fenced = stripTrailingJsonObject(
+      'Updated.\n```json\n{"action":"set_subject_color","subject":"APUSH","color":"#112233"}\n```'
+    );
+    assert.equal(fenced, "Updated.");
   });
 });
 

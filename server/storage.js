@@ -343,6 +343,66 @@ export async function addCustomSubject(email, label, { color } = {}) {
 }
 
 /**
+ * Set or overwrite the accent color for an existing subject (fixed or custom).
+ * Fixed labels are stored as overrides in colors; they are not added to custom.
+ * @param {string} email
+ * @param {string} label
+ * @param {string} color - #RRGGBB
+ * @returns {Promise<{ label: string, color: string, subjects: Awaited<ReturnType<typeof listSubjects>> }>}
+ */
+export async function setSubjectColor(email, label, color) {
+  const hex =
+    typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color.trim())
+      ? color.trim().toLowerCase()
+      : null;
+  if (!hex) {
+    const err = new Error("invalid color");
+    err.status = 400;
+    throw err;
+  }
+
+  const normalized = normalizeSubjectLabel(label);
+  if (!normalized || normalized === OTHER_SUBJECT) {
+    const err = new Error("invalid subject");
+    err.status = 400;
+    throw err;
+  }
+
+  const { root, subjects } = await ensureUser(email);
+  const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+  const colors = normalizeColorsMap(subjects.colors);
+
+  const fixedMatch = FIXED_SUBJECTS.find(
+    (s) => s.toLowerCase() === normalized.toLowerCase()
+  );
+  const customMatch = custom.find(
+    (c) => c.toLowerCase() === normalized.toLowerCase()
+  );
+  const canonical = fixedMatch || customMatch || null;
+  if (!canonical) {
+    const err = new Error("unknown subject");
+    err.status = 404;
+    throw err;
+  }
+
+  for (const key of Object.keys(colors)) {
+    if (key.toLowerCase() === canonical.toLowerCase() && key !== canonical) {
+      delete colors[key];
+    }
+  }
+  colors[canonical] = hex;
+
+  await writeJson(path.join(root, "subjects.json"), {
+    custom,
+    colors,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const listed = await listSubjects(email);
+  return { label: canonical, color: hex, subjects: listed };
+}
+
+/**
  * Remove a subject from one user's library:
  * - soft-delete all notes with that subject
  * - remove each note's linked research/ event (via deleteNote)

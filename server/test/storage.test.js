@@ -12,6 +12,7 @@ import {
   getNote,
   emailToFolderName,
   addCustomSubject,
+  setSubjectColor,
   listSubjects,
   deleteSubject,
   listResearchEvents,
@@ -113,6 +114,32 @@ describe("storage", () => {
     assert.equal(subjects.custom.includes("APUSH"), false);
     assert.equal(subjects.colors.APUSH, undefined);
     assert.equal(subjects.colors.Latin, "#7c3aed");
+  });
+
+  it("setSubjectColor updates custom and fixed accents", async () => {
+    const email = "recolor@example.com";
+    await ensureUser(email);
+    await addCustomSubject(email, "APUSH", { color: "#c45c26" });
+
+    const custom = await setSubjectColor(email, "apush", "#112233");
+    assert.equal(custom.label, "APUSH");
+    assert.equal(custom.color, "#112233");
+    assert.equal(custom.subjects.colors.APUSH, "#112233");
+
+    const fixed = await setSubjectColor(email, "Biology", "#FF0000");
+    assert.equal(fixed.label, "Biology");
+    assert.equal(fixed.color, "#ff0000");
+    assert.equal(fixed.subjects.colors.Biology, "#ff0000");
+    assert.equal(fixed.subjects.custom.includes("Biology"), false);
+
+    await assert.rejects(
+      () => setSubjectColor(email, "NotASubject", "#abcdef"),
+      /unknown subject/
+    );
+    await assert.rejects(
+      () => setSubjectColor(email, "Biology", "red"),
+      /invalid color/
+    );
   });
 
   it("preserves title and classification when only subject is patched", async () => {

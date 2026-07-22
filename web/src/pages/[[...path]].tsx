@@ -172,7 +172,7 @@ export default function HomePage() {
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
   const { available: imageOcrAvailable } = useOpenAiOcrAvailable();
-  const { setUiContext } = useUiContext();
+  const { setUiContext, setOnSubjectColorsUpdated } = useUiContext();
 
   const pathParts = useMemo(() => {
     const raw = router.query.path;
@@ -242,6 +242,22 @@ export default function HomePage() {
   useEffect(() => {
     setInvokedSubjects(loadInvokedSubjects());
   }, []);
+
+  useEffect(() => {
+    setOnSubjectColorsUpdated((update) => {
+      if (update.colors && typeof update.colors === "object") {
+        setCustomSubjectColors(update.colors);
+        return;
+      }
+      if (update.label && update.color) {
+        setCustomSubjectColors((prev) => ({
+          ...prev,
+          [update.label!]: update.color!,
+        }));
+      }
+    });
+    return () => setOnSubjectColorsUpdated(null);
+  }, [setOnSubjectColorsUpdated]);
 
   useEffect(() => {
     if (!signedIn) return;

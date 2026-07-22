@@ -10,7 +10,7 @@ export function NotesChat() {
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const { apiBase } = useNotelmsRuntimeConfig();
-  const { ui } = useUiContext();
+  const { ui, notifySubjectColorsUpdated } = useUiContext();
 
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -59,6 +59,8 @@ export function NotesChat() {
         ok?: boolean;
         content?: string;
         error?: string;
+        subjectColorUpdate?: { label?: string; color?: string };
+        subjects?: { colors?: Record<string, string> };
       };
       if (!res.ok || !data.ok) {
         throw new Error(data.error || `Chat failed (${res.status})`);
@@ -67,6 +69,20 @@ export function NotesChat() {
         ...prev,
         { role: "assistant", content: String(data.content || "").trim() || "…" },
       ]);
+      if (
+        data.subjects?.colors &&
+        typeof data.subjects.colors === "object"
+      ) {
+        notifySubjectColorsUpdated({ colors: data.subjects.colors });
+      } else if (
+        data.subjectColorUpdate?.label &&
+        data.subjectColorUpdate?.color
+      ) {
+        notifySubjectColorsUpdated({
+          label: data.subjectColorUpdate.label,
+          color: data.subjectColorUpdate.color,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chat failed");
     } finally {

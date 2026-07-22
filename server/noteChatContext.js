@@ -3,8 +3,21 @@
  * No vector embeddings — score notes by keyword overlap, stuff capped text.
  */
 
-import { getNote, listNotes, listResearchEvents, listAllResearchEvents } from "./storage.js";
+import {
+  getNote,
+  listNotes,
+  listSubjects,
+  listResearchEvents,
+  listAllResearchEvents,
+  setSubjectColor,
+} from "./storage.js";
 import { buildResearchMetrics } from "./research-metrics.js";
+import { extractJsonObject } from "./classify.js";
+import {
+  FIXED_SUBJECT_COLORS,
+  mergeExistingSubjectColors,
+  formatExistingColorsContext,
+} from "./subjectColor.js";
 
 export const MAX_NOTE_TEXT_FOR_CHAT = 24_000;
 export const MAX_OPEN_NOTE_FOR_CHAT = 48_000;
@@ -175,12 +188,127 @@ export async function retrieveNotesForChat(email, query, opts = {}) {
 }
 
 /**
+ * Build SUBJECT COLORS block for the chat system prompt.
+ * @param {{ custom?: string[], colors?: Record<string, string> } | null} subjects
+ */
+export function formatSubjectColorsForChat(subjects) {
+  const custom = Array.isArray(subjects?.custom) ? subjects.custom : [];
+  const colors = mergeExistingSubjectColors(subjects?.colors || {});
+  for (const label of custom) {
+    if (typeof label !== "string" || !label.trim()) continue;
+    if (
+      !Object.keys(colors).some((k) => k.toLowerCase() === label.toLowerCase())
+    ) {
+      colors[label] = "(unset)";
+    }
+  }
+  const listed = formatExistingColorsContext(colors);
+  const customLine =
+    custom.length > 0
+      ? `Custom subjects: ${custom.join(", ")}.`
+      : "Custom subjects: (none).";
+  return `SUBJECT COLORS (current accents for every subject the user has):
+${listed}
+${customLine}`;
+}
+
+/**
+ * Strip a trailing JSON object from assistant prose (fenced or bare).
+ * @param {string} text
+ */
+export function stripTrailingJsonObject(text) {
+  const raw = String(text || "");
+  let next = raw.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```\s*$/i, "");
+  if (next !== raw) return next.trimEnd();
+
+  const start = raw.lastIndexOf("{");
+  if (start < 0) return raw.trimEnd();
+  const candidate = raw.slice(start).trim();
+  try {
+    const parsed = JSON.parse(candidate);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return raw.slice(0, start).trimEnd();
+    }
+  } catch {
+    /* keep original */
+  }
+  return raw.trimEnd();
+}
+
+/**
+ * Parse a set_subject_color action from model JSON (or null if not that action).
+ * @param {unknown} parsed
+ * @returns {{ subject: string, color: string } | null}
+ */
+export function parseSetSubjectColorAction(parsed) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  if (parsed.action !== "set_subject_color") return null;
+  const subject =
+    typeof parsed.subject === "string"
+      ? parsed.subject.trim()
+      : typeof parsed.label === "string"
+        ? parsed.label.trim()
+        : "";
+  const colorRaw =
+    typeof parsed.color === "string"
+      ? parsed.color.trim()
+      : typeof parsed.hex === "string"
+        ? parsed.hex.trim()
+        : "";
+  if (!subject || !colorRaw) return null;
+  const color = /^#[0-9a-fA-F]{6}$/.test(colorRaw)
+    ? colorRaw.toLowerCase()
+    : null;
+  if (!color) return null;
+  return { subject, color };
+}
+
+/**
+ * If the assistant emitted a set_subject_color action, apply it and strip JSON.
+ * @param {string} email
+ * @param {string} rawContent
+ */
+export async function applyChatSubjectColorAction(email, rawContent) {
+  const raw = String(rawContent || "");
+  const parsed = extractJsonObject(raw);
+  const action = parseSetSubjectColorAction(parsed);
+  const stripped = stripTrailingJsonObject(raw);
+  const baseContent = stripped.trim() || raw.trim() || "…";
+
+  if (!action) {
+    return { content: baseContent };
+  }
+
+  try {
+    const result = await setSubjectColor(email, action.subject, action.color);
+    return {
+      content: baseContent,
+      subjectColorUpdate: { label: result.label, color: result.color },
+      subjects: result.subjects,
+    };
+  } catch (err) {
+    const msg = err?.message || "failed to update color";
+    return {
+      content: [
+        baseContent === "…"
+          ? "I couldn't update that subject color."
+          : baseContent,
+        `(${msg})`,
+      ].join("\n\n"),
+    };
+  }
+}
+
+/**
  * Build the full system prompt for NoteLMs chat.
  * @param {{
  *   uiContext?: Record<string, unknown>,
  *   openNoteText?: string,
  *   retrievedNotes?: Array<Record<string, unknown>>,
  *   researchMetricsText?: string,
+ *   subjectColorsText?: string,
  * }} parts
  */
 export function buildNotesChatSystemPrompt(parts = {}) {
@@ -211,6 +339,12 @@ ${capText(openText, MAX_OPEN_NOTE_FOR_CHAT)}`
         ].join("\n\n");
 
   const researchLive = parts.researchMetricsText || "(metrics unavailable)";
+  const subjectColorsBlock =
+    parts.subjectColorsText ||
+    formatSubjectColorsForChat({
+      custom: [],
+      colors: { ...FIXED_SUBJECT_COLORS },
+    });
 
   return `You are NoteLMs' study assistant. Answer questions about the user's notes, the Research page metrics, and the About/product facts below. Be concise and specific.
 
@@ -219,8 +353,11 @@ Rules:
 - If something is not in the materials, say you do not see it. Do not invent note content.
 - You may use light Markdown: **bold**, *italic*, bullet or numbered lists.
 - You know which screen the user is on from CURRENT SCREEN.
+- Subject accent colors: the user may ask you to change any listed subject's color to a specific color (a color name or #RRGGBB). When they do, reply briefly confirming the change, resolve the requested color to a #RRGGBB hex (use a saturated mid-brightness accent for vague names like "red"), and append a single JSON object on its own at the end of your reply with this exact schema: {"action":"set_subject_color","subject":"<exact subject label from SUBJECT COLORS>","color":"#rrggbb"}. Use the exact subject label from SUBJECT COLORS. Only recolor subjects that appear in SUBJECT COLORS; do not invent subjects. Do not emit that JSON unless the user asked to change a subject's color.
 
 ${uiBlock}
+
+${subjectColorsBlock}
 
 ${ABOUT_SITE_CONTEXT}
 
@@ -296,11 +433,20 @@ export async function assembleNotesChatContext(email, input) {
     researchMetricsText = `Live research metrics failed to load (${err?.message || "error"}).`;
   }
 
+  let subjectColorsText = "";
+  try {
+    const subjects = await listSubjects(email);
+    subjectColorsText = formatSubjectColorsForChat(subjects);
+  } catch (err) {
+    subjectColorsText = `SUBJECT COLORS: (unavailable: ${err?.message || "error"})`;
+  }
+
   const system = buildNotesChatSystemPrompt({
     uiContext,
     openNoteText,
     retrievedNotes,
     researchMetricsText,
+    subjectColorsText,
   });
 
   return { system, uiContext, retrievedNotes, openNoteText };

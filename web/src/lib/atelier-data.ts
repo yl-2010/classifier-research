@@ -30,12 +30,11 @@ export const SUBJECT_COLORS = Object.fromEntries(SUBJECTS) as Record<
 
 const CUSTOM_SUBJECT_COLOR = "#64748b";
 
-/** Color for a fixed or custom subject label. */
+/** Color for a fixed or custom subject label. User overrides win over fixed defaults. */
 export function subjectColor(
   name: string,
   customColors?: Record<string, string> | null
 ): string {
-  if (SUBJECT_COLORS[name]) return SUBJECT_COLORS[name];
   if (customColors) {
     const exact = customColors[name];
     if (exact) return exact;
@@ -44,6 +43,7 @@ export function subjectColor(
       if (label.toLowerCase() === lower && hex) return hex;
     }
   }
+  if (SUBJECT_COLORS[name]) return SUBJECT_COLORS[name];
   return CUSTOM_SUBJECT_COLOR;
 }
 
