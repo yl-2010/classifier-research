@@ -1,6 +1,9 @@
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
+const PDF_WHITE = "#ffffff";
+const PDF_INK = "#0b1f33";
+
 function safeFileName(title: string): string {
   const base = String(title || "note")
     .trim()
@@ -8,6 +11,31 @@ function safeFileName(title: string): string {
     .replace(/\s+/g, "-")
     .slice(0, 80);
   return `${base || "note"}.pdf`;
+}
+
+function parseRgb(
+  color: string
+): { r: number; g: number; b: number; a: number } | null {
+  const value = String(color || "").trim();
+  if (!value || value === "transparent") return null;
+  const m = value.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i
+  );
+  if (!m) return null;
+  return {
+    r: Number(m[1]),
+    g: Number(m[2]),
+    b: Number(m[3]),
+    a: m[4] === undefined ? 1 : Number(m[4]),
+  };
+}
+
+function relativeLuminance(r: number, g: number, b: number): number {
+  const lin = [r, g, b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
 }
 
 /** Copy resolved computed styles so html2canvas keeps fonts, KaTeX, colors, etc. */
@@ -46,6 +74,38 @@ function inlineComputedStyles(sourceRoot: HTMLElement, targetRoot: HTMLElement) 
 }
 
 /**
+ * Force a white page while keeping structure/typography and the subject accent bar.
+ * Dark-theme fills/text from inlined styles are neutralized for print.
+ */
+function forceWhitePdfSurface(root: HTMLElement) {
+  const accentOutline = root.style.boxShadow;
+  const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+
+  for (const el of nodes) {
+    const bg = parseRgb(el.style.backgroundColor);
+    if (bg && bg.a > 0.05 && relativeLuminance(bg.r, bg.g, bg.b) < 0.55) {
+      el.style.backgroundColor = el === root ? PDF_WHITE : "transparent";
+    }
+
+    const fg = parseRgb(el.style.color);
+    if (fg && relativeLuminance(fg.r, fg.g, fg.b) > 0.62) {
+      el.style.color = PDF_INK;
+    }
+
+    const border = parseRgb(el.style.borderColor);
+    if (border && relativeLuminance(border.r, border.g, border.b) > 0.7) {
+      el.style.borderColor = "rgba(11, 31, 51, 0.18)";
+    }
+  }
+
+  root.style.backgroundColor = PDF_WHITE;
+  root.style.color = PDF_INK;
+  if (accentOutline && accentOutline !== "none") {
+    root.style.boxShadow = accentOutline;
+  }
+}
+
+/**
  * Capture a note DOM node (with visible HTML/KaTeX formatting) and download
  * a multipage A4 PDF.
  */
@@ -60,6 +120,7 @@ export async function exportNotePdf(
   const width = Math.max(element.scrollWidth, element.clientWidth, 320);
   const clone = element.cloneNode(true) as HTMLElement;
   inlineComputedStyles(element, clone);
+  forceWhitePdfSurface(clone);
 
   const host = document.createElement("div");
   host.setAttribute("data-notelms-pdf-export", "1");
@@ -72,6 +133,7 @@ export async function exportNotePdf(
     "padding:0",
     "pointer-events:none",
     "z-index:-1",
+    `background:${PDF_WHITE}`,
   ].join(";");
   clone.style.width = `${width}px`;
   clone.style.boxSizing = "border-box";
@@ -79,28 +141,21 @@ export async function exportNotePdf(
   document.body.appendChild(host);
 
   try {
-    const surface =
-      getComputedStyle(element).backgroundColor ||
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--surface")
-        .trim() ||
-      "#ffffff";
-
     const canvas = await html2canvas(clone, {
       scale: Math.min(3, window.devicePixelRatio > 1 ? 2.5 : 2),
       useCORS: true,
       allowTaint: true,
-      backgroundColor: surface,
+      backgroundColor: PDF_WHITE,
       logging: false,
       width,
       windowWidth: width,
       scrollX: 0,
       scrollY: 0,
       onclone: (_doc, cloned) => {
-        // Re-assert overflow so multipage content is fully painted.
         cloned.style.height = "auto";
         cloned.style.maxHeight = "none";
         cloned.style.overflow = "visible";
+        cloned.style.backgroundColor = PDF_WHITE;
       },
     });
 
