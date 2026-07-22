@@ -247,8 +247,10 @@ export async function ensureUser(email, { name = null } = {}) {
   const subjectsPath = path.join(root, "subjects.json");
   let subjects = await readJson(subjectsPath, null);
   if (!subjects) {
-    subjects = { custom: [], updatedAt: now };
+    subjects = { custom: [], colors: {}, updatedAt: now };
     await writeJson(subjectsPath, subjects);
+  } else if (!subjects.colors || typeof subjects.colors !== "object") {
+    subjects = { ...subjects, colors: {} };
   }
 
   return {
@@ -259,6 +261,20 @@ export async function ensureUser(email, { name = null } = {}) {
     created,
     dataRoot: getDataRoot(),
   };
+}
+
+/** Normalize subjects.json colors map to Record<label, #RRGGBB>. */
+function normalizeColorsMap(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof key !== "string" || typeof value !== "string") continue;
+    const label = key.trim();
+    const hex = value.trim();
+    if (!label || !/^#[0-9a-fA-F]{6}$/.test(hex)) continue;
+    out[label] = hex.toLowerCase();
+  }
+  return out;
 }
 
 export async function getProfile(email) {
@@ -284,10 +300,15 @@ export async function listSubjects(email) {
     fixed: [...FIXED_SUBJECTS],
     other: OTHER_SUBJECT,
     custom: Array.isArray(subjects.custom) ? subjects.custom : [],
+    colors: normalizeColorsMap(subjects.colors),
   };
 }
 
-export async function addCustomSubject(email, label) {
+/**
+ * Add a custom subject label. Optional `color` is a #RRGGBB accent.
+ * If the label already exists but has no color, `color` fills it in.
+ */
+export async function addCustomSubject(email, label, { color } = {}) {
   const normalized = normalizeSubjectLabel(label);
   if (!normalized || normalized === OTHER_SUBJECT) {
     throw new Error("invalid custom subject");
@@ -297,12 +318,26 @@ export async function addCustomSubject(email, label) {
   }
   const { root, subjects } = await ensureUser(email);
   const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+  const colors = normalizeColorsMap(subjects.colors);
   const exists = custom.some((c) => c.toLowerCase() === normalized.toLowerCase());
   if (!exists) {
     custom.push(normalized);
     custom.sort((a, b) => a.localeCompare(b));
   }
-  const next = { custom, updatedAt: new Date().toISOString() };
+  const existingKey = Object.keys(colors).find(
+    (k) => k.toLowerCase() === normalized.toLowerCase()
+  );
+  const hex =
+    typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color.trim())
+      ? color.trim().toLowerCase()
+      : null;
+  if (hex) {
+    if (existingKey && existingKey !== normalized) {
+      delete colors[existingKey];
+    }
+    colors[normalized] = hex;
+  }
+  const next = { custom, colors, updatedAt: new Date().toISOString() };
   await writeJson(path.join(root, "subjects.json"), next);
   return next;
 }
@@ -342,13 +377,20 @@ export async function deleteSubject(email, label) {
   if (!isFixed) {
     const { root, subjects } = await ensureUser(email);
     const custom = Array.isArray(subjects.custom) ? [...subjects.custom] : [];
+    const colors = normalizeColorsMap(subjects.colors);
     const nextCustom = custom.filter(
       (c) => c.toLowerCase() !== normalized.toLowerCase()
     );
+    for (const key of Object.keys(colors)) {
+      if (key.toLowerCase() === normalized.toLowerCase()) {
+        delete colors[key];
+      }
+    }
     removedCustom = nextCustom.length !== custom.length;
     if (removedCustom) {
       await writeJson(path.join(root, "subjects.json"), {
         custom: nextCustom,
+        colors,
         updatedAt: new Date().toISOString(),
       });
     }

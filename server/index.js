@@ -42,6 +42,7 @@ import {
   generateSummaryWithGptOss,
   resolveSubject,
 } from "./classify.js";
+import { pickCustomSubjectColor } from "./subjectColor.js";
 import { assembleNotesChatContext } from "./noteChatContext.js";
 import { probeBertService } from "./bert.js";
 import { getTtsBaseUrl, ttsFetch } from "./voice.js";
@@ -148,7 +149,13 @@ app.post("/api/ensure-user", requireAuth, async (req, res) => {
       dataRoot,
       path: root,
       user: profile,
-      subjects: { custom: subjects.custom || [] },
+      subjects: {
+        custom: subjects.custom || [],
+        colors:
+          subjects.colors && typeof subjects.colors === "object"
+            ? subjects.colors
+            : {},
+      },
     });
   } catch (err) {
     console.error("[/api/ensure-user]", err);
@@ -173,6 +180,10 @@ app.get("/api/me", requireAuth, async (req, res) => {
       user: profile,
       subjects: {
         custom: subjects.custom || [],
+        colors:
+          subjects.colors && typeof subjects.colors === "object"
+            ? subjects.colors
+            : {},
       },
       folder: emailToFolderName(req.user.email),
       dataRoot: getDataRoot(),
@@ -212,8 +223,29 @@ app.post("/api/subjects", requireAuth, async (req, res) => {
   try {
     await ensureUser(req.user.email, { name: req.user.name });
     const label = req.body?.label || req.body?.subject;
-    const subjects = await addCustomSubject(req.user.email, label);
-    res.status(201).json({ ok: true, subjects });
+    const normalized = normalizeSubjectLabel(label);
+    const existing = await listSubjects(req.user.email);
+    const existingKey =
+      normalized &&
+      Object.keys(existing.colors || {}).find(
+        (k) => k.toLowerCase() === normalized.toLowerCase()
+      );
+    const existingColor = existingKey ? existing.colors[existingKey] : null;
+    const color =
+      existingColor ||
+      (await pickCustomSubjectColor(label, {
+        avoidHexes: Object.values(existing.colors || {}),
+      }));
+    await addCustomSubject(req.user.email, label, { color });
+    const listed = await listSubjects(req.user.email);
+    const resolvedKey = Object.keys(listed.colors || {}).find(
+      (k) => k.toLowerCase() === String(normalized || "").toLowerCase()
+    );
+    res.status(201).json({
+      ok: true,
+      subjects: listed,
+      color: (resolvedKey && listed.colors[resolvedKey]) || color,
+    });
   } catch (err) {
     const status = /invalid|already/i.test(err.message || "") ? 400 : 500;
     res.status(status).json({ ok: false, error: err.message || "failed" });

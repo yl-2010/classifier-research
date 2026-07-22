@@ -85,6 +85,34 @@ describe("storage", () => {
     await addCustomSubject(email, "APUSH");
     const subjects = await listSubjects(email);
     assert.ok(subjects.custom.includes("APUSH"));
+    assert.deepEqual(subjects.colors, {});
+  });
+
+  it("persists and clears custom subject accent colors", async () => {
+    const email = "colors@example.com";
+    await ensureUser(email);
+    await addCustomSubject(email, "APUSH", { color: "#c45c26" });
+    let subjects = await listSubjects(email);
+    assert.ok(subjects.custom.includes("APUSH"));
+    assert.equal(subjects.colors.APUSH, "#c45c26");
+
+    // Re-add without color keeps existing accent.
+    await addCustomSubject(email, "APUSH");
+    subjects = await listSubjects(email);
+    assert.equal(subjects.colors.APUSH, "#c45c26");
+
+    // Fill color for a label that lacked one.
+    await addCustomSubject(email, "Latin");
+    await addCustomSubject(email, "Latin", { color: "#7c3aed" });
+    subjects = await listSubjects(email);
+    assert.equal(subjects.colors.Latin, "#7c3aed");
+
+    const result = await deleteSubject(email, "APUSH");
+    assert.equal(result.removedCustom, true);
+    subjects = await listSubjects(email);
+    assert.equal(subjects.custom.includes("APUSH"), false);
+    assert.equal(subjects.colors.APUSH, undefined);
+    assert.equal(subjects.colors.Latin, "#7c3aed");
   });
 
   it("preserves title and classification when only subject is patched", async () => {

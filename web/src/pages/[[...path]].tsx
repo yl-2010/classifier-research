@@ -195,6 +195,9 @@ export default function HomePage() {
 
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [invokedSubjects, setInvokedSubjects] = useState<string[]>([]);
+  const [customSubjectColors, setCustomSubjectColors] = useState<
+    Record<string, string>
+  >({});
   const [text, setText] = useState("");
   const [sentTitle, setSentTitle] = useState<string | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
@@ -250,14 +253,43 @@ export default function HomePage() {
     setLibraryLoaded(false);
     (async () => {
       try {
-        const res = await notelmsFetch(apiBase, "/api/notes");
-        const data = (await res.json()) as {
+        const [notesRes, subjectsRes] = await Promise.all([
+          notelmsFetch(apiBase, "/api/notes"),
+          notelmsFetch(apiBase, "/api/subjects"),
+        ]);
+        const data = (await notesRes.json()) as {
           ok?: boolean;
           notes?: ApiNoteMeta[];
           error?: string;
         };
+        const subjectsData = (await subjectsRes.json().catch(() => ({}))) as {
+          ok?: boolean;
+          custom?: string[];
+          colors?: Record<string, string>;
+        };
         if (cancelled) return;
-        if (!res.ok || !data.ok) {
+        if (
+          subjectsRes.ok &&
+          subjectsData.ok &&
+          subjectsData.colors &&
+          typeof subjectsData.colors === "object"
+        ) {
+          setCustomSubjectColors(subjectsData.colors);
+        }
+        if (
+          subjectsRes.ok &&
+          subjectsData.ok &&
+          Array.isArray(subjectsData.custom) &&
+          subjectsData.custom.length
+        ) {
+          persistInvoked(
+            sortLibrarySubjects([
+              ...loadInvokedSubjects(),
+              ...subjectsData.custom,
+            ])
+          );
+        }
+        if (!notesRes.ok || !data.ok) {
           setLibraryError(data.error || "Could not load library");
           setNotes([]);
           setLibraryLoaded(true);
@@ -462,6 +494,13 @@ export default function HomePage() {
         );
         setNotes((prev) => prev.filter((n) => n.subject !== name));
         updateResearch((prev) => prev.filter((r) => !removedIds.has(r.id)));
+        setCustomSubjectColors((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(next)) {
+            if (key.toLowerCase() === name.toLowerCase()) delete next[key];
+          }
+          return next;
+        });
         persistInvoked(
           invokedSubjects.filter((s) => s.toLowerCase() !== name.toLowerCase())
         );
@@ -507,7 +546,7 @@ export default function HomePage() {
     }
   }, [apiBase, deletingNote, notes, openNoteId, openSubject, updateResearch]);
 
-  const submitCustomSubject = (e: FormEvent) => {
+  const submitCustomSubject = async (e: FormEvent) => {
     e.preventDefault();
     const name = customDraft.trim();
     if (!name) return;
@@ -524,6 +563,37 @@ export default function HomePage() {
       openSubject(match);
       return;
     }
+
+    if (apiBase) {
+      try {
+        const res = await notelmsFetch(apiBase, "/api/subjects", {
+          method: "POST",
+          body: JSON.stringify({ label: name }),
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          color?: string;
+          subjects?: { custom?: string[]; colors?: Record<string, string> };
+          error?: string;
+        };
+        if (res.ok && data.ok) {
+          if (data.subjects?.colors && typeof data.subjects.colors === "object") {
+            setCustomSubjectColors(data.subjects.colors);
+          } else if (typeof data.color === "string") {
+            setCustomSubjectColors((prev) => ({ ...prev, [name]: data.color! }));
+          }
+          const saved =
+            data.subjects?.custom?.find(
+              (s) => s.toLowerCase() === name.toLowerCase()
+            ) || name;
+          addSubjectToLibrary(saved);
+          return;
+        }
+      } catch {
+        // Fall through: still add locally with gray if the Mac API is down.
+      }
+    }
+
     addSubjectToLibrary(name);
   };
 
@@ -1098,7 +1168,7 @@ export default function HomePage() {
                       className="page-title"
                       style={
                         {
-                          "--subj": subjectColor(openNote.subject),
+                          "--subj": subjectColor(openNote.subject, customSubjectColors),
                         } as CSSProperties
                       }
                     >
@@ -1128,7 +1198,7 @@ export default function HomePage() {
                       ref={noteShellRef}
                       style={
                         {
-                          "--subj": subjectColor(openNote.subject),
+                          "--subj": subjectColor(openNote.subject, customSubjectColors),
                         } as CSSProperties
                       }
                     >
@@ -1188,7 +1258,7 @@ export default function HomePage() {
                     className="page-title"
                     style={
                       {
-                        "--subj": subjectColor(folder),
+                        "--subj": subjectColor(folder, customSubjectColors),
                       } as CSSProperties
                     }
                   >
@@ -1207,7 +1277,7 @@ export default function HomePage() {
                             className="note-item"
                             style={
                               {
-                                "--subj": subjectColor(n.subject),
+                                "--subj": subjectColor(n.subject, customSubjectColors),
                               } as CSSProperties
                             }
                             onClick={() => openNoteAt(folder, n.title)}
@@ -1254,7 +1324,7 @@ export default function HomePage() {
                           className="pick"
                           style={
                             {
-                              "--subj": subjectColor(name),
+                              "--subj": subjectColor(name, customSubjectColors),
                             } as CSSProperties
                           }
                           onClick={() => addSubjectToLibrary(name)}
@@ -1319,7 +1389,7 @@ export default function HomePage() {
                             className="folder"
                             style={
                               {
-                                "--subj": subjectColor(name),
+                                "--subj": subjectColor(name, customSubjectColors),
                               } as CSSProperties
                             }
                             onClick={() => openSubject(name)}
