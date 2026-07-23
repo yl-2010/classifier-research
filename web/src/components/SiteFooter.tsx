@@ -35,7 +35,15 @@ export function SiteFooter() {
           >
             Yan Levin
           </a>
-          . All rights reserved.
+          . All rights reserved.{" "}
+          <a
+            className="author-link"
+            href="https://github.com/yl-2010/classifier-research"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
         </p>
         <div className="footer-actions">
           <ThemeModeSlider />
