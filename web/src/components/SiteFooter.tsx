@@ -25,7 +25,18 @@ export function SiteFooter() {
         decoding="async"
       />
       <div className="footer-meta">
-        <p className="copy">© {year} Yan Levin. All rights reserved.</p>
+        <p className="copy">
+          © {year}{" "}
+          <a
+            className="author-link"
+            href="https://yanylevin.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Yan Levin
+          </a>
+          . All rights reserved.
+        </p>
         <div className="footer-actions">
           <ThemeModeSlider />
           {signedIn ? (
@@ -126,6 +137,16 @@ export function SiteFooter() {
           color: var(--mute);
           font-size: 0.8rem;
           letter-spacing: 0.01em;
+        }
+
+        .author-link {
+          color: inherit;
+          text-decoration: underline;
+          text-underline-offset: 0.15em;
+        }
+
+        .author-link:hover {
+          color: var(--ink);
         }
 
         .tag {
