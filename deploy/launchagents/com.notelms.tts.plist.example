@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Optional LaunchAgent for the Orpheus TTS sidecar.
-  Copy to ~/Library/LaunchAgents/com.notelms.tts.plist and adjust the path,
-  then: launchctl load ~/Library/LaunchAgents/com.notelms.tts.plist
+  LaunchAgent for the Orpheus TTS sidecar.
+  Copy to ~/Library/LaunchAgents/com.notelms.tts.plist, then:
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.notelms.tts.plist
+    launchctl kickstart -k gui/$(id -u)/com.notelms.tts
 -->
 <plist version="1.0">
   <dict>
@@ -14,6 +15,15 @@
       <string>/bin/bash</string>
       <string>/Users/yanlevin/github/classifier-research/scripts/start-notelms-tts.sh</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <key>LM_STUDIO_BASE_URL</key>
+      <string>http://127.0.0.1:1234</string>
+      <key>LM_STUDIO_MODEL</key>
+      <string>orpheus-3b-0.1-ft</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

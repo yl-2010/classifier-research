@@ -4,7 +4,7 @@ NoteLMs Express listens on **3002**. Public API: `https://api.notelms.com` via t
 
 ## After a Mac restart
 
-LaunchAgents auto-start the API + tunnels on login. You only need to start **LM Studio** yourself (GUI):
+LaunchAgents auto-start the API, tunnel, and Orpheus TTS sidecar on login. You only need to start **LM Studio** yourself (GUI):
 
 1. Open **LM Studio**
 2. Load models as needed:
@@ -27,11 +27,11 @@ curl -sS http://127.0.0.1:5050/api/health   # Orpheus TTS sidecar
 |-------|------|
 | `com.notelms.server` | NoteLMs Express `:3002` |
 | `com.notelms.cloudflared` | NoteLMs tunnel → `api.notelms.com` |
-| `com.notelms.tts` | Orpheus TTS sidecar `:5050` (optional; or `npm run tts`) |
+| `com.notelms.tts` | Orpheus TTS sidecar `:5050` |
 | `com.sockethr.server` | SocketHR Express `:3000` |
 | `com.sockethr.cloudflared` | SocketHR tunnel → `api.sockethr.com` |
 
-Plists live in `~/Library/LaunchAgents/`. For Voice, install a LaunchAgent that runs `~/github/classifier-research/scripts/start-notelms-tts.sh`, or start it manually with `npm run tts`. BERT is started manually with `npm run bert:serve` (or add a LaunchAgent later).
+Plists live in `~/Library/LaunchAgents/`. TTS runs `scripts/start-notelms-tts.sh` (`KeepAlive` + `RunAtLoad`); logs: `/tmp/notelms-tts.log` / `/tmp/notelms-tts.err`. BERT is started manually with `npm run bert:serve` (or add a LaunchAgent later).
 
 ## Manual start (only if LaunchAgents are not installed)
 
