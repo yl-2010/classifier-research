@@ -9,7 +9,7 @@ import {
 } from "react";
 
 export type UiScreenContext = {
-  /** e.g. home | research | about | voice | library | note */
+  /** e.g. home | research | paper | about | voice | library | note */
   page: string;
   subject?: string | null;
   noteId?: string | null;

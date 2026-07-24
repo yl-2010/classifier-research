@@ -1070,6 +1070,9 @@ export default function HomePage() {
               <Link href="/research" className="btn gate-secondary">
                 View Research
               </Link>
+              <Link href="/paper" className="btn gate-secondary">
+                Paper
+              </Link>
               <Link href="/about" className="btn gate-secondary">
                 About
               </Link>
