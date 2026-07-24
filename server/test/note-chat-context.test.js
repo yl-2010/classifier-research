@@ -135,11 +135,24 @@ describe("formatUiContext / buildNotesChatSystemPrompt", () => {
         },
       ],
       researchMetricsText: "zero_shot: n=10, accuracy=0.500, macro_f1=0.400",
+      openPaperText:
+        "NoteLMs: A Three-Model Organization Framework for Student Notes",
+      retrievedPaperChunks: [
+        {
+          index: 2,
+          score: 3,
+          text: "Abstract. NoteLMs classifies and formats student notes.",
+        },
+      ],
       subjectColorsText: formatSubjectColorsForChat({
         custom: ["APUSH"],
         colors: { APUSH: "#c45c26" },
       }),
     });
+    assert.match(system, /OPEN PAPER/);
+    assert.match(system, /Three-Model Organization Framework/);
+    assert.match(system, /RETRIEVED PAPER/);
+    assert.match(system, /Abstract\. NoteLMs classifies/);
     assert.match(system, /OPEN NOTE/);
     assert.match(system, /v = u \+ at/);
     assert.match(system, /RETRIEVED NOTES/);

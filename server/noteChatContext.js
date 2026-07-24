@@ -19,6 +19,7 @@ import {
   mergeExistingSubjectColors,
   formatExistingColorsContext,
 } from "./subjectColor.js";
+import { formatPaperForChat, retrievePaperForChat } from "./paperContext.js";
 
 export const MAX_NOTE_TEXT_FOR_CHAT = 24_000;
 export const MAX_OPEN_NOTE_FOR_CHAT = 48_000;
@@ -48,6 +49,11 @@ The Research page charts classifier comparison metrics (accuracy / F1) across:
 - Original / frozen eval: the offline evaluation set.
 Arms compared: zero-shot BERT, fine-tuned BERT, GPT-OSS, and the orchestrator final subject.
 Per-class F1 is shown for the eight fixed academic subjects.`;
+
+/** Compact mirror of the Paper page. */
+export const PAPER_SITE_CONTEXT = `PAPER PAGE
+The Paper page embeds the NoteLMs research PDF at /documents/paper.pdf.
+When the user asks about the paper (or is on that page), OPEN PAPER / RETRIEVED PAPER chunks are added below — answer methods, results, and claims from those chunks only.`;
 
 /**
  * @param {string} text
@@ -491,6 +497,8 @@ export async function applyChatSubjectColorAction(email, rawContent) {
  *   openNoteText?: string,
  *   retrievedNotes?: Array<Record<string, unknown>>,
  *   researchMetricsText?: string,
+ *   openPaperText?: string,
+ *   retrievedPaperChunks?: Array<Record<string, unknown>>,
  *   subjectColorsText?: string,
  * }} parts
  */
@@ -522,6 +530,10 @@ ${capText(openText, MAX_OPEN_NOTE_FOR_CHAT)}`
         ].join("\n\n");
 
   const researchLive = parts.researchMetricsText || "(metrics unavailable)";
+  const paperBlock = formatPaperForChat({
+    openPaperText: parts.openPaperText,
+    retrievedChunks: parts.retrievedPaperChunks,
+  });
   const subjectColorsBlock =
     parts.subjectColorsText ||
     formatSubjectColorsForChat({
@@ -529,11 +541,15 @@ ${capText(openText, MAX_OPEN_NOTE_FOR_CHAT)}`
       colors: { ...FIXED_SUBJECT_COLORS },
     });
 
-  return `You are NoteLMs' study assistant. Answer questions about the user's notes, the Research page metrics, and the About/product facts below. Be concise and specific.
+  const paperSection = paperBlock
+    ? `\n${paperBlock}\n`
+    : "";
+
+  return `You are NoteLMs' study assistant. Answer questions about the user's notes, the Research page metrics, the research paper (when OPEN/RETRIEVED PAPER is present), and the About/product facts below. Be concise and specific.
 
 Rules:
-- Prefer evidence from OPEN NOTE, RETRIEVED NOTES, research metrics, and site facts.
-- If something is not in the materials, say you do not see it. Do not invent note content.
+- Prefer evidence from OPEN NOTE, RETRIEVED NOTES, research metrics, OPEN/RETRIEVED PAPER (when present), and site facts.
+- If something is not in the materials, say you do not see it. Do not invent note content or paper claims.
 - You may use light Markdown: **bold**, *italic*, bullet or numbered lists.
 - You know which screen the user is on from CURRENT SCREEN. Every turn includes fresh CURRENT SCREEN / OPEN NOTE / NAVIGATION — trust those over older chat turns when they disagree.
 - When NAVIGATION says the user moved to a different page/note, answer about the new CURRENT OPEN NOTE / CURRENT SCREEN, not the note discussed earlier in the chat.
@@ -549,9 +565,11 @@ ${ABOUT_SITE_CONTEXT}
 
 ${RESEARCH_SITE_CONTEXT}
 
+${PAPER_SITE_CONTEXT}
+
 LIVE RESEARCH METRICS:
 ${researchLive}
-
+${paperSection}
 ${openBlock}
 
 ${retrievedBlock}`;
@@ -624,6 +642,19 @@ export async function assembleNotesChatContext(email, input) {
     researchMetricsText = `Live research metrics failed to load (${err?.message || "error"}).`;
   }
 
+  let openPaperText = "";
+  let retrievedPaperChunks = [];
+  try {
+    const paper = await retrievePaperForChat(query, { uiContext });
+    openPaperText = paper.openPaperText || "";
+    retrievedPaperChunks = paper.retrievedChunks || [];
+  } catch (err) {
+    // Only surface load errors when we would have retrieved paper anyway.
+    if (String(uiContext.page || "") === "paper") {
+      openPaperText = `Paper PDF failed to load (${err?.message || "error"}).`;
+    }
+  }
+
   let subjectColorsText = "";
   try {
     const subjects = await listSubjects(email);
@@ -638,10 +669,20 @@ export async function assembleNotesChatContext(email, input) {
     openNoteText,
     retrievedNotes,
     researchMetricsText,
+    openPaperText,
+    retrievedPaperChunks,
     subjectColorsText,
   });
 
-  return { system, uiContext, previousUiContext, retrievedNotes, openNoteText };
+  return {
+    system,
+    uiContext,
+    previousUiContext,
+    retrievedNotes,
+    openNoteText,
+    openPaperText,
+    retrievedPaperChunks,
+  };
 }
 
 function stripHtml(html) {
