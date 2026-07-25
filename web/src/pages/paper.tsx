@@ -1,4 +1,5 @@
 import Head from "next/head";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
@@ -10,6 +11,15 @@ const JUMP_KEY = "notelms-jump";
 
 /** Served from web/public/documents/paper.pdf */
 const PAPER_PDF_SRC = "/documents/paper.pdf";
+
+const PaperPdfViewer = dynamic(
+  () =>
+    import("@/components/PaperPdfViewer").then((m) => m.PaperPdfViewer),
+  {
+    ssr: false,
+    loading: () => <div className="paper-loading">Loading paper…</div>,
+  }
+);
 
 export default function PaperPage() {
   const { status } = useSession();
@@ -44,9 +54,8 @@ export default function PaperPage() {
         />
 
         <div className="paper-frame">
-          <iframe
-            className="paper-viewer"
-            src={`${PAPER_PDF_SRC}#view=FitH`}
+          <PaperPdfViewer
+            src={PAPER_PDF_SRC}
             title="NoteLMs — A Three-Model Organization Framework for Student Notes"
           />
         </div>
@@ -65,42 +74,23 @@ export default function PaperPage() {
 
         .paper-frame {
           flex: 1;
-          display: flex;
-          flex-direction: column;
-          min-height: min(78vh, 960px);
-          margin-bottom: 1.5rem;
-          animation: rise 0.55s ease both;
-        }
-
-        .paper-viewer {
-          flex: 1;
           width: 100%;
-          min-height: min(78vh, 960px);
-          border: 0;
-          border-radius: var(--radius);
-          background: var(--surface);
+          margin-bottom: 1.5rem;
         }
 
-        @keyframes rise {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: none;
-          }
+        .app :global(.paper-loading) {
+          min-height: 12rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--mute);
+          font-size: 0.95rem;
         }
 
         @media (max-width: 640px) {
           .app {
             padding-left: 0.85rem;
             padding-right: 0.85rem;
-          }
-
-          .paper-frame,
-          .paper-viewer {
-            min-height: 70vh;
           }
         }
       `}</style>

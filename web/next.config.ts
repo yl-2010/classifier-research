@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://api.notelms.com http://127.0.0.1:3002 http://localhost:3002 https://accounts.google.com",
               "frame-src 'self' https://accounts.google.com",
+              "worker-src 'self' blob:",
               "object-src 'self'",
               "base-uri 'self'",
               "form-action 'self' https://accounts.google.com",
