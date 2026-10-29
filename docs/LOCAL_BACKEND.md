@@ -76,7 +76,7 @@ BERT_SERVICE_URL=http://127.0.0.1:3003
 NOTELMS_TTS_URL=http://127.0.0.1:5050
 ```
 
-The TTS sidecar uses its own Orpheus model id (`LM_STUDIO_MODEL=orpheus-3b-0.1-ft` in the `tts/` process). Confirm ids with `GET /v1/models` after loading in LM Studio. Never put port 1234, 3003, or 5050 on the Cloudflare Tunnel — only Express `:3002` via `api.notelms.com`.
+The TTS sidecar uses its own Orpheus model id (`LM_STUDIO_MODEL=orpheus-3b-0.1-ft` in the `tts/` process). It loads that model on demand with `lms load --ttl 180` and does not unload `openai/gpt-oss-20b`. Never put port 1234, 3003, or 5050 on the Cloudflare Tunnel. Only Express `:3002` is on `api.notelms.com`.
 
 ## Local multi-process (laptop)
 

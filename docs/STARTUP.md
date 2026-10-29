@@ -4,13 +4,7 @@ NoteLMs Express listens on **3002**. Public API: `https://api.notelms.com` via t
 
 ## After a Mac restart
 
-LaunchAgents auto-start the API, tunnel, and Orpheus TTS sidecar on login. You only need to start **LM Studio** yourself (GUI):
-
-1. Open **LM Studio**
-2. Load models as needed:
-   - Notes / classify: `openai/gpt-oss-20b`
-   - Voice (`/voice`): `orpheus-3b-0.1-ft` (Orpheus 3B GGUF)
-3. Start the local server on port **1234**
+LaunchAgents auto-start the API, tunnel, and Orpheus TTS sidecar on login. `com.yanylevin.lmstudio-gpt-oss` (in the yanylevin repo) opens LM Studio and loads `openai/gpt-oss-20b` with no idle timeout. Voice does not need a manual load. The sidecar on `:5050` loads `orpheus-3b-0.1-ft` for a request, at context 8192, and LM Studio drops it after 180 seconds idle.
 
 Then check:
 
@@ -35,7 +29,7 @@ Plists live in `~/Library/LaunchAgents/`. TTS runs `scripts/start-notelms-tts.sh
 
 ## Manual start (only if LaunchAgents are not installed)
 
-1. **LM Studio (GUI)** — model(s) loaded, local server **ON** `:1234`.
+1. **LM Studio** — `com.yanylevin.lmstudio-gpt-oss` opens the app, starts the server on `:1234`, and loads `openai/gpt-oss-20b`. Orpheus loads itself when `/voice` is used.
 
 2. **NoteLMs API**
 

@@ -4,9 +4,10 @@ Local Flask service that turns pasted text into speech via the **Orpheus 3B** mo
 
 ## Prerequisites
 
-1. LM Studio with **isaiahbjork/orpheus-3b-0.1-ft-Q4_K_M-GGUF** loaded
-2. LM Studio local server on `http://127.0.0.1:1234`
-3. Python 3.10+ with a venv
+1. LM Studio local server on `http://127.0.0.1:1234` (`lms` at `~/.lmstudio/bin/lms`)
+2. Python 3.10+ with a venv
+
+The sidecar loads `orpheus-3b-0.1-ft` on the first speak request. Context is 8192, one slot, and LM Studio unloads it after 180 seconds idle. `openai/gpt-oss-20b` is a different model and is left loaded.
 
 ## Setup
 

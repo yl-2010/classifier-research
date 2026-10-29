@@ -5,6 +5,7 @@ import io
 import json
 import os
 import queue
+import subprocess
 import threading
 import time
 import wave
@@ -29,6 +30,84 @@ AVAILABLE_VOICES = ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"]
 DEFAULT_VOICE = "dan"
 
 CUSTOM_TOKEN_PREFIX = "<custom_token_"
+
+# A 320-character chunk estimates to about 3000 audio tokens. 8192 fits that
+# plus the prompt. The model default is 131072 with 4 slots, which is the
+# ~16 GB cache. Parallel 1 and a 3 minute idle TTL let the weights drop
+# after a voice request. gpt-oss is a different identifier and is not unloaded.
+LMS_BIN = os.environ.get("LMS_BIN", os.path.expanduser("~/.lmstudio/bin/lms"))
+ORPHEUS_CONTEXT = int(os.environ.get("ORPHEUS_CONTEXT_LENGTH", "8192"))
+ORPHEUS_PARALLEL = int(os.environ.get("ORPHEUS_PARALLEL", "1"))
+ORPHEUS_TTL_SECONDS = int(os.environ.get("ORPHEUS_TTL_SECONDS", "180"))
+_LOAD_LOCK = threading.Lock()
+
+
+def orpheus_load_is_current(model: Optional[dict]) -> bool:
+    """True when this Orpheus instance is the small, idle-expiring one."""
+    if not model:
+        return False
+    ttl = model.get("ttlMs")
+    if not isinstance(ttl, (int, float)) or ttl <= 0:
+        return False
+    context = int(model.get("contextLength") or 0)
+    parallel = int(model.get("parallel") or 1)
+    return context <= ORPHEUS_CONTEXT and parallel <= ORPHEUS_PARALLEL
+
+
+def _orpheus_instance(models: list) -> Optional[dict]:
+    want = LM_STUDIO_MODEL
+    for model in models:
+        if model.get("identifier") == want or model.get("modelKey") == want:
+            return model
+    return None
+
+
+def _run_lms(args: list[str], timeout: int = 120) -> str:
+    proc = subprocess.run(
+        [LMS_BIN, *args],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(f"lms {' '.join(args)} failed: {detail}")
+    return proc.stdout
+
+
+def _loaded_models() -> list:
+    raw = _run_lms(["ps", "--json"], timeout=30)
+    data = json.loads(raw)
+    if isinstance(data, dict):
+        models = data.get("models") or data.get("data") or []
+        return models if isinstance(models, list) else []
+    return data if isinstance(data, list) else []
+
+
+def ensure_orpheus_loaded() -> None:
+    """Load Orpheus with a short context and idle TTL. Leave every other model alone."""
+    with _LOAD_LOCK:
+        current = _orpheus_instance(_loaded_models())
+        if orpheus_load_is_current(current):
+            return
+        if current is not None:
+            _run_lms(["unload", LM_STUDIO_MODEL], timeout=60)
+        _run_lms(
+            [
+                "load",
+                LM_STUDIO_MODEL,
+                "--context-length",
+                str(ORPHEUS_CONTEXT),
+                "--parallel",
+                str(ORPHEUS_PARALLEL),
+                "--ttl",
+                str(ORPHEUS_TTL_SECONDS),
+                "--identifier",
+                LM_STUDIO_MODEL,
+                "-y",
+            ],
+            timeout=180,
+        )
 
 
 def estimate_max_tokens(text: str) -> int:
@@ -179,6 +258,7 @@ def _synthesize_chunk(
     max_tokens: Optional[int] = None,
     repetition_penalty: float = REPETITION_PENALTY,
 ) -> bytes:
+    ensure_orpheus_loaded()
     chunk = prompt.strip()
     token_budget = max_tokens if max_tokens is not None else estimate_max_tokens(chunk)
     token_gen = generate_tokens_from_api(
@@ -192,7 +272,7 @@ def _synthesize_chunk(
     segments = _collect_audio_segments(token_gen)
     if not segments:
         raise RuntimeError(
-            "No audio generated. Is LM Studio running with the Orpheus model loaded?"
+            "No audio generated. LM Studio did not return Orpheus audio tokens."
         )
     return segments_to_wav_bytes(segments)
 
